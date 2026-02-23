@@ -1,95 +1,95 @@
 # Dev Setup – API Keys & Credentials
 
-Kopiere zuerst die Vorlage:
+First, copy the template:
 
 ```bash
 cp local.config.example.ts local.config.ts
 ```
 
-`local.config.ts` ist in `.gitignore` – kommt **nie** ins Repository.
+`local.config.ts` is in `.gitignore` – it will **never** be committed to the repository.
 
 ---
 
 ## 1. OpenAI API Key (`openAIApiKey`)
 
-1. Gehe zu [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. **"Create new secret key"** → Namen vergeben → Key kopieren
+1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+2. **"Create new secret key"** → choose a name → copy the key
 3. Format: `sk-proj-...`
 
-> Kosten: Pay-as-you-go. Für Entwicklung reichen ein paar Dollar Guthaben.
+> Cost: Pay-as-you-go. A few dollars of credit is enough for development.
 
 ---
 
 ## 2. Anthropic Claude API Key (`claudeApiKey`)
 
-1. Gehe zu [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
-2. **"Create Key"** → Namen vergeben → Key kopieren
+1. Go to [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
+2. **"Create Key"** → choose a name → copy the key
 3. Format: `sk-ant-...`
 
-> Nur nötig wenn `selectedProvider: 'claude'` gesetzt ist.
+> Only required if `selectedProvider: 'claude'` is set.
 
 ---
 
 ## 3. Spotify Client ID (`spotifyClientId`)
 
-1. Gehe zu [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
-2. **"Create app"** → Name + Beschreibung ausfüllen
-3. Redirect URI hinzufügen: `sannabot://spotify-callback`
-4. **"Settings"** → Client ID kopieren
-5. Format: 32-stelliger Hex-String, z.B. `1f1878d7b693496db8af569f5ea27b71`
+1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
+2. **"Create app"** → fill in name + description
+3. Add redirect URI: `sannabot://spotify-callback`
+4. **"Settings"** → copy the Client ID
+5. Format: 32-character hex string, e.g. `1f1878d7b693496db8af569f5ea27b71`
 
-> Kein Client Secret nötig – die App verwendet PKCE.
+> No Client Secret needed – the app uses PKCE.
 
 ---
 
 ## 4. Google Web Client ID (`googleWebClientId`)
 
-1. Gehe zu [console.cloud.google.com](https://console.cloud.google.com)
-2. Projekt auswählen oder neu erstellen
-3. **"APIs & Dienste" → "Anmeldedaten"**
-4. **"+ Anmeldedaten erstellen" → "OAuth-Client-ID"**
-   - Anwendungstyp: **Web-Anwendung**
-   - Autorisierte Weiterleitungs-URIs: leer lassen (wird von Google Sign-In SDK verwaltet)
-5. Client-ID kopieren
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Select an existing project or create a new one
+3. **"APIs & Services" → "Credentials"**
+4. **"+ Create Credentials" → "OAuth client ID"**
+   - Application type: **Web application**
+   - Authorized redirect URIs: leave empty (managed by the Google Sign-In SDK)
+5. Copy the Client ID
 6. Format: `xxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com`
 
-**Außerdem benötigte APIs aktivieren** (unter "APIs & Dienste → Bibliothek"):
+**Also enable the required APIs** (under "APIs & Services → Library"):
 - Gmail API
 - Google Calendar API
 - Google Tasks API
-- Google People API (für Kontakte)
+- Google People API (for contacts)
 
-**SHA-1 Fingerprint der Debug-Keystore eintragen:**
+**Register the debug keystore SHA-1 fingerprint:**
 ```bash
 keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
-Den SHA-1 unter **"APIs & Dienste → Anmeldedaten → OAuth 2.0-Client-IDs → Android"** eintragen.
+Enter the SHA-1 under **"APIs & Services → Credentials → OAuth 2.0 Client IDs → Android"**.
 
 ---
 
 ## 5. Picovoice Access Key (`picovoiceAccessKey`)
 
-Wird für das Wake-Word "Hey Sanna" benötigt.
+Required for the "Hey Sanna" wake word.
 
-1. Gehe zu [console.picovoice.ai](https://console.picovoice.ai/)
-2. Kostenlosen Account erstellen
-3. **"Access Key"** im Dashboard kopieren
-4. Format: langer Base64-String
+1. Go to [console.picovoice.ai](https://console.picovoice.ai/)
+2. Create a free account
+3. Copy the **"Access Key"** from the dashboard
+4. Format: long Base64 string
 
-> Der kostenlose Plan reicht für die Entwicklung.
+> The free plan is sufficient for development.
 
 ---
 
 ## 6. Slack Client ID + Redirect URL (`slackClientId`, `slackRedirectUrl`)
 
-Slack verlangt eine **HTTPS-URL** als Redirect – Custom-Schemes wie `sannabot://` werden im Dashboard abgelehnt.
-Die Lösung: eine winzige Redirect-Seite hosten (z.B. GitHub Pages, kostenlos), die den Browser zurück zur App weiterleitet.
+Slack requires an **HTTPS URL** as redirect – custom schemes like `sannabot://` are rejected in the dashboard.
+The solution: host a tiny redirect page (e.g. on GitHub Pages, free) that forwards the browser back to the app.
 
-### 6a. Redirect-Seite auf GitHub Pages einrichten
+### 6a. Set up a redirect page on GitHub Pages
 
-1. Neues GitHub-Repository anlegen, z.B. `sanna-oauth` (kann public sein)
+1. Create a new GitHub repository, e.g. `sanna-oauth` (can be public)
 
-2. Datei `slack/index.html` anlegen mit folgendem Inhalt:
+2. Create a file `slack/index.html` with the following content:
 
    ```html
    <!DOCTYPE html>
@@ -97,71 +97,71 @@ Die Lösung: eine winzige Redirect-Seite hosten (z.B. GitHub Pages, kostenlos), 
    <head><title>Redirecting…</title></head>
    <body>
    <script>
-     // Leite den OAuth-Callback zurück zur SannaBot-App weiter
+     // Redirect the OAuth callback back to the SannaBot app
      window.location.replace(
        'sannabot://slack-callback' + window.location.search
      );
    </script>
-   <p>Weiterleitung zur SannaBot-App…</p>
+   <p>Redirecting to SannaBot app…</p>
    </body>
    </html>
    ```
 
-3. Im Repository **Settings → Pages → Source: Deploy from branch (main)**
+3. In the repository go to **Settings → Pages → Source: Deploy from branch (main)**
 
-4. Deine Redirect-URL lautet dann:
+4. Your redirect URL will be:
    ```
-   https://DEIN-GITHUB-USER.github.io/sanna-oauth/slack
+   https://YOUR-GITHUB-USER.github.io/sanna-oauth/slack
    ```
 
-### 6b. Slack App anlegen
+### 6b. Create the Slack App
 
-1. Gehe zu [api.slack.com/apps](https://api.slack.com/apps)
+1. Go to [api.slack.com/apps](https://api.slack.com/apps)
 2. **"Create New App" → "From scratch"**
-3. App-Name vergeben, Workspace auswählen
+3. Choose an app name, select your workspace
 4. **"OAuth & Permissions" → "Redirect URLs" → "Add New Redirect URL"**:
    ```
-   https://DEIN-GITHUB-USER.github.io/sanna-oauth/slack
+   https://YOUR-GITHUB-USER.github.io/sanna-oauth/slack
    ```
-5. **"User Token Scopes"** hinzufügen:
+5. Add **"User Token Scopes"**:
 
-   | Scope | Zweck |
+   | Scope | Purpose |
    |---|---|
-   | `channels:history` | Nachrichten in öffentlichen Channels lesen |
-   | `channels:read` | Channel-Liste abrufen |
-   | `chat:write` | Nachrichten senden |
-   | `im:history` | Direktnachrichten lesen |
-   | `im:write` | Direktnachrichten öffnen |
-   | `mpim:history` | Gruppen-DMs lesen |
-   | `users:read` | Nutzer auflisten |
-   | `users:read.email` | Nutzer per E-Mail suchen |
-   | `users.profile:write` | Eigenen Status setzen |
+   | `channels:history` | Read messages in public channels |
+   | `channels:read` | List channels |
+   | `chat:write` | Send messages |
+   | `im:history` | Read direct messages |
+   | `im:write` | Open direct messages |
+   | `mpim:history` | Read group DMs |
+   | `users:read` | List users |
+   | `users:read.email` | Look up users by email |
+   | `users.profile:write` | Set own status |
 
-6. **"Basic Information" → "App Credentials" → Client ID** kopieren
+6. **"Basic Information" → "App Credentials" → Client ID** → copy it
 
-### 6c. In `local.config.ts` eintragen
+### 6c. Add to `local.config.ts`
 
 ```typescript
 slackClientId: '1234567890.abcdef...',
-slackRedirectUrl: 'https://DEIN-GITHUB-USER.github.io/sanna-oauth/slack',
+slackRedirectUrl: 'https://YOUR-GITHUB-USER.github.io/sanna-oauth/slack',
 ```
 
-> Kein Client Secret nötig – die App verwendet PKCE.
+> No Client Secret needed – the app uses PKCE.
 
 ---
 
-## Fertige `local.config.ts`
+## Complete `local.config.ts`
 
 ```typescript
 const LOCAL_DEV_CONFIG = {
   openAIApiKey: 'sk-proj-...',
-  claudeApiKey: '',                    // leer lassen wenn OpenAI verwendet wird
+  claudeApiKey: '',                    // leave empty if using OpenAI
   selectedProvider: 'openai' as 'claude' | 'openai',
   spotifyClientId: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
   googleWebClientId: 'xxxxxxxxxx-xxx.apps.googleusercontent.com',
   picovoiceAccessKey: 'xxxxx...==',
   slackClientId: 'xxxxxxxxxxx.xxxxxxxxxxx',
-  slackRedirectUrl: 'https://dein-github-user.github.io/sanna-oauth/slack',
+  slackRedirectUrl: 'https://your-github-user.github.io/sanna-oauth/slack',
 };
 
 export default LOCAL_DEV_CONFIG;

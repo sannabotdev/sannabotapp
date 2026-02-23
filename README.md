@@ -54,7 +54,39 @@ Wake Word (Picovoice) → STT → LLM Agent Loop → Tool Execution → TTS
 2. `cp local.config.example.ts local.config.ts` and add your API keys
 3. `npm install && npm run android`
 
-See [DEV_SETUP.md](DEV_SETUP.md) for detailed credential setup.
+See [DEV_SETUP.md](DEV_SETUP.md) for detailed credential setup (API keys, OAuth, etc.).
+
+## 📲 Building an APK
+
+**Debug APK** (for testing):
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+The APK will be at `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+**Release APK** (optimized, minified):
+
+```bash
+cd android
+./gradlew assembleRelease
+```
+
+The APK will be at `android/app/build/outputs/release/app-release.apk`.
+
+> **Note:** The release build currently uses the debug keystore. For production distribution, [generate your own keystore](https://reactnative.dev/docs/signed-apk-android) and update `android/app/build.gradle`.
+
+You can also build and run directly on a connected device:
+
+```bash
+# Debug
+npm run android
+
+# Release
+npm run android:release
+```
 
 ## 🤝 Adding a Skill
 
@@ -77,7 +109,6 @@ description: What this skill does
   "url": "https://api.example.com/endpoint",
   "auth_provider": "google"
 }
-```
 ```
 
 That's it. No code changes. The agent picks it up automatically.
