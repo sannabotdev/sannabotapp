@@ -1,97 +1,87 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# 🎤 Sanna – Voice-First AI Assistant for Android
 
-# Getting Started
+**What OpenClaw does for your desktop, Sanna does for your phone.**
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+An open-source AI assistant that runs on Android and actually *controls* your phone – not just talks about it. Powered by an LLM agent loop (OpenAI or Claude) that reasons, chains actions, and executes tools until the job is done.
 
-## Step 1: Start Metro
+> "Hey Sanna, read my last 3 emails, summarize them, and text the summary to Sarah" — just works.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## ✨ Highlights
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- **🗣️ Voice-first** – Wake word ("Hey Sanna") → Speech-to-Text → LLM agent → Text-to-Speech, fully hands-free
+- **📝 Skills are Markdown** – Drop a `SKILL.md` in a folder, the agent learns a new capability. No code changes.
+- **🔄 Agentic tool loop** – LLM → tool call → result → back to LLM, until final answer. Multi-step reasoning out of the box.
+- **⏰ Sub-agent scheduler** – Schedule natural-language tasks ("Every Monday at 9am, brief me on today's calendar via SMS"). A real LLM executes them – not a dumb cron job.
+- **🚗 Driving mode** – Short spoken responses, auto-reads incoming notifications, optimized for hands-free use.
+- **🔒 No backend needed** – OAuth flows use PKCE. All data stays on your device.
 
-```sh
-# Using npm
-npm start
+## 📦 12 Built-in Skills
 
-# OR using Yarn
-yarn start
+| Skill | What it does |
+|-------|-------------|
+| 📧 Gmail | Read, search, send, and reply to emails |
+| 📅 Calendar | Query and create Google Calendar events |
+| ✅ Google Tasks | Manage task lists and items |
+| 💬 Slack | Read/send messages, manage DMs, set status |
+| 🎵 Spotify | Playback control via Web API |
+| 📱 WhatsApp | Send messages via Android Intents |
+| 💬 SMS | Send SMS directly in the background |
+| 📞 Phone | Make calls |
+| 👤 Contacts | Search and query contacts |
+| 🗺️ Google Maps | Start navigation |
+| 🔔 Notifications | Intercept & summarize notifications from any app |
+| ⏰ Scheduler | Autonomous scheduled tasks with sub-agents |
+
+## 🏗️ Architecture
+
+```
+Wake Word (Picovoice) → STT → LLM Agent Loop → Tool Execution → TTS
+                                    ↕
+                           SKILL.md files (auto-discovered)
+                                    ↕
+                         Tools: intent, http, tts, device,
+                         sms, query, scheduler, notifications
 ```
 
-## Step 2: Build and run your app
+- **React Native** + native **Kotlin** modules for Android-specific features
+- **LLM providers**: OpenAI (`gpt-4o`) or Anthropic Claude – swap with one config line
+- **Skill auto-discovery**: Metro's `require.context()` scans `assets/skills/*/SKILL.md` at build time
+- **OAuth2 PKCE**: Google, Spotify, Slack – no server, no client secret
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## 🚀 Quick Start
 
-### Android
+1. Clone the repo
+2. `cp local.config.example.ts local.config.ts` and add your API keys
+3. `npm install && npm run android`
 
-```sh
-# Using npm
-npm run android
+See [DEV_SETUP.md](DEV_SETUP.md) for detailed credential setup.
 
-# OR using Yarn
-yarn android
+## 🤝 Adding a Skill
+
+Create `assets/skills/your-skill/SKILL.md`:
+
+```markdown
+---
+name: your-skill
+description: What this skill does
+---
+# Your Skill
+
+## Tool: http
+
+### Do something
+
+```json
+{
+  "method": "GET",
+  "url": "https://api.example.com/endpoint",
+  "auth_provider": "google"
+}
+```
 ```
 
-### iOS
+That's it. No code changes. The agent picks it up automatically.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## 📄 License
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+MIT
