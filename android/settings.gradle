@@ -1,0 +1,17 @@
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+rootProject.name = 'SannaBot'
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
+
+// Gradle 9 compatibility: jcenter() was removed, map it to mavenCentral()
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        google()
+        mavenCentral()
+        // Alias for packages still referencing jcenter()
+        maven { url "https://jcenter.bintray.com" }
+    }
+}

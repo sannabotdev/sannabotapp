@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Google Auto Backup rules for SannaBot.
+
+  Strategy:
+  - EXCLUDE all sensitive credential/keychain data (API keys, OAuth tokens).
+  - INCLUDE only dynamically uploaded skill content from AsyncStorage.
+    AsyncStorage on Android stores its data in SharedPreferences under the
+    key "RCTAsyncLocalStorage_V1" (React Native ≥ 0.59) or in a database.
+    All dynamic skill keys follow the prefix "dynamic_skill_" so they are
+    easy to identify.
+
+  Note: react-native-keychain stores credentials in the Android Keystore –
+  those are hardware-bound and NOT included in any file backup automatically.
+  The excludes below are belt-and-suspenders for older/alternative keychain
+  implementations.
+-->
+<full-backup-content>
+
+  <!-- Exclude sensitive keychain / credential files -->
+  <exclude domain="sharedpref" path="react-native-keychain.xml"/>
+  <exclude domain="sharedpref" path="com.facebook.react.modules.storage.ReactDatabaseSupplier.xml"/>
+
+  <!-- Include ONLY the AsyncStorage shared-preferences file.
+       Android's selective backup supports wildcard key matching only in
+       Cloud Backup (dataExtractionRules), not in full-backup-content.
+       We therefore include the whole AsyncStorage file – the sensitive
+       preferences (API keys etc.) are stored in Keychain, NOT in
+       AsyncStorage, so this is safe. -->
+  <include domain="sharedpref" path="RCTAsyncLocalStorage_V1.xml"/>
+
+</full-backup-content>

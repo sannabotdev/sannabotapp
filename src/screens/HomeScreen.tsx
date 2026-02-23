@@ -1,0 +1,488 @@
+/**
+ * HomeScreen – Main UI with text input/output + optional microphone
+ */
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  ActivityIndicator,
+  TextInput,
+  Platform,
+  StyleSheet,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Markdown from 'react-native-markdown-display';
+import type { PipelineState } from '../agent/conversation-pipeline';
+import { DebugPanel } from './DebugPanel';
+import { SannaAvatar } from '../components/SannaAvatar';
+import KeepAwakeModule from '../native/KeepAwakeModule';
+import { t } from '../i18n';
+
+export interface Message {
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: Date;
+}
+
+interface HomeScreenProps {
+  onMicPress: () => void;
+  onTextSubmit: (text: string) => void;
+  pipelineState: PipelineState;
+  drivingMode: boolean;
+  onToggleDrivingMode: () => void;
+  onSettingsPress: () => void;
+  messages: Message[];
+  isDark: boolean;
+  onToggleDarkMode: () => void;
+}
+
+const STATE_COLORS: Record<PipelineState, string> = {
+  idle: 'bg-accent-green',
+  listening: 'bg-accent',
+  processing: 'bg-accent-orange',
+  speaking: 'bg-accent-purple',
+  error: 'bg-accent-red',
+};
+
+const STATE_TEXT_COLORS: Record<PipelineState, string> = {
+  idle: 'text-accent-green',
+  listening: 'text-accent',
+  processing: 'text-accent-orange',
+  speaking: 'text-accent-purple',
+  error: 'text-accent-red',
+};
+
+export function HomeScreen({
+  onMicPress,
+  onTextSubmit,
+  pipelineState,
+  drivingMode,
+  onToggleDrivingMode,
+  onSettingsPress,
+  messages,
+  isDark,
+  onToggleDarkMode,
+}: HomeScreenProps): React.JSX.Element {
+  const scrollRef = useRef<ScrollView>(null);
+  const isBusy = pipelineState !== 'idle';
+  const [debugVisible, setDebugVisible] = useState(false);
+
+  useEffect(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
+
+  // Keep screen on while in driving mode so the user never has to unlock
+  useEffect(() => {
+    if (drivingMode) {
+      KeepAwakeModule.activate();
+    } else {
+      KeepAwakeModule.deactivate();
+    }
+    return () => {
+      KeepAwakeModule.deactivate();
+    };
+  }, [drivingMode]);
+
+  // Dynamic styles that depend on the current theme
+  const drivingStyles = useMemo(() => makeDrivingStyles(isDark), [isDark]);
+  const mdStyles = useMemo(() => makeMdStyles(isDark), [isDark]);
+
+  // State labels are resolved via i18n at render time so they always reflect
+  // the current locale even if the user switches language mid-session.
+  const stateLabel: Record<PipelineState, string> = {
+    idle: t('home.state.idle'),
+    listening: t('home.state.listening'),
+    processing: t('home.state.processing'),
+    speaking: t('home.state.speaking'),
+    error: t('home.state.error'),
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-surface">
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={isDark ? '#1C1C1E' : '#F2F2F7'}
+      />
+
+      {/* Header */}
+      <View className="flex-row justify-between items-center px-4 py-3 border-b border-surface-elevated">
+        <View className="flex-row items-center gap-2">
+          <SannaAvatar size={32} />
+          <Text className="text-lg font-bold text-label-primary">Sanna</Text>
+          <View className={`w-2 h-2 rounded-full ${STATE_COLORS[pipelineState]}`} />
+          <Text className={`text-xs font-medium ${STATE_TEXT_COLORS[pipelineState]}`}>
+            {stateLabel[pipelineState]}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            className={`px-3 py-1.5 rounded-2xl ${drivingMode ? 'bg-accent-orange' : 'bg-surface-elevated'}`}
+            onPress={onToggleDrivingMode}>
+            <Text className="text-label-primary text-xs font-semibold">
+              {drivingMode ? t('home.mode.driving') : t('home.mode.normal')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity className="p-1.5" onPress={onToggleDarkMode}>
+            <Text className="text-xl">{isDark ? '☀️' : '🌙'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity className="p-1.5" onPress={() => setDebugVisible(true)}>
+            <Text className="text-xl">🐛</Text>
+          </TouchableOpacity>
+          <TouchableOpacity className="p-1.5" onPress={onSettingsPress}>
+            <Text className="text-xl">⚙️</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {drivingMode ? (
+        /* ── Driving Mode: Split layout ──────────────────────────────────── */
+        <View className="flex-1">
+          {/* Top half: large microphone button */}
+          <View style={drivingStyles.drivingMicSection}>
+            <TouchableOpacity
+              style={[
+                drivingStyles.drivingMicButton,
+                pipelineState === 'processing'
+                  ? drivingStyles.drivingMicButtonBusy
+                  : pipelineState === 'listening'
+                  ? drivingStyles.drivingMicButtonListening
+                  : drivingStyles.drivingMicButtonIdle,
+              ]}
+              onPress={onMicPress}
+              disabled={pipelineState === 'processing'}
+              activeOpacity={0.75}>
+              <Text style={drivingStyles.drivingMicIcon}>
+                {pipelineState === 'listening' ? '⏹️' : '🎤'}
+              </Text>
+              <Text style={drivingStyles.drivingMicLabel}>
+                {pipelineState === 'listening'
+                  ? t('home.driving.tapToStop')
+                  : pipelineState === 'processing'
+                  ? t('home.driving.thinking')
+                  : pipelineState === 'speaking'
+                  ? t('home.driving.speaking')
+                  : t('home.driving.micOn')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom half: message bubbles */}
+          <View style={drivingStyles.drivingBubblesSection}>
+            <ScrollView
+              ref={scrollRef}
+              style={{ flex: 1 }}
+              contentContainerStyle={
+                messages.length === 0
+                  ? { padding: 12, gap: 10, flex: 1 }
+                  : { padding: 12, gap: 10, paddingBottom: 8 }
+              }
+              showsVerticalScrollIndicator={false}>
+              {messages.length === 0 ? (
+                <View className="flex-1 items-center justify-center gap-2">
+                  <Text className="text-label-secondary text-sm text-center">
+                    {t('home.driving.tapMic')}
+                  </Text>
+                </View>
+              ) : (
+                messages.map((msg, idx) => (
+                  <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} />
+                ))
+              )}
+              {pipelineState === 'processing' && (
+                <View className="flex-row items-center gap-2 py-1">
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text className="text-label-secondary text-sm">{t('home.thinking')}</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      ) : (
+        /* ── Normal Mode: Bubbles + InputBar ─────────────────────────────── */
+        <View className="flex-1">
+          <ScrollView
+            ref={scrollRef}
+            className="flex-1"
+            contentContainerStyle={
+              messages.length === 0
+                ? { padding: 16, gap: 12, paddingBottom: 8, flex: 1 }
+                : { padding: 16, gap: 12, paddingBottom: 8 }
+            }
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled">
+
+            {messages.length === 0 ? (
+              <View className="flex-1 items-center justify-center py-16 gap-3">
+                <SannaAvatar size={96} />
+                <Text className="text-label-primary text-lg font-bold">{t('home.empty.title')}</Text>
+                <Text className="text-label-secondary text-sm text-center px-8">
+                  {t('home.empty.subtitle')}
+                </Text>
+              </View>
+            ) : (
+              messages.map((msg, idx) => (
+                <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} />
+              ))
+            )}
+
+            {pipelineState === 'processing' && (
+              <View className="flex-row items-center gap-2 py-1">
+                <ActivityIndicator size="small" color="#007AFF" />
+                <Text className="text-label-secondary text-sm">{t('home.thinking')}</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* InputBar is memoized – parent re-renders don't cause focus loss */}
+          <InputBar
+            isBusy={isBusy}
+            pipelineState={pipelineState}
+            onMicPress={onMicPress}
+            onSubmit={onTextSubmit}
+          />
+        </View>
+      )}
+
+      <DebugPanel visible={debugVisible} onClose={() => setDebugVisible(false)} />
+    </SafeAreaView>
+  );
+}
+
+// ─── InputBar (memoized to prevent keyboard dismissal on parent re-render) ────
+
+interface InputBarProps {
+  isBusy: boolean;
+  pipelineState: PipelineState;
+  onMicPress: () => void;
+  onSubmit: (text: string) => void;
+}
+
+const InputBar = React.memo(function InputBar({
+  isBusy,
+  pipelineState,
+  onMicPress,
+  onSubmit,
+}: InputBarProps) {
+  // Uncontrolled input: text lives in a ref, NOT in React state.
+  // This avoids the New Architecture bug where setState() on every
+  // keystroke causes the native TextInput to lose focus on Android.
+  const textRef = useRef('');
+  const inputRef = useRef<TextInput>(null);
+
+  const handleSend = () => {
+    const trimmed = textRef.current.trim();
+    if (!trimmed || isBusy) return;
+    inputRef.current?.clear();
+    textRef.current = '';
+    onSubmit(trimmed);
+    // Re-focus so keyboard stays open after sending
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  return (
+    <View>
+      <View className="flex-row items-center gap-2 px-3 py-2.5 border-t border-surface-elevated bg-surface">
+        <TouchableOpacity
+          className={`w-11 h-11 rounded-full items-center justify-center ${
+            pipelineState === 'listening' ? 'bg-accent-red' : 'bg-surface-elevated'
+          }`}
+          onPress={onMicPress}
+          disabled={isBusy && pipelineState !== 'listening'}
+          activeOpacity={0.7}>
+          <Text className="text-xl">
+            {pipelineState === 'listening' ? '⏹️' : '🎤'}
+          </Text>
+        </TouchableOpacity>
+
+        <TextInput
+          ref={inputRef}
+          className="flex-1 h-11 bg-surface-elevated rounded-full px-4 py-0 text-base text-label-primary"
+          // No 'value' prop → uncontrolled → no re-render on each keystroke
+          onChangeText={(text) => { textRef.current = text; }}
+          onSubmitEditing={handleSend}
+          placeholder={t('home.input.placeholder')}
+          placeholderTextColor="#636366"
+          returnKeyType="send"
+          editable={!isBusy}
+          blurOnSubmit={false}
+          autoCorrect={false}
+          autoCapitalize="none"
+          keyboardType="default"
+          showSoftInputOnFocus={true}
+        />
+
+        <TouchableOpacity
+          className="w-11 h-11 rounded-full bg-accent items-center justify-center"
+          onPress={handleSend}
+          disabled={isBusy}
+          activeOpacity={0.7}>
+          <Text className="text-lg text-label-primary">{isBusy ? '⏳' : '➤'}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
+// ─── Theme-aware style factories ──────────────────────────────────────────────
+
+function makeDrivingStyles(isDark: boolean) {
+  const bg = isDark ? '#1C1C1E' : '#F2F2F7';
+  const border = isDark ? '#3A3A3C' : '#E5E5EA';
+  const labelColor = '#FFFFFF'; // button label always white (on coloured button)
+  return StyleSheet.create({
+    drivingMicSection: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: border,
+      backgroundColor: bg,
+    },
+    drivingMicButton: {
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    drivingMicButtonIdle: {
+      backgroundColor: '#007AFF',
+    },
+    drivingMicButtonListening: {
+      backgroundColor: '#FF3B30',
+    },
+    drivingMicButtonBusy: {
+      backgroundColor: isDark ? '#3A3A3C' : '#C7C7CC',
+    },
+    drivingMicIcon: {
+      fontSize: 52,
+    },
+    drivingMicLabel: {
+      color: labelColor,
+      fontSize: 15,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    drivingBubblesSection: {
+      flex: 1,
+      backgroundColor: bg,
+    },
+  });
+}
+
+function makeMdStyles(isDark: boolean) {
+  const textColor = isDark ? '#FFFFFF' : '#000000';
+  const codeBg   = isDark ? '#3A3A3C' : '#E5E5EA';
+  const divColor = isDark ? '#636366' : '#C7C7CC';
+  return StyleSheet.create({
+    body: { color: textColor, fontSize: 15, lineHeight: 21, backgroundColor: 'transparent' },
+    paragraph: { marginTop: 0, marginBottom: 4 },
+    strong: { fontWeight: '700' },
+    em: { fontStyle: 'italic' },
+    heading1: { fontSize: 20, fontWeight: '700', color: textColor, marginTop: 8, marginBottom: 4 },
+    heading2: { fontSize: 18, fontWeight: '700', color: textColor, marginTop: 6, marginBottom: 4 },
+    heading3: { fontSize: 16, fontWeight: '700', color: textColor, marginTop: 4, marginBottom: 2 },
+    bullet_list: { marginTop: 2, marginBottom: 2 },
+    ordered_list: { marginTop: 2, marginBottom: 2 },
+    list_item: { marginTop: 1, marginBottom: 1 },
+    code_inline: {
+      backgroundColor: codeBg,
+      color: '#5AC8FA',
+      fontSize: 13,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 4,
+    },
+    fence: {
+      backgroundColor: codeBg,
+      color: '#5AC8FA',
+      fontSize: 13,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      padding: 10,
+      borderRadius: 8,
+      marginTop: 4,
+      marginBottom: 4,
+    },
+    code_block: {
+      backgroundColor: codeBg,
+      color: '#5AC8FA',
+      fontSize: 13,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      padding: 10,
+      borderRadius: 8,
+      marginTop: 4,
+      marginBottom: 4,
+    },
+    blockquote: {
+      backgroundColor: codeBg,
+      borderLeftColor: '#007AFF',
+      borderLeftWidth: 3,
+      paddingLeft: 8,
+      paddingVertical: 4,
+      marginTop: 4,
+      marginBottom: 4,
+    },
+    link: { color: '#007AFF', textDecorationLine: 'underline' },
+    hr: { backgroundColor: divColor, height: 1, marginVertical: 8 },
+    table: { borderColor: divColor },
+    tr: { borderBottomColor: divColor },
+    th: { color: textColor, fontWeight: '700', padding: 4 },
+    td: { color: textColor, padding: 4 },
+  });
+}
+
+// ─── MessageBubble ────────────────────────────────────────────────────────────
+
+function MessageBubble({
+  message,
+  mdStyles,
+  isDark,
+}: {
+  message: Message;
+  mdStyles: ReturnType<typeof makeMdStyles>;
+  isDark: boolean;
+}): React.JSX.Element {
+  const isUser = message.role === 'user';
+  const time = message.timestamp.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return (
+    <View
+      className={`max-w-[85%] p-3 rounded-2xl gap-1 ${
+        isUser
+          ? 'self-end bg-accent rounded-br-sm'
+          : 'self-start bg-surface-elevated rounded-bl-sm'
+      }`}>
+      <View className="flex-row items-center gap-1.5 mb-0.5">
+        {isUser ? null : <SannaAvatar size={16} />}
+        <Text
+          className={`text-[11px] font-semibold ${
+            isUser ? 'text-white/75' : 'text-accent'
+          }`}>
+          {isUser ? t('home.bubble.user') : t('home.bubble.assistant')}
+        </Text>
+      </View>
+      {isUser ? (
+        // User bubble has a blue (accent) background → text always white
+        <Text className="text-[15px] leading-[21px] text-white">
+          {message.text}
+        </Text>
+      ) : (
+        <Markdown style={mdStyles}>{message.text}</Markdown>
+      )}
+      <Text className="text-[10px] text-label-quaternary self-end">{time}</Text>
+    </View>
+  );
+}
