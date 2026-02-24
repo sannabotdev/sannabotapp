@@ -100,20 +100,20 @@ The LLM sub-agent opens WhatsApp, reads the UI, types the message and presses th
 
 ## Workflow: Send a message (fully automated)
 
-1. User says "Text Stefan on WhatsApp: I'll be there in 5 minutes"
-2. Look up contact with `query` tool: `{"type": "contacts", "query": "Stefan"}`
+1. User says "Text John on WhatsApp: I'll be there in 5 minutes"
+2. Look up contact with `query` tool: `{"type": "contacts", "query": "John"}`
 3. Extract phone number and convert to wa.me format
-4. Ask for confirmation: "Shall I send Stefan a WhatsApp: 'I'll be there in 5 minutes'?"
+4. Ask for confirmation: "Shall I send John a WhatsApp: 'I'll be there in 5 minutes'?"
 5. After confirmation: call `accessibility` tool with wa.me intent + goal
 
 ## Workflow: Send a message (opens WhatsApp, user taps Send)
 
-1. User says "Text Stefan on WhatsApp: I'll be there in 5 minutes"
-2. Look up contact with `query` tool (contacts): `{"type": "contacts", "query": "Stefan"}`
+1. User says "Text John on WhatsApp: I'll be there in 5 minutes"
+2. Look up contact with `query` tool (contacts): `{"type": "contacts", "query": "John"}`
 3. Extract phone number from result
 4. Convert number to wa.me format (without +, without spaces)
 5. URL-encode the text
-6. Ask for confirmation: "Shall I write to Stefan on WhatsApp: 'I'll be there in 5 minutes'?"
+6. Ask for confirmation: "Shall I write to John on WhatsApp: 'I'll be there in 5 minutes'?"
 7. After confirmation: call `intent` tool with wa.me link + `?text=` parameter
 
 ## Workflow: Open a chat
@@ -131,4 +131,4 @@ The LLM sub-agent opens WhatsApp, reads the UI, types the message and presses th
 - "WhatsApp message to +43 660 1234567: Meeting at 3 PM" → Confirmation → **accessibility** (fully automated send)
 - "Open the WhatsApp chat with Lisa" → Look up contact → intent VIEW wa.me (without text)
 - "Open WhatsApp" → intent MAIN com.whatsapp
-- "Send a WhatsApp to Stefan that the meeting is moved" → Look up contact → Confirmation → **accessibility** (fully automated send)
+- "Send a WhatsApp to John that the meeting is moved" → Look up contact → Confirmation → **accessibility** (fully automated send)

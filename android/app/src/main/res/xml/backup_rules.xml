@@ -36,4 +36,10 @@
        but no sensitive data (API keys etc.). -->
   <include domain="sharedpref" path="sanna_scheduler.xml"/>
 
+  <!-- Notifications: persist subscribed-apps allowlist across reinstallation.
+       The canonical notification rules are in AsyncStorage (backed up above),
+       but we also keep the native allowlist for immediate availability.
+       On startup the JS side re-syncs from the rules anyway. -->
+  <include domain="sharedpref" path="sanna_notifications.xml"/>
+
 </full-backup-content>

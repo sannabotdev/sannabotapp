@@ -50,7 +50,7 @@ export class AccessibilityTool implements Tool {
           description:
             'Natural-language description of what to do inside the app. ' +
             'Be precise: include the message text, contact name, button labels, etc. ' +
-            'Example: "Type \'Hello Stefan!\' into the message field and tap the Send button."',
+            'Example: "Type \'Hello John!\' into the message field and tap the Send button."',
         },
         intent_action: {
           type: 'string',

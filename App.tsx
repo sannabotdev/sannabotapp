@@ -47,6 +47,11 @@ import SchedulerModule from './src/native/SchedulerModule';
 // Conversation persistence
 import { ConversationStore } from './src/agent/conversation-store';
 
+// Notification sub-agent
+import { runNotificationSubAgent } from './src/agent/notification-sub-agent';
+import type { NotificationPayload } from './src/agent/notification-sub-agent';
+import { loadRules, getRulesForApp, syncOnStartup as syncNotificationRules, type NotificationRule } from './src/agent/notification-rules-store';
+
 // AsyncStorage for lightweight pre-unlock preferences (dark mode)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -398,6 +403,12 @@ export default function App(): React.JSX.Element {
   const slackAuth = useRef(new SlackAuth(credentialManager.current));
   const pipelineRef = useRef<ConversationPipeline | null>(null);
 
+  // Notification sub-agent queue (processed sequentially, independent of main pipeline)
+  const notifQueueRef = useRef<NotificationData[]>([]);
+  const notifProcessingRef = useRef(false);
+  // Dedup: track notification keys already emitted to the sub-agent (JS-side safety net)
+  const processedNotifKeysRef = useRef(new Set<string>());
+
   const skillLoader = useRef(new SkillLoader());
   const dynamicSkillStore = useRef(new DynamicSkillStore());
   const [allSkills, setAllSkills] = useState(() => skillLoader.current.getAllSkills());
@@ -453,6 +464,10 @@ export default function App(): React.JSX.Element {
     const dynamicNames = await dynamicSkillStore.current.getSkillNames();
     setDynamicSkillNames(dynamicNames);
     setAllSkills(skillLoader.current.getAllSkills());
+
+    // Sync notification rules → native allowlist (ensures native side is in sync
+    // after backup restore, app update, or reinstall)
+    syncNotificationRules().catch(() => {});
 
     // Restore persisted conversation history into the UI
     const storedMessages = await ConversationStore.loadHistory();
@@ -861,8 +876,120 @@ export default function App(): React.JSX.Element {
     pipelineRef.current?.clearHistory();
   }, []);
 
+  // ── Notification sub-agent queue processor ──────────────────────────────
+  // Each notification gets its own sub-agent (own tool loop, own LLM call).
+  // The queue ensures sequential processing; the main pipeline stays free.
+
+  const appAliasMap: Record<string, string> = {
+    'com.whatsapp': 'WhatsApp',
+    'com.google.android.gm': 'Email',
+    'org.telegram.messenger': 'Telegram',
+    'org.thoughtcrime.securesms': 'Signal',
+    'com.android.mms': 'SMS',
+  };
+
+  const processNotificationQueue = useCallback(async () => {
+    if (notifProcessingRef.current) return;
+    notifProcessingRef.current = true;
+
+    // Load rules once for this batch
+    let rules: NotificationRule[] = [];
+    try {
+      rules = await loadRules();
+    } catch (err) {
+      DebugLogger.add('error', 'NOTIF', `Failed to load notification rules: ${err}`);
+    }
+
+    while (notifQueueRef.current.length > 0) {
+      const notification = notifQueueRef.current.shift()!;
+
+      // Get all enabled rules for this app (LLM evaluates conditions)
+      const appRules = getRulesForApp(rules, notification.packageName);
+      if (appRules.length === 0) {
+        DebugLogger.add(
+          'info',
+          'NOTIF',
+          `No rules for ${notification.packageName}: "${notification.title}" – skipping`,
+        );
+        continue;
+      }
+
+      DebugLogger.add(
+        'info',
+        'NOTIF',
+        `${appRules.length} rule(s) for ${notification.packageName}: "${notification.title}"`,
+        appRules.map(r => `[${r.id}] ${r.condition || '(catch-all)'} → ${r.instruction}`).join('\n'),
+      );
+
+      // Build provider from current settings
+      const { claudeApiKey, openAIApiKey, selectedProvider, enabledSkillNames } = settings;
+      const apiKey = selectedProvider === 'claude' ? claudeApiKey : openAIApiKey;
+      if (!apiKey) {
+        DebugLogger.add('error', 'NOTIF', 'No API key – skipping notification');
+        continue;
+      }
+
+      const selectedModel = selectedProvider === 'claude'
+        ? settings.selectedClaudeModel
+        : settings.selectedOpenAIModel;
+
+      const provider = selectedProvider === 'claude'
+        ? new ClaudeProvider(apiKey, selectedModel)
+        : new OpenAIProvider(apiKey, selectedModel);
+
+      const resolvedLanguage =
+        settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
+
+      // Map to display name + extract fields
+      const appName = appAliasMap[notification.packageName] || notification.packageName;
+      const isEmail = appName === 'Email' || appName === 'Gmail';
+
+      const payload: NotificationPayload = {
+        appName,
+        sender: notification.sender || notification.title || '',
+        subject: isEmail ? (notification.text || '') : '',
+        preview: isEmail ? '' : (notification.text || ''),
+        packageName: notification.packageName,
+      };
+
+      try {
+        const resultText = await runNotificationSubAgent(
+          {
+            provider,
+            credentialManager: credentialManager.current,
+            enabledSkillNames,
+            drivingMode: settings.drivingMode,
+            language: resolvedLanguage,
+          },
+          payload,
+          appRules,
+        );
+
+        // Show the assistant response as a bubble (unless no rule matched)
+        if (resultText && !resultText.includes('__NO_MATCH__')) {
+          setMessages(prev => {
+            const updated = [
+              ...prev,
+              { role: 'assistant' as const, text: resultText, timestamp: new Date() },
+            ];
+            ConversationStore.saveHistory(
+              updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+            ).catch(() => {});
+            return updated;
+          });
+        } else if (resultText?.includes('__NO_MATCH__')) {
+          DebugLogger.add('info', 'NOTIF', `No condition matched for "${notification.title}" – no bubble shown`);
+        }
+      } catch (err) {
+        DebugLogger.add('error', 'NOTIF', `Sub-agent failed: ${err}`);
+      }
+    }
+
+    notifProcessingRef.current = false;
+  }, [settings]);
+
   const handleNotificationReceived = useCallback(
-    async (notification: NotificationData) => {
+    (notification: NotificationData) => {
       // Log raw notification data from ListenerService for debugging
       DebugLogger.add(
         'info',
@@ -878,62 +1005,23 @@ export default function App(): React.JSX.Element {
         ].join('\n'),
       );
 
-      // Only process if pipeline is idle
-      if (pipelineState !== 'idle' || !pipelineRef.current) {
+      // Deduplicate: Android may re-post existing notifications when a new sibling arrives
+      if (processedNotifKeysRef.current.has(notification.key)) {
+        DebugLogger.add('info', 'NOTIF', `Skipping duplicate (JS): ${notification.key}`);
         return;
       }
-
-      // Map package name to app display name
-      const appAliases: Record<string, string> = {
-        'com.whatsapp': 'WhatsApp',
-        'com.google.android.gm': 'Email',
-        'org.telegram.messenger': 'Telegram',
-        'org.thoughtcrime.securesms': 'Signal',
-        'com.android.mms': 'SMS',
-      };
-      const appName = appAliases[notification.packageName] || notification.packageName;
-
-      // Build notification context (language-neutral data for the LLM).
-      // Field semantics differ by app type:
-      //   Email (Gmail): sender = sender name (from Kotlin fix), title = sender name, text = subject
-      //   Messaging:     sender = contact/group, title = contact/group, text = message content
-      const isEmail = appName === 'Email' || appName === 'Gmail';
-      const senderStr = notification.sender || notification.title || '';
-      const subject = isEmail ? (notification.text || '') : '';
-      const preview = isEmail ? '' : (notification.text || '');
-      const content = notification.text || notification.title || '';
-      const notificationPrompt = [
-        `[NOTIFICATION – automatic, not typed by the user]`,
-        `App: ${appName}`,
-        senderStr ? `Sender: ${senderStr}` : '',
-        subject ? `Subject: ${subject}` : '',
-        preview ? `Message: ${preview}` : '',
-        ``,
-        `Briefly announce this notification to the user and read it aloud using the tts tool.`,
-        `Respond in the user's configured language.`,
-        ``,
-        `IMPORTANT for follow-up questions:`,
-        `If the user asks for more details about THIS notification (e.g. "what is it about?",`,
-        `"read it to me", "worum geht es da?"), look up ONLY this specific item.`,
-        isEmail
-          ? `For this email, search with: from:${senderStr} subject:${subject} — do NOT fetch other emails.`
-          : `Refer to the sender/content above — do NOT fetch unrelated messages.`,
-      ].filter(Boolean).join('\n');
-
-      // Summarize and speak via pipeline (silent = no blue user bubble)
-      try {
-        await pipelineRef.current.processUtterance(notificationPrompt, {
-          silent: true,
-        });
-      } catch (err) {
-        // If pipeline fails, fall back to direct TTS
-        if (settings.drivingMode) {
-          const lang = settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
-          ttsService.current.speakAsync(content, lang);
-        }
+      processedNotifKeysRef.current.add(notification.key);
+      // Trim set to prevent unbounded growth
+      if (processedNotifKeysRef.current.size > 200) {
+        const keys = [...processedNotifKeysRef.current];
+        processedNotifKeysRef.current = new Set(keys.slice(-100));
       }
+
+      // Add to queue and kick off processing (no idle check – runs independently)
+      notifQueueRef.current.push(notification);
+      processNotificationQueue();
     },
-    [pipelineState, settings.drivingMode, settings.appLanguage],
+    [processNotificationQueue],
   );
 
   /** Save a secure key to Keychain AND update local state */

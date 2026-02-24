@@ -26,6 +26,14 @@ class SannaNotificationListenerService : NotificationListenerService() {
         private const val PREFS_SUBSCRIBED_APPS_KEY = "subscribed_apps"
         private const val PREFS_NOTIFICATIONS_BUFFER_KEY = "notifications_buffer"
         private const val MAX_BUFFER_SIZE = 50 // Keep last 50 notifications
+        private const val MAX_PROCESSED_KEYS = 200
+
+        /**
+         * Set of notification keys that have already been processed.
+         * Prevents duplicate processing when Android re-posts existing
+         * child notifications (e.g. Gmail re-posts all emails when a new one arrives).
+         */
+        private val processedKeys = LinkedHashSet<String>()
 
         /**
          * Get the list of subscribed package names from SharedPreferences.
@@ -75,6 +83,27 @@ class SannaNotificationListenerService : NotificationListenerService() {
 
             val notification = sbn.notification
             val extras = notification.extras
+
+            // Skip group summary notifications (e.g. Gmail's "3 new messages").
+            // We process the individual child notifications instead, which contain
+            // the actual sender + subject per email.
+            val isGroupSummary = (notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0
+            if (isGroupSummary) {
+                Log.d(TAG, "Skipping group summary from $packageName: ${extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)}")
+                return
+            }
+
+            // Deduplicate: skip notifications that have already been processed.
+            // Android re-posts existing child notifications when a new sibling arrives
+            // (e.g. Gmail re-fires all individual emails when a new email comes in).
+            if (!processedKeys.add(sbn.key)) {
+                Log.d(TAG, "Skipping already-processed notification: ${sbn.key}")
+                return
+            }
+            // Trim oldest entries to prevent unbounded growth
+            while (processedKeys.size > MAX_PROCESSED_KEYS) {
+                processedKeys.iterator().let { it.next(); it.remove() }
+            }
 
             // Extract notification data
             val title = extras?.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""

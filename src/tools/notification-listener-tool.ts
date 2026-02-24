@@ -1,11 +1,14 @@
 /**
- * NotificationListenerTool – Manage notification subscriptions and retrieve notifications
+ * NotificationListenerTool – Manage notification rules and retrieve notifications
  *
- * Allows the LLM to:
- * - Subscribe/unsubscribe to notifications from specific apps
- * - List active subscriptions
- * - Retrieve recent notifications
- * - Clear notification buffer
+ * Each "subscription" is a rule with:
+ *   - app (package name)
+ *   - instruction (what the sub-agent should do – like the scheduler)
+ *   - optional condition (natural language – evaluated by the LLM)
+ *
+ * When a notification arrives from a subscribed app, ALL enabled rules for
+ * that app are sent to a sub-agent. The LLM evaluates each rule's condition
+ * and executes the first matching instruction.
  */
 import type { Tool, ToolResult } from './types';
 import { errorResult, successResult } from './types';
@@ -13,6 +16,14 @@ import {
   getNotificationListenerModule,
   type NotificationData,
 } from '../native/NotificationListenerModule';
+import {
+  loadRules,
+  addRule,
+  updateRule,
+  deleteRule,
+  deleteRulesForApp,
+  type NotificationRule,
+} from '../agent/notification-rules-store';
 
 // ── App Alias Mapping ─────────────────────────────────────────────────────────
 
@@ -54,13 +65,19 @@ function getAppDisplayName(packageName: string): string {
   if (entry) {
     return entry[0].charAt(0).toUpperCase() + entry[0].slice(1);
   }
-  // Extract app name from package (e.g., "com.whatsapp" -> "WhatsApp")
   const parts = packageName.split('.');
   const lastPart = parts[parts.length - 1];
   return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
 }
 
-type NotificationAction = 'subscribe' | 'unsubscribe' | 'list_subscriptions' | 'get_recent' | 'clear';
+type NotificationAction =
+  | 'subscribe'
+  | 'unsubscribe'
+  | 'update_rule'
+  | 'delete_rule'
+  | 'list_subscriptions'
+  | 'get_recent'
+  | 'clear';
 
 // ── Tool ─────────────────────────────────────────────────────────────────────
 
@@ -71,8 +88,9 @@ export class NotificationListenerTool implements Tool {
 
   description(): string {
     return [
-      'Manage notifications from apps (WhatsApp, Email, Telegram, etc.).',
-      'Actions: subscribe, unsubscribe, list_subscriptions (show all),',
+      'Manage notification rules: subscribe (create rule with instruction + optional condition),',
+      'unsubscribe (remove all rules for an app), update_rule, delete_rule,',
+      'list_subscriptions (show all rules),',
       'get_recent (retrieve recent notifications), clear (clear buffer).',
     ].join(' ');
   }
@@ -83,14 +101,44 @@ export class NotificationListenerTool implements Tool {
       properties: {
         action: {
           type: 'string',
-          enum: ['subscribe', 'unsubscribe', 'list_subscriptions', 'get_recent', 'clear'],
+          enum: [
+            'subscribe',
+            'unsubscribe',
+            'update_rule',
+            'delete_rule',
+            'list_subscriptions',
+            'get_recent',
+            'clear',
+          ],
           description:
-            'Action: subscribe (subscribe to app), unsubscribe, list_subscriptions (show all), get_recent (retrieve recent), clear (clear buffer)',
+            'Action: subscribe (create notification rule), unsubscribe (remove all rules for app), ' +
+            'update_rule (update existing rule), delete_rule (remove one rule by id), ' +
+            'list_subscriptions (show all rules), get_recent (retrieve recent), clear (clear buffer)',
         },
         app: {
           type: 'string',
           description:
             'App name or package name (e.g. "whatsapp", "email", "telegram" or "com.whatsapp"). For subscribe/unsubscribe.',
+        },
+        instruction: {
+          type: 'string',
+          description:
+            'What the sub-agent should do when a matching notification arrives. ' +
+            'Write as a natural-language instruction for an AI agent with all available tools. ' +
+            'Example: "Read the message aloud via TTS", "Reply via WhatsApp with OK". ' +
+            'Default: "Briefly announce this notification via TTS".',
+        },
+        condition: {
+          type: 'string',
+          description:
+            'Optional natural-language condition. The LLM evaluates this against the notification to decide if the rule applies. ' +
+            'Leave empty for a catch-all rule that applies to every notification from this app. ' +
+            'Example: "The sender is my team lead", "The message mentions a meeting".',
+        },
+        rule_id: {
+          type: 'string',
+          description:
+            'The ID of a specific rule (for update_rule / delete_rule). Get IDs via list_subscriptions.',
         },
         filter_app: {
           type: 'string',
@@ -112,11 +160,15 @@ export class NotificationListenerTool implements Tool {
     try {
       switch (action) {
         case 'subscribe':
-          return this.subscribe(module, args);
+          return this.subscribe(args);
         case 'unsubscribe':
-          return this.unsubscribe(module, args);
+          return this.unsubscribe(args);
+        case 'update_rule':
+          return this.updateRuleAction(args);
+        case 'delete_rule':
+          return this.deleteRuleAction(args);
         case 'list_subscriptions':
-          return this.listSubscriptions(module);
+          return this.listSubscriptions();
         case 'get_recent':
           return this.getRecent(module, args);
         case 'clear':
@@ -130,108 +182,125 @@ export class NotificationListenerTool implements Tool {
     }
   }
 
-  // ── Subscribe ──────────────────────────────────────────────────────────────
+  // ── Subscribe (create rule) ───────────────────────────────────────────────
 
-  private async subscribe(
-    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
-    args: Record<string, unknown>,
-  ): Promise<ToolResult> {
+  private async subscribe(args: Record<string, unknown>): Promise<ToolResult> {
     const app = args.app as string;
     if (!app) {
       return errorResult('Missing app parameter – which app should be subscribed?');
     }
 
     const packageName = resolvePackageName(app);
+    const appLabel = getAppDisplayName(packageName);
+    const instruction = (args.instruction as string) || 'Briefly announce this notification to the user via the tts tool.';
+    const condition = (args.condition as string) || '';
 
-    try {
-      const json = await module.getSubscribedApps();
-      const subscribed = JSON.parse(json) as string[];
+    const rule = await addRule({
+      app: packageName,
+      appLabel,
+      enabled: true,
+      instruction,
+      condition,
+    });
 
-      if (subscribed.includes(packageName)) {
-        return successResult(
-          `${getAppDisplayName(packageName)} is already subscribed.`,
-          `${getAppDisplayName(packageName)} is already active`,
-        );
-      }
+    const condStr = condition ? `\nCondition: ${condition}` : ' (catch-all – all notifications)';
 
-      subscribed.push(packageName);
-      await module.setSubscribedApps(JSON.stringify(subscribed));
-
-      return successResult(
-        `${getAppDisplayName(packageName)} subscribed successfully. New notifications will be captured.`,
-        `${getAppDisplayName(packageName)} subscribed`,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Subscribe failed: ${message}`);
-    }
+    return successResult(
+      `Rule created for ${appLabel}${condStr}.\n` +
+      `Rule ID: ${rule.id}\n` +
+      `Instruction: ${instruction}\n` +
+      `When a matching notification arrives, a sub-agent will execute this instruction.`,
+      `${appLabel} rule created`,
+    );
   }
 
-  // ── Unsubscribe ───────────────────────────────────────────────────────────
+  // ── Unsubscribe (remove all rules for app) ────────────────────────────────
 
-  private async unsubscribe(
-    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
-    args: Record<string, unknown>,
-  ): Promise<ToolResult> {
+  private async unsubscribe(args: Record<string, unknown>): Promise<ToolResult> {
     const app = args.app as string;
     if (!app) {
       return errorResult('Missing app parameter – which app should be unsubscribed?');
     }
 
     const packageName = resolvePackageName(app);
+    const appLabel = getAppDisplayName(packageName);
+    const removed = await deleteRulesForApp(packageName);
 
-    try {
-      const json = await module.getSubscribedApps();
-      const subscribed = JSON.parse(json) as string[];
-
-      const index = subscribed.indexOf(packageName);
-      if (index === -1) {
-        return successResult(
-          `${getAppDisplayName(packageName)} is not subscribed.`,
-          `${getAppDisplayName(packageName)} was not active`,
-        );
-      }
-
-      subscribed.splice(index, 1);
-      await module.setSubscribedApps(JSON.stringify(subscribed));
-
+    if (removed === 0) {
       return successResult(
-        `${getAppDisplayName(packageName)} unsubscribed successfully. Notifications will be ignored.`,
-        `${getAppDisplayName(packageName)} unsubscribed`,
+        `${appLabel} has no active rules.`,
+        `${appLabel} was not active`,
       );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Unsubscribe failed: ${message}`);
     }
+
+    return successResult(
+      `${removed} rule(s) for ${appLabel} removed. Notifications will be ignored.`,
+      `${appLabel}: ${removed} rule(s) removed`,
+    );
   }
 
-  // ── List Subscriptions ──────────────────────────────────────────────────────
+  // ── Update rule ───────────────────────────────────────────────────────────
 
-  private async listSubscriptions(
-    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
-  ): Promise<ToolResult> {
-    try {
-      const json = await module.getSubscribedApps();
-      const subscribed = JSON.parse(json) as string[];
-
-      if (subscribed.length === 0) {
-        return successResult(
-          'No apps subscribed. Use subscribe to activate notifications.',
-          'No apps subscribed',
-        );
-      }
-
-      const displayNames = subscribed.map(pkg => getAppDisplayName(pkg));
-      const list = displayNames.join(', ');
-
-      return successResult(
-        `Subscribed apps (${subscribed.length}): ${list}`,
-        `${subscribed.length} apps subscribed: ${list}`,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Failed to list subscriptions: ${message}`);
+  private async updateRuleAction(args: Record<string, unknown>): Promise<ToolResult> {
+    const ruleId = args.rule_id as string;
+    if (!ruleId) {
+      return errorResult('Missing rule_id parameter. Use list_subscriptions to get rule IDs.');
     }
+
+    const updates: Partial<Pick<NotificationRule, 'instruction' | 'condition' | 'enabled'>> = {};
+    if (args.instruction !== undefined) { updates.instruction = args.instruction as string; }
+    if (args.condition !== undefined) { updates.condition = args.condition as string; }
+
+    const updated = await updateRule(ruleId, updates);
+    if (!updated) {
+      return errorResult(`Rule ${ruleId} not found.`);
+    }
+
+    return successResult(
+      `Rule ${ruleId} updated.\nInstruction: ${updated.instruction}` +
+      (updated.condition ? `\nCondition: ${updated.condition}` : ''),
+      `Rule updated`,
+    );
+  }
+
+  // ── Delete rule ───────────────────────────────────────────────────────────
+
+  private async deleteRuleAction(args: Record<string, unknown>): Promise<ToolResult> {
+    const ruleId = args.rule_id as string;
+    if (!ruleId) {
+      return errorResult('Missing rule_id parameter. Use list_subscriptions to get rule IDs.');
+    }
+
+    const deleted = await deleteRule(ruleId);
+    if (!deleted) {
+      return errorResult(`Rule ${ruleId} not found.`);
+    }
+
+    return successResult(`Rule ${ruleId} deleted.`, 'Rule deleted');
+  }
+
+  // ── List Subscriptions (rules) ─────────────────────────────────────────────
+
+  private async listSubscriptions(): Promise<ToolResult> {
+    const rules = await loadRules();
+
+    if (rules.length === 0) {
+      return successResult(
+        'No notification rules configured. Use subscribe to create rules.',
+        'No notification rules',
+      );
+    }
+
+    const lines = rules.map((r, i) => {
+      const status = r.enabled ? '✅' : '⏸️';
+      const condStr = r.condition ? `\n   Condition: ${r.condition}` : ' (catch-all)';
+      return `${i + 1}. ${status} ${r.appLabel}${condStr}\n   Instruction: ${r.instruction}\n   ID: ${r.id}`;
+    });
+
+    return successResult(
+      `${rules.length} notification rule(s):\n${lines.join('\n')}`,
+      `${rules.length} rule(s)`,
+    );
   }
 
   // ── Get Recent ─────────────────────────────────────────────────────────────
@@ -244,7 +313,6 @@ export class NotificationListenerTool implements Tool {
       const json = await module.getRecentNotifications();
       let notifications = JSON.parse(json) as NotificationData[];
 
-      // Filter by app if specified
       const filterApp = args.filter_app as string | undefined;
       if (filterApp) {
         const filterPackage = resolvePackageName(filterApp);
@@ -258,7 +326,6 @@ export class NotificationListenerTool implements Tool {
         );
       }
 
-      // Format notifications for LLM
       const lines = notifications.map((n, idx) => {
         const appName = getAppDisplayName(n.packageName);
         const sender = n.sender ? ` from ${n.sender}` : '';
@@ -270,7 +337,6 @@ export class NotificationListenerTool implements Tool {
       });
 
       const summary = `${notifications.length} notification(s):\n${lines.join('\n')}`;
-
       return successResult(summary, `${notifications.length} notifications found`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -285,10 +351,7 @@ export class NotificationListenerTool implements Tool {
   ): Promise<ToolResult> {
     try {
       await module.clearNotifications();
-      return successResult(
-        'Notification buffer cleared.',
-        'Buffer cleared',
-      );
+      return successResult('Notification buffer cleared.', 'Buffer cleared');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return errorResult(`Failed to clear buffer: ${message}`);

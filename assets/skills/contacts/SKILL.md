@@ -46,5 +46,5 @@ Search and manage contacts on the device.
 ## Examples
 
 - "Call Mom" → query contacts "Mom" → number → intent CALL
-- "Text Stefan" → query contacts "Stefan" → number → intent SENDTO
+- "Text John" → query contacts "John" → number → intent SENDTO
 - "What is Lisa's number?" → query contacts "Lisa" → TTS read out number
