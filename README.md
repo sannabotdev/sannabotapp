@@ -11,12 +11,13 @@ An open-source AI assistant that runs on Android and actually *controls* your ph
 - **🗣️ Voice-first** – Wake word ("Hey Sanna") → Speech-to-Text → LLM agent → Text-to-Speech, fully hands-free
 - **📝 Skills are Markdown** – Drop a `SKILL.md` in a folder, the agent learns a new capability. No code changes.
 - **🔄 Agentic tool loop** – LLM → tool call → result → back to LLM, until final answer. Multi-step reasoning out of the box.
+- **📋 Local list management** – Shopping lists, to-dos, packing lists – stored on-device, fully offline, no cloud.
 - **⏰ Sub-agent scheduler** – Schedule natural-language tasks ("Every Monday at 9am, brief me on today's calendar via SMS"). A real LLM executes them – not a dumb cron job.
 - **🤖 UI Automation** – Controls other apps via Android Accessibility Services. An LLM sub-agent reads the UI tree, clicks buttons, types text – e.g. sends WhatsApp messages without any API.
 - **🚗 Driving mode** – Short spoken responses, auto-reads incoming notifications, optimized for hands-free use.
 - **🔒 No backend needed** – OAuth flows use PKCE. All data stays on your device.
 
-## 📦 12 Built-in Skills
+## 📦 14 Built-in Skills
 
 | Skill | What it does |
 |-------|-------------|
@@ -32,6 +33,8 @@ An open-source AI assistant that runs on Android and actually *controls* your ph
 | 🗺️ Google Maps | Start navigation |
 | 🔔 Notifications | Intercept & summarize notifications from any app |
 | ⏰ Scheduler | Autonomous scheduled tasks with sub-agents |
+| 📋 Lists | Manage local lists (shopping, to-do, packing) – fully offline |
+| 🌤️ Weather | Current weather & forecasts via wttr.in / Open-Meteo – no API key |
 
 ## 🏗️ Architecture
 
@@ -40,8 +43,8 @@ Wake Word (Picovoice) → STT → LLM Agent Loop → Tool Execution → TTS
                                     ↕
                            SKILL.md files (auto-discovered)
                                     ↕
-                         Tools: intent, http, tts, device,
-                         sms, query, scheduler, notifications
+                         Tools: intent, http, tts, device, file_storage,
+                         sms, query, scheduler, notifications, accessibility
 ```
 
 - **React Native** + native **Kotlin** modules for Android-specific features

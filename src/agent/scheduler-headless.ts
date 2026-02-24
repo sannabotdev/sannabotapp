@@ -29,6 +29,7 @@ import { QueryTool } from '../tools/query-tool';
 import { DeviceTool } from '../tools/device-tool';
 import { SmsTool } from '../tools/sms-tool';
 import { AccessibilityTool } from '../tools/accessibility-tool';
+import { FileStorageTool } from '../tools/file-storage-tool';
 
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
@@ -51,6 +52,7 @@ import calendarSkill from '../../assets/skills/calendar/SKILL.md';
 import googleTasksSkill from '../../assets/skills/google-tasks/SKILL.md';
 import schedulerSkill from '../../assets/skills/scheduler/SKILL.md';
 import whatsappSkill from '../../assets/skills/whatsapp/SKILL.md';
+import listsSkill from '../../assets/skills/lists/SKILL.md';
 
 // Register all skill content
 registerSkillContent('google-maps', googleMapsSkill);
@@ -63,6 +65,7 @@ registerSkillContent('calendar', calendarSkill);
 registerSkillContent('google-tasks', googleTasksSkill);
 registerSkillContent('scheduler', schedulerSkill);
 registerSkillContent('whatsapp', whatsappSkill);
+registerSkillContent('lists', listsSkill);
 
 // ── Agent Config (persisted by App.tsx) ──────────────────────────────────
 
@@ -167,6 +170,7 @@ export default async function schedulerHeadlessTask(
     toolRegistry.register(new DeviceTool());
     toolRegistry.register(new SmsTool());
     toolRegistry.register(new AccessibilityTool());
+    toolRegistry.register(new FileStorageTool());
     // NOTE: We intentionally do NOT register SchedulerTool here
     // to prevent the sub-agent from creating recursive schedules.
 

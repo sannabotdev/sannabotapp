@@ -3,9 +3,11 @@
  * through a mini tool loop
  */
 import type { LLMProvider, Message } from '../llm/types';
-import type { ToolRegistry } from './tool-registry';
+import { ToolRegistry } from './tool-registry';
 import type { SkillInfo, SkillLoader } from './skill-loader';
 import { runToolLoop } from './tool-loop';
+import type { Tool, ToolResult } from '../tools/types';
+import { successResult } from '../tools/types';
 
 export interface SkillTestResult {
   success: boolean;
@@ -39,8 +41,11 @@ export async function runSkillTest(
   }
 
   try {
+    // Build a silent registry: identical to the original but with TTS suppressed
+    const silentRegistry = buildSilentRegistry(toolRegistry);
+
     // Build minimal system prompt with only this skill
-    const systemPrompt = buildTestSystemPrompt(skill, skillLoader, toolRegistry);
+    const systemPrompt = buildTestSystemPrompt(skill, skillLoader, silentRegistry);
 
     // Create messages: system + test prompt
     const messages: Message[] = [
@@ -53,7 +58,7 @@ export async function runSkillTest(
       {
         provider,
         model,
-        tools: toolRegistry,
+        tools: silentRegistry,
         maxIterations: 3,
       },
       messages,
@@ -151,6 +156,35 @@ export async function runSkillTest(
 }
 
 /**
+ * Build a copy of the tool registry where all audio-producing tools (tts)
+ * are replaced with silent no-ops so skill tests never trigger speech.
+ */
+function buildSilentRegistry(original: ToolRegistry): ToolRegistry {
+  const silent = new ToolRegistry();
+
+  for (const name of original.list()) {
+    const tool = original.get(name);
+    if (!tool) continue;
+
+    if (name === 'tts') {
+      // Replace TTS with a no-op that reports success without speaking
+      const silentTts: Tool = {
+        name: () => 'tts',
+        description: () => tool.description(),
+        parameters: () => tool.parameters(),
+        execute: async (_args: Record<string, unknown>): Promise<ToolResult> =>
+          successResult('[TTS suppressed during skill test]'),
+      };
+      silent.register(silentTts);
+    } else {
+      silent.register(tool);
+    }
+  }
+
+  return silent;
+}
+
+/**
  * Build a minimal system prompt for testing a single skill
  */
 function buildTestSystemPrompt(
@@ -177,7 +211,8 @@ ${skill.content}
 
 ## Instructions
 
-Execute the test instruction. Use the appropriate tools to fulfil the request.`);
+Execute the test instruction. Use the appropriate tools to fulfil the request.
+Do NOT use the tts tool. Never speak results aloud – just return them as text.`);
 
   return parts.join('\n\n');
 }

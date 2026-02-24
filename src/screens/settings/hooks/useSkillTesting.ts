@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { SkillInfo } from '../../../agent/skill-loader';
-import type { TTSService } from '../../../audio/tts-service';
-import { t, getLocaleBCP47 } from '../../../i18n';
+import { t } from '../../../i18n';
 
 type TestResult = {
   success: boolean;
@@ -17,7 +16,6 @@ type TestResult = {
 
 export function useSkillTesting(
   onTestSkill?: (skillName: string) => Promise<TestResult>,
-  ttsService?: TTSService,
 ) {
   const [testingSkill, setTestingSkill] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
@@ -100,42 +98,6 @@ export function useSkillTesting(
     return evidenceText;
   }, []);
 
-  const buildTTSMessage = useCallback((result: TestResult): string => {
-    if (!result.evidence) {
-      return result.success
-        ? `${t('test.tts.success')} ${result.message}`
-        : `${t('test.tts.failed')} ${result.message}. ${result.error || ''}`;
-    }
-
-    const { toolCalls, toolResults, finalResponse, iterations } = result.evidence;
-
-    let ttsText = result.success ? `${t('test.tts.success')} ` : `${t('test.tts.failed')} `;
-    ttsText += `${t('test.tts.iterations').replace('{count}', String(iterations))} `;
-
-    if (toolCalls.length > 0) {
-      toolCalls.forEach((tc, idx) => {
-        ttsText += `${idx + 1}. ${tc.name}. `;
-      });
-    }
-
-    if (toolResults.length > 0) {
-      toolResults.forEach((tr, idx) => {
-        const status = tr.isError ? 'Error' : 'OK';
-        ttsText += `${idx + 1}. ${tr.toolName}: ${status}. `;
-      });
-    }
-
-    if (finalResponse) {
-      const cleanResponse = finalResponse
-        .replace(/[#*_`]/g, '')
-        .replace(/\n+/g, '. ')
-        .substring(0, 500);
-      ttsText += cleanResponse;
-    }
-
-    return ttsText;
-  }, []);
-
   const showEvidencePopup = useCallback(
     (result: TestResult) => {
       const title = result.success ? t('evidence.success') : t('evidence.failure');
@@ -152,21 +114,13 @@ export function useSkillTesting(
 
       setEvidenceModalContent({ title, text: evidenceText, result });
       setEvidenceModalVisible(true);
-
-      if (ttsService) {
-        const ttsMessage = buildTTSMessage(result);
-        ttsService.speakAsync(ttsMessage, getLocaleBCP47());
-      }
     },
-    [buildEvidenceText, buildTTSMessage, ttsService],
+    [buildEvidenceText],
   );
 
   const handleCloseEvidenceModal = useCallback(() => {
     setEvidenceModalVisible(false);
-    if (ttsService) {
-      ttsService.stop().catch(console.error);
-    }
-  }, [ttsService]);
+  }, []);
 
   const handleTestSkill = useCallback(
     async (skill: SkillInfo) => {

@@ -50,6 +50,7 @@ import { SmsTool } from './src/tools/sms-tool';
 import { SchedulerTool } from './src/tools/scheduler-tool';
 import { NotificationListenerTool } from './src/tools/notification-listener-tool';
 import { AccessibilityTool } from './src/tools/accessibility-tool';
+import { FileStorageTool } from './src/tools/file-storage-tool';
 
 // Scheduler config persistence
 import SchedulerModule from './src/native/SchedulerModule';
@@ -623,6 +624,7 @@ export default function App(): React.JSX.Element {
     toolRegistry.register(new SchedulerTool());
     toolRegistry.register(new NotificationListenerTool());
     toolRegistry.register(new AccessibilityTool());
+    toolRegistry.register(new FileStorageTool());
 
     // Resolve 'system' → actual device locale before passing to pipeline.
     // The pipeline uses this for both TTS and the system-prompt language rule.
@@ -1051,8 +1053,6 @@ export default function App(): React.JSX.Element {
       toolRegistry.register(new HttpTool(credentialManager.current));
       toolRegistry.register(new QueryTool());
       toolRegistry.register(new DeviceTool());
-      toolRegistry.register(new SmsTool());
-      toolRegistry.register(new SchedulerTool());
 
       return await runSkillTest(
         skill,

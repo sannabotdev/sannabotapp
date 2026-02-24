@@ -123,7 +123,7 @@ export function SettingsScreen({
     handleTestSkill,
     showEvidencePopup,
     handleCloseEvidenceModal,
-  } = useSkillTesting(onTestSkill, ttsService);
+  } = useSkillTesting(onTestSkill);
 
   // Accordion: Only one section open at a time
   const [openSection, setOpenSection] = useState<SectionId | null>('provider');
