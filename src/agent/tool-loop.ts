@@ -15,6 +15,14 @@ export interface ToolLoopConfig {
   maxIterations: number;
   /** Called when a tool result has a forUser value (driving mode TTS) */
   onUserMessage?: (message: string) => void;
+  /**
+   * Optional early-exit predicate. Checked after every tool call batch.
+   * When it returns true the loop stops immediately and `earlyExitContent`
+   * is used as the final content instead of waiting for the LLM to stop.
+   */
+  shouldExit?: () => boolean;
+  /** Content to return when shouldExit() fires. */
+  earlyExitContent?: () => string;
 }
 
 export interface ToolLoopResult {
@@ -82,6 +90,13 @@ export async function runToolLoop(
       };
       messages = [...messages, toolResultMsg];
       newMessages.push(toolResultMsg);
+    }
+
+    // Early-exit check: a tool (e.g. finish_task) requested hard termination
+    if (config.shouldExit?.()) {
+      const exitContent = config.earlyExitContent?.() ?? finalContent;
+      DebugLogger.logFinalResult(exitContent, i + 1);
+      return { content: exitContent, iterations: i + 1, newMessages };
     }
   }
 

@@ -33,15 +33,21 @@ class IntentModule(reactContext: ReactApplicationContext) :
         promise: Promise,
     ) {
         try {
-            val intent = Intent(action)
-
-            if (!uri.isNullOrBlank()) {
-                intent.data = Uri.parse(uri)
-            }
-
-            if (!packageName.isNullOrBlank()) {
-                intent.setPackage(packageName)
-            }
+            // Special case: ACTION_MAIN with a package but no URI means "launch the app".
+            // The correct Android way is getLaunchIntentForPackage(), which includes
+            // CATEGORY_LAUNCHER automatically. A bare ACTION_MAIN + setPackage() without
+            // CATEGORY_LAUNCHER fails with "No Activity found to handle Intent".
+            val intent: Intent =
+                if (action == Intent.ACTION_MAIN && !packageName.isNullOrBlank() && uri.isNullOrBlank()) {
+                    reactApplicationContext.packageManager
+                        .getLaunchIntentForPackage(packageName)
+                        ?: throw Exception("App not found or not launchable: $packageName")
+                } else {
+                    Intent(action).apply {
+                        if (!uri.isNullOrBlank()) data = Uri.parse(uri)
+                        if (!packageName.isNullOrBlank()) setPackage(packageName)
+                    }
+                }
 
             // Add extras
             extras?.let { map ->

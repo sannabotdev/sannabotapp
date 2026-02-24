@@ -12,6 +12,7 @@ An open-source AI assistant that runs on Android and actually *controls* your ph
 - **📝 Skills are Markdown** – Drop a `SKILL.md` in a folder, the agent learns a new capability. No code changes.
 - **🔄 Agentic tool loop** – LLM → tool call → result → back to LLM, until final answer. Multi-step reasoning out of the box.
 - **⏰ Sub-agent scheduler** – Schedule natural-language tasks ("Every Monday at 9am, brief me on today's calendar via SMS"). A real LLM executes them – not a dumb cron job.
+- **🤖 UI Automation** – Controls other apps via Android Accessibility Services. An LLM sub-agent reads the UI tree, clicks buttons, types text – e.g. sends WhatsApp messages without any API.
 - **🚗 Driving mode** – Short spoken responses, auto-reads incoming notifications, optimized for hands-free use.
 - **🔒 No backend needed** – OAuth flows use PKCE. All data stays on your device.
 

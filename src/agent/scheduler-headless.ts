@@ -28,6 +28,7 @@ import { HttpTool } from '../tools/http-tool';
 import { QueryTool } from '../tools/query-tool';
 import { DeviceTool } from '../tools/device-tool';
 import { SmsTool } from '../tools/sms-tool';
+import { AccessibilityTool } from '../tools/accessibility-tool';
 
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
@@ -165,6 +166,7 @@ export default async function schedulerHeadlessTask(
     toolRegistry.register(new QueryTool());
     toolRegistry.register(new DeviceTool());
     toolRegistry.register(new SmsTool());
+    toolRegistry.register(new AccessibilityTool());
     // NOTE: We intentionally do NOT register SchedulerTool here
     // to prevent the sub-agent from creating recursive schedules.
 

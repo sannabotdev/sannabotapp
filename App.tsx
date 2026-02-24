@@ -49,9 +49,13 @@ import { DeviceTool } from './src/tools/device-tool';
 import { SmsTool } from './src/tools/sms-tool';
 import { SchedulerTool } from './src/tools/scheduler-tool';
 import { NotificationListenerTool } from './src/tools/notification-listener-tool';
+import { AccessibilityTool } from './src/tools/accessibility-tool';
 
 // Scheduler config persistence
 import SchedulerModule from './src/native/SchedulerModule';
+
+// Conversation persistence
+import { ConversationStore } from './src/agent/conversation-store';
 
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -444,6 +448,14 @@ export default function App(): React.JSX.Element {
     const dynamicNames = await dynamicSkillStore.current.getSkillNames();
     setDynamicSkillNames(dynamicNames);
     setAllSkills(skillLoader.current.getAllSkills());
+
+    // Restore persisted conversation history into the UI
+    const storedMessages = await ConversationStore.loadHistory();
+    if (storedMessages.length > 0) {
+      setMessages(
+        storedMessages.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
+      );
+    }
   }, []);
 
   // Auto-unlock on mount
@@ -469,6 +481,38 @@ export default function App(): React.JSX.Element {
           tokenStore.current.lock();
           setVaultUnlocked(false);
         }
+
+        // Drain any messages written by background tasks (e.g. accessibility automation)
+        ConversationStore.drainPending().then(pending => {
+          if (pending.length === 0) return;
+          setMessages(prev => {
+            const updated = [
+              ...prev,
+              ...pending.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
+            ];
+            ConversationStore.saveHistory(
+              updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+            ).catch(() => {});
+            return updated;
+          });
+          if (pipelineRef.current) {
+            pipelineRef.current.appendToHistory(
+              pending.map(m => ({ role: m.role, content: m.text })),
+            );
+          }
+          // In driving mode, speak assistant messages aloud.
+          // In normal mode the chat bubble is sufficient – no TTS.
+          if (settings.drivingMode) {
+            const lang = settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
+            pending
+              .filter(m => m.role === 'assistant')
+              .forEach(m => {
+                // Strip markdown so the voice output sounds natural
+                const plain = m.text.replace(/[*_`#]/g, '').trim();
+                ttsService.current.speak(plain, lang).catch(() => {});
+              });
+          }
+        }).catch(() => {});
       }
     });
     return () => sub.remove();
@@ -578,6 +622,7 @@ export default function App(): React.JSX.Element {
     toolRegistry.register(new SmsTool());
     toolRegistry.register(new SchedulerTool());
     toolRegistry.register(new NotificationListenerTool());
+    toolRegistry.register(new AccessibilityTool());
 
     // Resolve 'system' → actual device locale before passing to pipeline.
     // The pipeline uses this for both TTS and the system-prompt language rule.
@@ -603,7 +648,14 @@ export default function App(): React.JSX.Element {
         Alert.alert(t('alert.error'), err);
       },
       onTranscript: (role: 'user' | 'assistant', text: string) => {
-        setMessages(prev => [...prev, { role, text, timestamp: new Date() }]);
+        setMessages(prev => {
+          const updated = [...prev, { role, text, timestamp: new Date() }];
+          // Fire-and-forget: persist conversation after each message
+          ConversationStore.saveHistory(
+            updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+          ).catch(() => {});
+          return updated;
+        });
       },
     });
 
@@ -611,6 +663,16 @@ export default function App(): React.JSX.Element {
     const oldPipeline = pipelineRef.current;
     if (oldPipeline) {
       pipeline.importHistory(oldPipeline.exportHistory());
+    } else {
+      // First pipeline creation: restore LLM history from AsyncStorage.
+      // Only the last 20 messages are injected (maxHistoryMessages cap).
+      ConversationStore.loadHistory().then(stored => {
+        if (stored.length > 0) {
+          pipeline.importHistory(
+            stored.slice(-20).map(m => ({ role: m.role, content: m.text })),
+          );
+        }
+      }).catch(() => {});
     }
 
     pipelineRef.current = pipeline;
@@ -622,6 +684,8 @@ export default function App(): React.JSX.Element {
       model: selectedModel,
       enabledSkillNames,
       googleWebClientId: settings.googleWebClientId || '',
+      drivingMode: settings.drivingMode,
+      language: resolvedLanguage,
     };
     SchedulerModule.saveAgentConfig(JSON.stringify(agentConfig)).catch(() => {});
   }, [
@@ -972,10 +1036,14 @@ export default function App(): React.JSX.Element {
         };
       }
 
+      const selectedModel = selectedProvider === 'claude'
+        ? settings.selectedClaudeModel
+        : settings.selectedOpenAIModel;
+
       const provider =
         selectedProvider === 'claude'
-          ? new ClaudeProvider(apiKey)
-          : new OpenAIProvider(apiKey);
+          ? new ClaudeProvider(apiKey, selectedModel)
+          : new OpenAIProvider(apiKey, selectedModel);
 
       const toolRegistry = new ToolRegistry();
       toolRegistry.register(new IntentTool());

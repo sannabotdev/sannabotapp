@@ -242,8 +242,18 @@ export class ConversationPipeline {
     return [...this.history];
   }
 
-  /** Import saved history */
+  /** Import saved history (replaces current history) */
   importHistory(history: Message[]): void {
     this.history = [...history];
+  }
+
+  /**
+   * Append messages to the existing history without replacing it.
+   * Used by App.tsx to inject restored background messages (e.g. from HeadlessJS tasks)
+   * into the LLM context after the pipeline is already running.
+   */
+  appendToHistory(messages: Message[]): void {
+    this.history.push(...messages);
+    this.trimHistory(this.config.maxHistoryMessages ?? 20);
   }
 }

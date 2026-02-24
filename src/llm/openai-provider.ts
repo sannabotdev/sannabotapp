@@ -11,7 +11,7 @@ import type {
 } from './types';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const DEFAULT_MODEL = 'gpt-4o';
+const DEFAULT_MODEL = 'gpt-5.2';
 const DEFAULT_MAX_TOKENS = 8192;
 
 export class OpenAIProvider implements LLMProvider {

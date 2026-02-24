@@ -21,6 +21,8 @@ class SannaPackage : ReactPackage {
             SchedulerModule(reactContext),
             NotificationListenerModule(reactContext),
             KeepAwakeModule(reactContext),
+            AccessibilityModule(reactContext),
+            AccessibilityJobModule(reactContext),
         )
     }
 

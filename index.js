@@ -22,3 +22,11 @@ AppRegistry.registerHeadlessTask(
   'SannaSchedulerTask',
   () => require('./src/agent/scheduler-headless').default,
 );
+
+// Register the headless task for accessibility UI automation.
+// Started by AccessibilityJobModule.startJob() before the target app opens.
+// Runs in its own JS context – NOT throttled when SannaBot is in the background.
+AppRegistry.registerHeadlessTask(
+  'SannaAccessibilityTask',
+  () => require('./src/agent/accessibility-headless-task').default,
+);

@@ -15,9 +15,10 @@
     <!-- Microphone for wake word + STT -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Foreground service for wake word detection -->
+    <!-- Foreground service for wake word detection + UI automation -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Location for Google Maps / navigation -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -111,6 +112,29 @@
         <intent-filter>
           <action android:name="android.service.notification.NotificationListenerService" />
         </intent-filter>
+      </service>
+
+      <!-- Accessibility: HeadlessJS service for background UI automation -->
+      <!-- This runs the SannaAccessibilityTask JS in a separate context so the   -->
+      <!-- JS runtime is not throttled when SannaBot's Activity is in background. -->
+      <service
+        android:name=".native.AccessibilityHeadlessService"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="specialUse" />
+
+      <!-- Accessibility Service for LLM-driven UI automation -->
+      <service
+        android:name=".native.SannaAccessibilityService"
+        android:enabled="true"
+        android:exported="true"
+        android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+        <intent-filter>
+          <action android:name="android.accessibilityservice.AccessibilityService" />
+        </intent-filter>
+        <meta-data
+          android:name="android.accessibilityservice"
+          android:resource="@xml/accessibility_service_config" />
       </service>
 
     </application>
