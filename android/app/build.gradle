@@ -125,6 +125,10 @@ dependencies {
     // Picovoice Porcupine – on-device wake word detection
     implementation("ai.picovoice:porcupine-android:4.0.0")
 
+    // Google Play Services Location – required by @react-native-community/geolocation
+    // for the Fused Location Provider (more reliable than the old LocationManager)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

@@ -8,6 +8,13 @@ import Geolocation from '@react-native-community/geolocation';
 import type { Tool, ToolResult } from './types';
 import { errorResult, successResult } from './types';
 
+// Use Google Play Services Fused Location Provider instead of the old
+// Android LocationManager – much more reliable, works indoors via Wi-Fi/cell.
+Geolocation.setRNConfiguration({
+  skipPermissionRequests: true, // we handle permissions ourselves
+  locationProvider: 'playServices',
+});
+
 const { VolumeManager, DeviceQueryModule } = NativeModules;
 
 type DeviceAction =
@@ -80,6 +87,7 @@ export class DeviceTool implements Tool {
 
   private async getLocation(): Promise<ToolResult> {
     // Request runtime permission first (Android)
+    let fineGranted = true;
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -90,31 +98,75 @@ export class DeviceTool implements Tool {
         },
       );
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        return errorResult('GPS permission denied');
+        // Fine location denied – try coarse (network-based) location
+        const coarseGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        );
+        if (coarseGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+          return errorResult('Location permission denied');
+        }
+        fineGranted = false;
       }
     }
 
+    // If only coarse permission → skip GPS, go straight to network
+    if (!fineGranted) {
+      return this.getPositionWithAccuracy(false);
+    }
+
+    // Try GPS first, fall back to network-based (approximate) location on failure
+    const gpsResult = await this.getPositionWithAccuracy(true);
+    if (!gpsResult.isError) {
+      return gpsResult;
+    }
+    return this.getPositionWithAccuracy(false);
+  }
+
+  private getPositionWithAccuracy(highAccuracy: boolean): Promise<ToolResult> {
+    const timeoutMs = highAccuracy ? 12000 : 8000;
+
     return new Promise(resolve => {
-      const timeout = setTimeout(() => {
-        resolve(errorResult('GPS timeout – no signal'));
-      }, 15_000);
+      const timer = setTimeout(() => {
+        resolve(errorResult(
+          highAccuracy
+            ? 'GPS timeout – no signal'
+            : 'Network location timeout – no signal',
+        ));
+      }, timeoutMs + 3000);
 
       Geolocation.getCurrentPosition(
         pos => {
-          clearTimeout(timeout);
+          clearTimeout(timer);
           const { latitude, longitude, accuracy } = pos.coords;
-          resolve(
-            successResult(
-              `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (accuracy: ${accuracy?.toFixed(0) ?? '?'}m)`,
-              `Position: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-            ),
-          );
+          if (highAccuracy) {
+            resolve(
+              successResult(
+                `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (accuracy: ${accuracy?.toFixed(0) ?? '?'}m)`,
+                `Position: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+              ),
+            );
+          } else {
+            resolve(
+              successResult(
+                `Approximate location (network-based, not GPS): ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (accuracy: ~${accuracy?.toFixed(0) ?? '?'}m)`,
+                `Ungefähre Position: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+              ),
+            );
+          }
         },
         err => {
-          clearTimeout(timeout);
-          resolve(errorResult(`GPS error: ${err.message}`));
+          clearTimeout(timer);
+          resolve(errorResult(
+            highAccuracy
+              ? `GPS error: ${err.message}`
+              : `Network location error: ${err.message}`,
+          ));
         },
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+        {
+          enableHighAccuracy: highAccuracy,
+          timeout: timeoutMs,
+          maximumAge: highAccuracy ? 60000 : 300000,
+        },
       );
     });
   }

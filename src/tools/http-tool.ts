@@ -91,6 +91,7 @@ export class HttpTool implements Tool {
       const requestInit: RequestInit = {
         method,
         headers: {
+          'User-Agent': 'SannaBot/1.0',
           'Content-Type': 'application/json',
           ...headers,
         },

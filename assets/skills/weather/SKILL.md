@@ -48,6 +48,8 @@ Returns e.g. `London: ⛅️ +8°C 71% ↙5km/h`
 
 Format codes: `%c` condition · `%t` temperature · `%h` humidity · `%w` wind · `%l` location · `%m` moon phase
 
+> **IMPORTANT**: wttr.in is a **weather service only**. NEVER use wttr.in for reverse geocoding or location lookups. The `%l` format code only works with city names, not coordinates. To resolve coordinates to a city name, always use Nominatim (see below).
+
 ### Current weather – short format
 
 ```json
@@ -145,7 +147,7 @@ Returns JSON with `address.city` (or `address.town` / `address.village` for smal
 Use this when:
 - Open-Meteo returns only coordinates and you need to tell the user the location name
 - `device` → `get_location` gives GPS coords and you want to greet with "Das Wetter in **{city}**…"
-- wttr.in's `%l` format didn't return a useful location name
+- The user asks "where am I?" and you need to resolve GPS coordinates to a place name
 
 ### Full workflow (Open-Meteo)
 
@@ -167,8 +169,8 @@ Use this when:
 ### "What's the weather?" (no location given)
 
 1. `device` → `get_location` → returns e.g. `48.2082, 16.3738`
-2. `http` → GET `https://wttr.in/48.2082,16.3738?format=%l:+%c+%t+%h+%w` with `response_format: "text"`
-3. If wttr.in's `%l` doesn't return a useful location name, reverse-geocode via Nominatim: GET `https://nominatim.openstreetmap.org/reverse?lat=48.2082&lon=16.3738&format=json&accept-language=de` (with header `User-Agent: SannaBot/1.0`) → use `address.city` for the response
+2. Reverse-geocode via Nominatim to get the city name: GET `https://nominatim.openstreetmap.org/reverse?lat=48.2082&lon=16.3738&format=json&accept-language=de` → use `address.city` for the response
+3. `http` → GET `https://wttr.in/48.2082,16.3738?format=%c+%t+%h+%w` with `response_format: "text"` (note: no `%l` – use the city name from Nominatim instead)
 4. Summarise: "In **Wien** ist es teilweise bewölkt, 14 Grad, 65 % Luftfeuchtigkeit."
 
 ### "What's the weather in London?"
