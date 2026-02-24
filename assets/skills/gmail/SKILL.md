@@ -21,22 +21,32 @@ All requests require `auth_provider: "google"`.
 
 ### Gmail categories (labels)
 
-Gmail sorts emails into categories. The relevant label IDs are:
-- `CATEGORY_PRIMARY` - Important, personal emails (the main inbox tab)
+Gmail sorts emails into categories. Not all accounts have the same category labels. Common label IDs:
+- `CATEGORY_PRIMARY` or `CATEGORY_PERSONAL` - Important, personal emails (the main inbox tab). **Which one exists varies by account.**
 - `CATEGORY_SOCIAL` - Social network notifications
 - `CATEGORY_PROMOTIONS` - Marketing, newsletters, deals
 - `CATEGORY_UPDATES` - Automated notifications, confirmations, receipts
 - `CATEGORY_FORUMS` - Mailing lists, discussion groups
 - `IMPORTANT` - Emails Gmail considers important (can overlap with any category)
 
-### Fetch recent primary emails (default)
+### Fetch recent emails (default - primary/personal)
 
-By default, always fetch from the **primary** category only:
+Use `q=category:primary` to reliably filter for important emails regardless of which label the account uses:
 
 ```json
 {
   "method": "GET",
-  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=CATEGORY_PRIMARY",
+  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=category:primary",
+  "auth_provider": "google"
+}
+```
+
+**Fallback:** If the above returns 0 results, fall back to fetching from `INBOX` without category filter:
+
+```json
+{
+  "method": "GET",
+  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=INBOX",
   "auth_provider": "google"
 }
 ```
@@ -48,12 +58,12 @@ Only when the user explicitly asks for promotions, social, updates, etc.:
 ```json
 {
   "method": "GET",
-  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&labelIds=CATEGORY_PROMOTIONS",
+  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=category:promotions",
   "auth_provider": "google"
 }
 ```
 
-Replace `CATEGORY_PROMOTIONS` with the appropriate label ID from the list above.
+Replace `promotions` with `social`, `updates`, or `forums` as needed.
 
 ### Read email details
 
@@ -80,7 +90,7 @@ Example search terms:
 - `subject:Meeting` - Subject contains "Meeting"
 - `is:unread` - Unread emails
 - `after:2024/01/01` - After a date
-- `category:primary` - Primary emails only
+- `category:primary` - Primary/personal emails only
 - `category:promotions` - Promotions only
 
 ### Send email
@@ -158,14 +168,18 @@ Find the `Message-ID` (for `In-Reply-To`/`References`) and `threadId` in the ema
 
 ## Behavior rules for reading emails
 
+### Never expose internal errors or API details
+
+If an API call fails or returns unexpected results, **never** tell the user about label names, API errors, HTTP status codes, or internal implementation details. Simply retry silently with a fallback strategy, or say something generic like "Let me check that again" before retrying.
+
 ### Default: always summarize - never read verbatim
 
 When the user asks to read, check, or show emails the content **MUST be summarized** in your own words - short, concise and in the language the user speaks.
 Only when the user **explicitly** requests a literal/word-for-word reading (e.g. "read it verbatim", "read the exact text", "read it word for word") should you output the full original email body.
 
-### Default: only primary emails - ignore promotions/social/etc.
+### Default: only primary/personal emails - ignore promotions/social/etc.
 
-When the user asks for their emails, new messages, or inbox updates, **only fetch from `CATEGORY_PRIMARY`**. Promotions, social notifications, updates, and forums are excluded by default.
+When the user asks for their emails, new messages, or inbox updates, **only fetch primary/personal emails** (use `q=category:primary`). Promotions, social notifications, updates, and forums are excluded by default.
 
 Only fetch from other categories when the user explicitly asks for them (e.g. "Do I have any promotions?", "Check my spam", "Show me social emails").
 
@@ -184,7 +198,7 @@ Detect attachments by checking `payload.parts` - any part whose `filename` field
 
 When the user asks for a general inbox update (e.g. "What's new?", "Check my inbox", "Any new emails?"):
 
-1. Fetch the recent message list from **`CATEGORY_PRIMARY` only** (IDs), e.g. last 10.
+1. Fetch the recent message list using `q=category:primary` (IDs), e.g. last 10. If 0 results, fall back to `labelIds=INBOX`.
 2. For each message fetch **metadata only** (`format=metadata`, with `metadataHeaders=From,Subject,Date`).
 3. Present a **brief overview list** sorted by time, containing only:
    - **Sender name** (extract display name from the `From` header)
@@ -206,18 +220,18 @@ Only if the user then **explicitly** asks for a verbatim/word-for-word reading, 
 
 ## Workflow: Read emails aloud
 
-1. Fetch message list (IDs) from `CATEGORY_PRIMARY`.
+1. Fetch message list (IDs) using `q=category:primary` (fall back to `labelIds=INBOX`).
 2. For each email: fetch details (sender, subject, body).
 3. **Summarize** the content and read the summary aloud with the `tts` tool.
 4. Announce attachment count per email.
 
 ## Examples
 
-- "What's new in my inbox?" -> Recent-communication overview from PRIMARY only (sender + subject + relative time, no body)
+- "What's new in my inbox?" -> Recent-communication overview from primary only (sender + subject + relative time, no body)
 - "What did Georg write?" -> Fetch & **summarize** Georg's email, announce attachments
 - "Read it to me word for word" -> Read the full original email text verbatim
 - "Read my unread emails" -> Search `is:unread category:primary`, fetch details, **summarize** each + TTS
-- "Do I have any promotions?" -> Fetch from `CATEGORY_PROMOTIONS`, present overview
+- "Do I have any promotions?" -> Fetch with `q=category:promotions`, present overview
 - "Is there an email from the bank?" -> Search `from:bank`
 - "Write an email to..." -> Look up contact first, then send
 
@@ -227,4 +241,4 @@ Only if the user then **explicitly** asks for a verbatim/word-for-word reading, 
 - When summarizing, keep it to 2-3 sentences max
 - Always ask for confirmation before sending
 - Use `format=metadata` (with `metadataHeaders=From,Subject,Date`) for the overview to save bandwidth; use `format=full` only when the user drills down into a specific email
-- Default to `CATEGORY_PRIMARY` for all inbox queries; only switch to other categories on explicit user request
+- Use `q=category:primary` for default inbox queries (works regardless of account label setup); fall back to `labelIds=INBOX` if no results
