@@ -384,6 +384,7 @@ export default function App(): React.JSX.Element {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pipelineState, setPipelineState] = useState<PipelineState>('idle');
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   // Services (initialized lazily)
   const ttsService = useRef(new TTSService());
@@ -469,6 +470,8 @@ export default function App(): React.JSX.Element {
         timestamp: new Date(),
       }]);
     }
+
+    setHistoryLoading(false);
   }, []);
 
   // Load dark mode from AsyncStorage immediately (before biometric unlock)
@@ -1221,6 +1224,7 @@ export default function App(): React.JSX.Element {
           messages={messages}
           isDark={isDark}
           onToggleDarkMode={handleToggleDarkMode}
+          historyLoading={historyLoading}
         />
       </SafeAreaProvider>
     </View>

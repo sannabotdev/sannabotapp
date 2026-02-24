@@ -19,6 +19,7 @@ import { SchedulerTool } from '../tools/scheduler-tool';
 import { NotificationListenerTool } from '../tools/notification-listener-tool';
 import { AccessibilityTool } from '../tools/accessibility-tool';
 import { FileStorageTool } from '../tools/file-storage-tool';
+import { BeepTool } from '../tools/beep-tool';
 
 export interface CreateToolRegistryOptions {
   credentialManager: CredentialManager;
@@ -61,6 +62,7 @@ export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistr
   registry.register(new NotificationListenerTool());
   registry.register(new AccessibilityTool());
   registry.register(new FileStorageTool());
+  registry.register(new BeepTool());
 
   return registry;
 }

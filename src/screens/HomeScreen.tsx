@@ -37,6 +37,7 @@ interface HomeScreenProps {
   messages: Message[];
   isDark: boolean;
   onToggleDarkMode: () => void;
+  historyLoading?: boolean;
 }
 
 const STATE_COLORS: Record<PipelineState, string> = {
@@ -65,14 +66,15 @@ export function HomeScreen({
   messages,
   isDark,
   onToggleDarkMode,
+  historyLoading,
 }: HomeScreenProps): React.JSX.Element {
   const scrollRef = useRef<ScrollView>(null);
   const isBusy = pipelineState !== 'idle';
   const [debugVisible, setDebugVisible] = useState(false);
 
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+    scrollRef.current?.scrollToEnd({ animated: !historyLoading });
+  }, [messages, historyLoading]);
 
   // Keep screen on while in driving mode so the user never has to unlock
   useEffect(() => {
@@ -175,12 +177,17 @@ export function HomeScreen({
               ref={scrollRef}
               style={{ flex: 1 }}
               contentContainerStyle={
-                messages.length === 0
+                messages.length === 0 && !historyLoading
                   ? { padding: 12, gap: 10, flex: 1 }
                   : { padding: 12, gap: 10, paddingBottom: 8 }
               }
               showsVerticalScrollIndicator={false}>
-              {messages.length === 0 ? (
+              {historyLoading ? (
+                <View className="flex-1 items-center justify-center gap-2 py-8">
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text className="text-label-secondary text-sm">{t('home.loadingHistory')}</Text>
+                </View>
+              ) : messages.length === 0 ? (
                 <View className="flex-1 items-center justify-center gap-2">
                   <Text className="text-label-secondary text-sm text-center">
                     {t('home.driving.tapMic')}
@@ -207,14 +214,20 @@ export function HomeScreen({
             ref={scrollRef}
             className="flex-1"
             contentContainerStyle={
-              messages.length === 0
+              messages.length === 0 && !historyLoading
                 ? { padding: 16, gap: 12, paddingBottom: 8, flex: 1 }
                 : { padding: 16, gap: 12, paddingBottom: 8 }
             }
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
 
-            {messages.length === 0 ? (
+            {historyLoading ? (
+              <View className="flex-1 items-center justify-center py-16 gap-3">
+                <SannaAvatar size={96} />
+                <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 12 }} />
+                <Text className="text-label-secondary text-sm">{t('home.loadingHistory')}</Text>
+              </View>
+            ) : messages.length === 0 ? (
               <View className="flex-1 items-center justify-center py-16 gap-3">
                 <SannaAvatar size={96} />
                 <Text className="text-label-primary text-lg font-bold">{t('home.empty.title')}</Text>
@@ -480,7 +493,12 @@ function MessageBubble({
           {message.text}
         </Text>
       ) : (
-        <Markdown style={mdStyles}>{message.text}</Markdown>
+        // react-native-markdown-display underreports its height for bullet
+        // lists, so the timestamp overlaps the last line.  pb-5 adds enough
+        // internal padding to prevent that; mb-0 keeps external spacing tight.
+        <View className="pb-5 mb-0">
+          <Markdown style={mdStyles}>{message.text}</Markdown>
+        </View>
       )}
       <Text className="text-[10px] text-label-quaternary self-end">{time}</Text>
     </View>

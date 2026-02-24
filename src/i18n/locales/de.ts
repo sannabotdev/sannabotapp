@@ -39,6 +39,7 @@ const de = {
   'home.driving.micOn': 'Mikrofon an',
   'home.driving.tapMic': 'Tippe auf Mikrofon um zu sprechen',
   'home.thinking': 'Sanna denkt…',
+  'home.loadingHistory': 'Gespräch wird geladen…',
 
   'home.input.placeholder': 'Nachricht eingeben…',
 

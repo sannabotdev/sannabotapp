@@ -186,6 +186,7 @@ export class DeviceTool implements Tool {
 
   private getTime(): ToolResult {
     const now = new Date();
+    const nowMs = now.getTime();
     const timeStr = now.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
     const dateStr = now.toLocaleDateString('de-AT', {
       weekday: 'long',
@@ -199,7 +200,9 @@ export class DeviceTool implements Tool {
     // If the user explicitly asks for the time, the LLM should use the tts tool.
     // This prevents the time from being auto-spoken as an intermediate step in driving mode.
     return successResult(
-      `Zeit: ${timeStr}, Datum: ${dateStr}, ISO-Datum: ${isoDate}, Heute ist der ${now.getDate()}. (${isoDate})`,
+      `Zeit: ${timeStr}, Datum: ${dateStr}, ISO-Datum: ${isoDate}, ` +
+      `Heute ist der ${now.getDate()}. (${isoDate}), ` +
+      `now_ms: ${nowMs} (Unix-Timestamp in Millisekunden – für scheduler trigger_at_ms: einfach now_ms + gewünschte Dauer in ms rechnen)`,
     );
   }
 

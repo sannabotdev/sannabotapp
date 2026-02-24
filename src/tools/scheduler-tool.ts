@@ -52,11 +52,13 @@ export class SchedulerTool implements Tool {
 
   description(): string {
     return [
-      'Schedule and manage time-based tasks.',
+      'Schedule and manage time-based tasks (minimum 1 minute in the future).',
       'Each scheduled task is executed at the specified time by a sub-agent (mini AI)',
       'that can use any available tools (send SMS, HTTP requests, TTS, etc.).',
       'Supports one-time and recurring schedules (interval, daily, weekly).',
       'Actions: create, list, get, update, delete, enable, disable.',
+      'IMPORTANT: Schedule IDs are internal – NEVER show them to the user.',
+      'When reporting schedules to the user, describe them by their instruction and time.',
     ].join(' ');
   }
 
@@ -142,9 +144,17 @@ export class SchedulerTool implements Tool {
     }
 
     const now = Date.now();
+    const MIN_LEAD_TIME_MS = 60_000; // 1 minute minimum
     if (triggerAtMs <= now) {
       return errorResult(
         `Trigger time is in the past. Current: ${now}, Provided: ${triggerAtMs}`,
+      );
+    }
+    if (triggerAtMs - now < MIN_LEAD_TIME_MS) {
+      return errorResult(
+        `Trigger time must be at least 1 minute in the future. ` +
+        `Provided: ${triggerAtMs} (${Math.round((triggerAtMs - now) / 1000)}s from now). ` +
+        `For immediate alerts use the beep tool instead.`,
       );
     }
 
@@ -342,12 +352,16 @@ export class SchedulerTool implements Tool {
 
   // ── Formatting Helpers ─────────────────────────────────────────────────
 
+  /**
+   * Full detail for LLM context (includes internal ID for update/delete).
+   * NOT shown to the user directly.
+   */
   private formatScheduleDetail(s: Schedule): string {
     const lines: string[] = [
       `ID: ${s.id}`,
       `Instruction: "${s.instruction}"`,
       `Next execution: ${this.formatDate(s.triggerAtMs)}`,
-      `Status: ${s.enabled ? '✅ Active' : '⏸️ Disabled'}`,
+      `Status: ${s.enabled ? 'active' : 'disabled'}`,
       `Recurrence: ${this.formatRecurrence(s.recurrence)}`,
       `Created: ${this.formatDate(s.createdAt)}`,
     ];
@@ -357,6 +371,9 @@ export class SchedulerTool implements Tool {
     return lines.join('\n');
   }
 
+  /**
+   * Short summary for user-facing output (no IDs).
+   */
   private formatScheduleShort(s: Schedule): string {
     const time = new Date(s.triggerAtMs).toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -366,6 +383,10 @@ export class SchedulerTool implements Tool {
     return `"${s.instruction}" at ${time} (${recurrence})`;
   }
 
+  /**
+   * List item for LLM context (includes ID so the LLM can refer to it
+   * in update/delete calls, but the LLM should NOT relay the ID to the user).
+   */
   private formatScheduleListItem(s: Schedule): string {
     const status = s.enabled ? '✅' : '⏸️';
     const time = this.formatDate(s.triggerAtMs);

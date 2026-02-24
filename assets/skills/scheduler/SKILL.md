@@ -9,9 +9,11 @@ permissions:
 ---
 # Scheduler Skill
 
-Schedule tasks for the future. At the scheduled time, a sub-agent (mini AI) runs in the background and executes the stored instruction with all available tools.
+Schedule tasks for the future (minimum 1 minute ahead). At the scheduled time, a sub-agent (mini AI) runs in the background and executes the stored instruction with all available tools.
 
 **Examples**: Send SMS at a scheduled time, reminders, recurring queries, repeating tasks.
+
+**NOT suitable for**: Short timers under 1 minute (use the `beep` tool directly instead).
 
 ## Tool: scheduler
 
@@ -26,7 +28,7 @@ Schedule tasks for the future. At the scheduled time, a sub-agent (mini AI) runs
 }
 ```
 
-The `instruction` is the command the sub-agent will execute. Write it as if you were giving Sanna the command directly. The sub-agent has access to all tools (SMS, HTTP, TTS, Intent, etc.).
+The `instruction` is the command the sub-agent will execute. Write it as if you were giving Sanna the command directly. The sub-agent has access to all tools (SMS, HTTP, TTS, beep, Intent, etc.).
 
 **IMPORTANT**: The instruction must contain everything the sub-agent needs. It has no context of the current conversation. For example, include the phone number directly rather than "Peter's number".
 
@@ -132,32 +134,31 @@ Only the specified fields are changed; the rest remains the same.
 
 ## Time calculation
 
-**IMPORTANT**: `trigger_at_ms` is a Unix timestamp in **milliseconds**.
+**IMPORTANT**: `trigger_at_ms` is a Unix timestamp in **milliseconds**. The trigger must be **at least 1 minute** in the future.
 
 ### Workflow for time calculation
 
-1. Get current time with `device` tool (`get_time`)
-2. Calculate the desired point in time
-3. Provide as millisecond timestamp
+1. Get current time with `device` tool (`get_time`) — this returns `now_ms` (Unix timestamp in ms)
+2. For relative times: simply compute `now_ms + offset_in_ms`
+3. For absolute times: compute offset from `now_ms` using the returned local time
 
-### Examples
+### Examples (using now_ms from device get_time)
 
-- "in 3 minutes": `now + 3 * 60 * 1000`
-- "in an hour": `now + 60 * 60 * 1000`
-- "at 2:00 PM": current date + 14:00 in Europe/Vienna
-- "tomorrow at 9": tomorrow's date + 09:00
+- "in 5 minutes": `now_ms + 5 * 60 * 1000`
+- "in an hour": `now_ms + 60 * 60 * 1000`
+- "at 2:00 PM today": compute difference between 14:00 and current local time, then `now_ms + difference_ms`
+- "tomorrow at 9": compute difference to next 09:00, then `now_ms + difference_ms`
 
-### Time zones
-
-Central Europe: Europe/Vienna (UTC+1 winter, UTC+2 summer)
+**CRITICAL**: Always use the `now_ms` value from the `device` tool response for calculations. Do NOT try to convert local time strings to Unix timestamps manually — this causes timezone errors.
 
 ## Writing instructions
 
 The sub-agent is a standalone agent with no conversation context. The instruction must be self-explanatory:
 
 **Good**:
-- `"Send an SMS to +4366012345678 with the text: I'll be there in 10 minutes"`
 - `"Speak via TTS: Attention, the roast needs to come out of the oven!"`
+- `"Use the beep tool to play an alarm tone (tone: alarm, count: 5), then speak via TTS: Timer finished!"`
+- `"Send an SMS to +4366012345678 with the text: I'll be there in 10 minutes"`
 - `"Fetch the Google Calendar events and read the next 3 appointments via TTS"`
 
 **Bad**:
@@ -173,9 +174,10 @@ For contacts: Look up the number first with the `query` tool and include it dire
 1. `device`: `get_time` → current time
 2. Calculate: `now + 5 * 60 * 1000`
 3. `scheduler`: `create` with:
-   - `instruction`: `"Speak via TTS: Attention! The roast needs to come out of the oven!"`
+   - `instruction`: `"Use the beep tool (tone: alarm, count: 5). Then speak via TTS: The roast needs to come out of the oven!"`
    - `trigger_at_ms`: calculated timestamp
    - `recurrence_type`: `"once"`
+4. Confirm to the user: "I'll remind you in 5 minutes."
 
 ### "Send an SMS to Peter at 2 PM: on my way"
 
@@ -200,7 +202,7 @@ For contacts: Look up the number first with the `query` tool and include it dire
 ### "What do I have scheduled?"
 
 1. `scheduler`: `list`
-2. Report results to user
+2. Report results to user (describe by instruction and time, NOT by ID)
 
 ### "Delete the alarm / reminder"
 
@@ -212,11 +214,13 @@ For contacts: Look up the number first with the `query` tool and include it dire
 1. `scheduler`: `list` → find the schedule
 2. `scheduler`: `disable` with the ID
 
-## Notes
+## Important rules
 
-- Schedules survive app restarts and device reboots
-- The sub-agent has the same tools as the main app (except the scheduler itself)
-- For reminders: always use `tts` in the instruction so the user can hear it
-- SMS instructions require the phone number (not the contact name)
-- Intervals under 1 minute are not allowed
-- The app must have been launched at least once for schedules to work
+- **Minimum 1 minute**: The scheduler only works for tasks at least 1 minute in the future. For immediate sounds, use the `beep` tool directly.
+- **Never show IDs**: Schedule IDs are internal. When talking to the user, describe schedules by their task and time (e.g. "your roast reminder at 3:15 PM"), never by ID.
+- **Reminders**: Use `beep` + `tts` in the instruction so the user hears both a tone and the message.
+- Schedules survive app restarts and device reboots.
+- The sub-agent has the same tools as the main app (except the scheduler itself).
+- SMS instructions require the phone number (not the contact name).
+- Intervals under 1 minute are not allowed.
+- The app must have been launched at least once for schedules to work.

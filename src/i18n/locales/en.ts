@@ -39,6 +39,7 @@ const en = {
   'home.driving.micOn': 'Microphone on',
   'home.driving.tapMic': 'Tap the microphone to speak',
   'home.thinking': 'Sanna is thinking…',
+  'home.loadingHistory': 'Loading conversation…',
 
   'home.input.placeholder': 'Type a message…',
 

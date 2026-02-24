@@ -1,9 +1,12 @@
 package com.sannabot.native
 
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import kotlinx.coroutines.*
 import java.util.Locale
 
 /**
@@ -148,6 +151,48 @@ class TTSModule(reactContext: ReactApplicationContext) :
     fun setSpeechRate(rate: Float, promise: Promise) {
         tts?.setSpeechRate(rate)
         promise.resolve("ok")
+    }
+
+    /**
+     * Play a beep / alert tone.
+     *
+     * @param toneType  Android ToneGenerator tone constant (default: TONE_PROP_BEEP = 24)
+     *                  Common values:
+     *                    24 = TONE_PROP_BEEP  (short beep)
+     *                    25 = TONE_PROP_ACK   (acknowledgement double-beep)
+     *                    27 = TONE_PROP_PROMPT (attention prompt)
+     * @param durationMs  How long the tone plays in ms (default: 500)
+     * @param count       Number of beeps to play (default: 1, with 300ms pause between)
+     */
+    @ReactMethod
+    fun playBeep(toneType: Int, durationMs: Int, count: Int, promise: Promise) {
+        val type = if (toneType >= 0) toneType else ToneGenerator.TONE_PROP_BEEP
+        val duration = if (durationMs > 0) durationMs else 500
+        val repeats = if (count > 0) count.coerceAtMost(10) else 1
+        val pauseMs = 300L
+
+        CoroutineScope(Dispatchers.IO).launch {
+            var generator: ToneGenerator? = null
+            try {
+                generator = ToneGenerator(AudioManager.STREAM_ALARM, 100)
+                for (i in 0 until repeats) {
+                    generator.startTone(type, duration)
+                    delay(duration.toLong())
+                    if (i < repeats - 1) {
+                        delay(pauseMs)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    promise.resolve("ok")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    promise.reject("BEEP_ERROR", e.message ?: "Failed to play beep", e)
+                }
+            } finally {
+                generator?.release()
+            }
+        }
     }
 
     /**
