@@ -93,13 +93,14 @@
         android:enabled="true"
         android:exported="false" />
 
-      <!-- Re-schedule alarms after device reboot -->
+      <!-- Re-schedule alarms after device reboot or app update -->
       <receiver
         android:name=".native.BootReceiver"
         android:enabled="true"
         android:exported="true">
         <intent-filter>
           <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
         </intent-filter>
       </receiver>
 

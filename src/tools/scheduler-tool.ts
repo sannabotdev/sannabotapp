@@ -52,11 +52,11 @@ export class SchedulerTool implements Tool {
 
   description(): string {
     return [
-      'Zeitgesteuerte Aufgaben planen und verwalten.',
-      'Jede geplante Aufgabe wird zu dem Zeitpunkt von einem Sub-Agenten (Mini-KI) ausgeführt,',
-      'der beliebige Tools (SMS senden, HTTP-Anfragen, TTS, etc.) nutzen kann.',
-      'Unterstützt einmalige und wiederkehrende Zeitpläne (Intervall, täglich, wöchentlich).',
-      'Aktionen: create, list, get, update, delete, enable, disable.',
+      'Schedule and manage time-based tasks.',
+      'Each scheduled task is executed at the specified time by a sub-agent (mini AI)',
+      'that can use any available tools (send SMS, HTTP requests, TTS, etc.).',
+      'Supports one-time and recurring schedules (interval, daily, weekly).',
+      'Actions: create, list, get, update, delete, enable, disable.',
     ].join(' ');
   }
 
@@ -67,37 +67,37 @@ export class SchedulerTool implements Tool {
         action: {
           type: 'string',
           enum: ['create', 'list', 'get', 'update', 'delete', 'enable', 'disable'],
-          description: 'Aktion: create (erstellen), list (alle anzeigen), get (einzeln), update (ändern), delete (löschen), enable (aktivieren), disable (deaktivieren)',
+          description: 'Action: create, list (show all), get (single), update, delete, enable, disable',
         },
         schedule_id: {
           type: 'string',
-          description: 'Schedule-ID (für get/update/delete/enable/disable)',
+          description: 'Schedule ID (required for get/update/delete/enable/disable)',
         },
         instruction: {
           type: 'string',
-          description: 'Natürlichsprachliche Anweisung für den Sub-Agenten. Z.B. "Sende eine SMS an +4366012345678 mit dem Text: Bin unterwegs"',
+          description: 'Natural language instruction for the sub-agent. E.g. "Send an SMS to +4366012345678 with the text: On my way"',
         },
         trigger_at_ms: {
           type: 'number',
-          description: 'Nächster Ausführungszeitpunkt als Unix-Timestamp in Millisekunden',
+          description: 'Next execution time as Unix timestamp in milliseconds',
         },
         recurrence_type: {
           type: 'string',
           enum: ['once', 'interval', 'daily', 'weekly'],
-          description: 'Wiederholungstyp: once (einmalig), interval (alle X ms), daily (täglich), weekly (wöchentlich)',
+          description: 'Recurrence type: once (single), interval (every X ms), daily, weekly',
         },
         recurrence_interval_ms: {
           type: 'number',
-          description: 'Für interval: Wiederholungsintervall in Millisekunden',
+          description: 'For interval: repeat interval in milliseconds',
         },
         recurrence_time: {
           type: 'string',
-          description: 'Für daily/weekly: Uhrzeit als "HH:mm" (24h, z.B. "14:00")',
+          description: 'For daily/weekly: time of day as "HH:mm" (24h, e.g. "14:00")',
         },
         recurrence_days_of_week: {
           type: 'array',
           items: { type: 'number' },
-          description: 'Für weekly: Wochentage (1=Mo, 2=Di, 3=Mi, 4=Do, 5=Fr, 6=Sa, 7=So)',
+          description: 'For weekly: days of week (1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun)',
         },
       },
       required: ['action'],
@@ -123,7 +123,7 @@ export class SchedulerTool implements Tool {
       case 'disable':
         return this.toggleSchedule(args, false);
       default:
-        return errorResult(`Unbekannte Aktion: ${action}`);
+        return errorResult(`Unknown action: ${action}`);
     }
   }
 
@@ -135,16 +135,16 @@ export class SchedulerTool implements Tool {
     const recurrenceType = (args.recurrence_type as ScheduleRecurrence['type']) ?? 'once';
 
     if (!instruction) {
-      return errorResult('instruction Parameter fehlt – was soll der Sub-Agent tun?');
+      return errorResult('Missing instruction parameter – what should the sub-agent do?');
     }
     if (!triggerAtMs) {
-      return errorResult('trigger_at_ms Parameter fehlt – wann soll es ausgeführt werden?');
+      return errorResult('Missing trigger_at_ms parameter – when should it be executed?');
     }
 
     const now = Date.now();
     if (triggerAtMs <= now) {
       return errorResult(
-        `Zeitpunkt liegt in der Vergangenheit. Aktuell: ${now}, Angegeben: ${triggerAtMs}`,
+        `Trigger time is in the past. Current: ${now}, Provided: ${triggerAtMs}`,
       );
     }
 
@@ -155,7 +155,7 @@ export class SchedulerTool implements Tool {
     if (recurrenceType === 'interval') {
       const intervalMs = args.recurrence_interval_ms as number;
       if (!intervalMs || intervalMs < 60_000) {
-        return errorResult('recurrence_interval_ms fehlt oder zu klein (min. 60000 ms = 1 Minute)');
+        return errorResult('recurrence_interval_ms missing or too small (min. 60000 ms = 1 minute)');
       }
       recurrence.intervalMs = intervalMs;
     }
@@ -163,7 +163,7 @@ export class SchedulerTool implements Tool {
     if (recurrenceType === 'daily' || recurrenceType === 'weekly') {
       const time = args.recurrence_time as string;
       if (!time || !/^\d{2}:\d{2}$/.test(time)) {
-        return errorResult('recurrence_time fehlt oder ungültiges Format (erwartet: "HH:mm")');
+        return errorResult('recurrence_time missing or invalid format (expected: "HH:mm")');
       }
       recurrence.time = time;
     }
@@ -171,7 +171,7 @@ export class SchedulerTool implements Tool {
     if (recurrenceType === 'weekly') {
       const days = args.recurrence_days_of_week as number[];
       if (!days || days.length === 0) {
-        return errorResult('recurrence_days_of_week fehlt (z.B. [1,3,5] für Mo/Mi/Fr)');
+        return errorResult('recurrence_days_of_week missing (e.g. [1,3,5] for Mon/Wed/Fri)');
       }
       recurrence.daysOfWeek = days;
     }
@@ -191,12 +191,12 @@ export class SchedulerTool implements Tool {
     try {
       await SchedulerModule.setSchedule(JSON.stringify(schedule));
       return successResult(
-        `Zeitplan erstellt: ${this.formatScheduleDetail(schedule)}`,
-        `Zeitplan erstellt: ${this.formatScheduleShort(schedule)}`,
+        `Schedule created: ${this.formatScheduleDetail(schedule)}`,
+        `Schedule created: ${this.formatScheduleShort(schedule)}`,
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      return errorResult(`Erstellen fehlgeschlagen: ${errMsg}`);
+      return errorResult(`Failed to create schedule: ${errMsg}`);
     }
   }
 
@@ -209,19 +209,19 @@ export class SchedulerTool implements Tool {
 
       if (schedules.length === 0) {
         return successResult(
-          'Keine Zeitpläne vorhanden.',
-          'Du hast keine geplanten Aufgaben',
+          'No schedules found.',
+          'You have no scheduled tasks',
         );
       }
 
       const lines = schedules.map(s => this.formatScheduleListItem(s));
       return successResult(
-        `${schedules.length} Zeitplan/Zeitpläne:\n${lines.join('\n')}`,
-        `Du hast ${schedules.length} geplante Aufgaben`,
+        `${schedules.length} schedule(s):\n${lines.join('\n')}`,
+        `You have ${schedules.length} scheduled task(s)`,
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      return errorResult(`Auflisten fehlgeschlagen: ${errMsg}`);
+      return errorResult(`Failed to list schedules: ${errMsg}`);
     }
   }
 
@@ -230,19 +230,19 @@ export class SchedulerTool implements Tool {
   private async getSchedule(args: Record<string, unknown>): Promise<ToolResult> {
     const id = args.schedule_id as string;
     if (!id) {
-      return errorResult('schedule_id Parameter fehlt');
+      return errorResult('Missing schedule_id parameter');
     }
 
     try {
       const json = await SchedulerModule.getSchedule(id);
       if (!json) {
-        return errorResult(`Zeitplan "${id}" nicht gefunden`);
+        return errorResult(`Schedule "${id}" not found`);
       }
       const schedule = JSON.parse(json) as Schedule;
       return successResult(this.formatScheduleDetail(schedule));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      return errorResult(`Abrufen fehlgeschlagen: ${errMsg}`);
+      return errorResult(`Failed to get schedule: ${errMsg}`);
     }
   }
 
@@ -251,13 +251,13 @@ export class SchedulerTool implements Tool {
   private async updateSchedule(args: Record<string, unknown>): Promise<ToolResult> {
     const id = args.schedule_id as string;
     if (!id) {
-      return errorResult('schedule_id Parameter fehlt');
+      return errorResult('Missing schedule_id parameter');
     }
 
     try {
       const json = await SchedulerModule.getSchedule(id);
       if (!json) {
-        return errorResult(`Zeitplan "${id}" nicht gefunden`);
+        return errorResult(`Schedule "${id}" not found`);
       }
       const schedule = JSON.parse(json) as Schedule;
 
@@ -283,12 +283,12 @@ export class SchedulerTool implements Tool {
 
       await SchedulerModule.setSchedule(JSON.stringify(schedule));
       return successResult(
-        `Zeitplan aktualisiert: ${this.formatScheduleDetail(schedule)}`,
-        'Zeitplan aktualisiert',
+        `Schedule updated: ${this.formatScheduleDetail(schedule)}`,
+        'Schedule updated',
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      return errorResult(`Aktualisieren fehlgeschlagen: ${errMsg}`);
+      return errorResult(`Failed to update schedule: ${errMsg}`);
     }
   }
 
@@ -297,18 +297,18 @@ export class SchedulerTool implements Tool {
   private async deleteSchedule(args: Record<string, unknown>): Promise<ToolResult> {
     const id = args.schedule_id as string;
     if (!id) {
-      return errorResult('schedule_id Parameter fehlt');
+      return errorResult('Missing schedule_id parameter');
     }
 
     try {
       await SchedulerModule.removeSchedule(id);
       return successResult(
-        `Zeitplan "${id}" gelöscht.`,
-        'Zeitplan gelöscht',
+        `Schedule "${id}" deleted.`,
+        'Schedule deleted',
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      return errorResult(`Löschen fehlgeschlagen: ${errMsg}`);
+      return errorResult(`Failed to delete schedule: ${errMsg}`);
     }
   }
 
@@ -317,26 +317,26 @@ export class SchedulerTool implements Tool {
   private async toggleSchedule(args: Record<string, unknown>, enabled: boolean): Promise<ToolResult> {
     const id = args.schedule_id as string;
     if (!id) {
-      return errorResult('schedule_id Parameter fehlt');
+      return errorResult('Missing schedule_id parameter');
     }
 
     try {
       const json = await SchedulerModule.getSchedule(id);
       if (!json) {
-        return errorResult(`Zeitplan "${id}" nicht gefunden`);
+        return errorResult(`Schedule "${id}" not found`);
       }
       const schedule = JSON.parse(json) as Schedule;
       schedule.enabled = enabled;
 
       await SchedulerModule.setSchedule(JSON.stringify(schedule));
-      const label = enabled ? 'aktiviert' : 'deaktiviert';
+      const label = enabled ? 'enabled' : 'disabled';
       return successResult(
-        `Zeitplan "${id}" ${label}.`,
-        `Zeitplan ${label}`,
+        `Schedule "${id}" ${label}.`,
+        `Schedule ${label}`,
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      return errorResult(`${enabled ? 'Aktivieren' : 'Deaktivieren'} fehlgeschlagen: ${errMsg}`);
+      return errorResult(`Failed to ${enabled ? 'enable' : 'disable'} schedule: ${errMsg}`);
     }
   }
 
@@ -345,25 +345,25 @@ export class SchedulerTool implements Tool {
   private formatScheduleDetail(s: Schedule): string {
     const lines: string[] = [
       `ID: ${s.id}`,
-      `Anweisung: "${s.instruction}"`,
-      `Nächste Ausführung: ${this.formatDate(s.triggerAtMs)}`,
-      `Status: ${s.enabled ? '✅ Aktiv' : '⏸️ Deaktiviert'}`,
-      `Wiederholung: ${this.formatRecurrence(s.recurrence)}`,
-      `Erstellt: ${this.formatDate(s.createdAt)}`,
+      `Instruction: "${s.instruction}"`,
+      `Next execution: ${this.formatDate(s.triggerAtMs)}`,
+      `Status: ${s.enabled ? '✅ Active' : '⏸️ Disabled'}`,
+      `Recurrence: ${this.formatRecurrence(s.recurrence)}`,
+      `Created: ${this.formatDate(s.createdAt)}`,
     ];
     if (s.lastExecutedAt) {
-      lines.push(`Letzte Ausführung: ${this.formatDate(s.lastExecutedAt)}`);
+      lines.push(`Last executed: ${this.formatDate(s.lastExecutedAt)}`);
     }
     return lines.join('\n');
   }
 
   private formatScheduleShort(s: Schedule): string {
-    const time = new Date(s.triggerAtMs).toLocaleTimeString('de-AT', {
+    const time = new Date(s.triggerAtMs).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const recurrence = s.recurrence.type === 'once' ? 'einmalig' : this.formatRecurrence(s.recurrence);
-    return `"${s.instruction}" um ${time} (${recurrence})`;
+    const recurrence = s.recurrence.type === 'once' ? 'one-time' : this.formatRecurrence(s.recurrence);
+    return `"${s.instruction}" at ${time} (${recurrence})`;
   }
 
   private formatScheduleListItem(s: Schedule): string {
@@ -376,20 +376,20 @@ export class SchedulerTool implements Tool {
   private formatRecurrence(r: ScheduleRecurrence): string {
     switch (r.type) {
       case 'once':
-        return 'einmalig';
+        return 'one-time';
       case 'interval': {
         const minutes = Math.round((r.intervalMs ?? 0) / 60_000);
-        if (minutes < 60) return `alle ${minutes} Minuten`;
+        if (minutes < 60) return `every ${minutes} minutes`;
         const hours = Math.floor(minutes / 60);
         const mins = minutes % 60;
-        return mins > 0 ? `alle ${hours}h ${mins}min` : `alle ${hours} Stunden`;
+        return mins > 0 ? `every ${hours}h ${mins}min` : `every ${hours} hours`;
       }
       case 'daily':
-        return `täglich um ${r.time ?? '?'}`;
+        return `daily at ${r.time ?? '?'}`;
       case 'weekly': {
-        const dayNames = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+        const dayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const days = (r.daysOfWeek ?? []).map(d => dayNames[d] ?? '?').join(', ');
-        return `wöchentlich ${days} um ${r.time ?? '?'}`;
+        return `weekly ${days} at ${r.time ?? '?'}`;
       }
       default:
         return r.type;
@@ -398,8 +398,8 @@ export class SchedulerTool implements Tool {
 
   private formatDate(ms: number): string {
     const d = new Date(ms);
-    const time = d.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
-    const date = d.toLocaleDateString('de-AT', { weekday: 'short', day: 'numeric', month: 'short' });
+    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const date = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
     return `${date} ${time}`;
   }
 }

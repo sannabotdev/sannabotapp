@@ -31,4 +31,9 @@
        FullBackupContent lint error. -->
   <include domain="sharedpref" path="RCTAsyncLocalStorage_V1.xml"/>
 
+  <!-- Scheduler: persist scheduled tasks across reinstallation.
+       Contains schedule definitions (instructions, trigger times, recurrence)
+       but no sensitive data (API keys etc.). -->
+  <include domain="sharedpref" path="sanna_scheduler.xml"/>
+
 </full-backup-content>
