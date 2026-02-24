@@ -127,17 +127,17 @@ const LIGHT_THEME = vars({
 /** Resolve system locale to BCP-47 format (e.g. 'de-AT', 'en-US') */
 function getSystemLocale(): string {
   if (Platform.OS === 'android') {
-    // Android: use Intl API if available, fallback to 'de-AT'
+    // Android: use Intl API if available, fallback to 'en-US'
     try {
       const locale = Intl.DateTimeFormat().resolvedOptions().locale;
       // Convert underscore to dash (e.g. 'de_AT' -> 'de-AT')
       return locale.replace('_', '-');
     } catch {
-      return 'de-AT';
+      return 'en-US';
     }
   }
   // iOS fallback
-  return 'de-AT';
+  return 'en-US';
 }
 
 /** App preferences (stored as JSON blob in Keychain) */

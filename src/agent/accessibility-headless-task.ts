@@ -202,7 +202,7 @@ export default async function accessibilityHeadlessTask(
 
   const model = provider.getDefaultModel();
   const drivingMode = config.drivingMode ?? false;
-  const language = config.language ?? 'de-AT';
+  const language = config.language ?? 'en-US';
 
   // Shared context passed to failFormatted for every subsequent error
   const ctx = { provider, model, packageName, goal, drivingMode, language };

@@ -26,7 +26,7 @@ export class STTService {
    * @param language BCP-47 language tag (e.g. 'de-AT', 'en-US')
    * @param mode 'auto' (cloud first, fallback on-device), 'offline' (on-device only), 'online' (cloud only)
    */
-  async listen(language = 'de-AT', mode: 'auto' | 'offline' | 'online' = 'auto'): Promise<string> {
+  async listen(language = 'en-US', mode: 'auto' | 'offline' | 'online' = 'auto'): Promise<string> {
     return new Promise((resolve, reject) => {
       let lastResult = '';
       let resolved = false;

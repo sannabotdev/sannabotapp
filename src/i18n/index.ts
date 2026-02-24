@@ -38,7 +38,7 @@ function resolveSystemLocale(): string {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale;
     return locale.replace('_', '-');
   } catch {
-    return Platform.OS === 'android' ? 'de-AT' : 'en-US';
+    return 'en-US';
   }
 }
 

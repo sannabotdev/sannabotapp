@@ -27,7 +27,7 @@ export class TTSTool implements Tool {
         },
         language: {
           type: 'string',
-          description: 'Sprach-Tag (z.B. "de-AT", "de-DE", "en-US"). Standard: de-AT',
+          description: 'Sprach-Tag (z.B. "de-AT", "de-DE", "en-US"). Standard: en-US',
         },
       },
       required: ['text'],
@@ -36,7 +36,7 @@ export class TTSTool implements Tool {
 
   async execute(args: Record<string, unknown>): Promise<ToolResult> {
     const text = args.text as string;
-    const language = (args.language as string) ?? 'de-AT';
+    const language = (args.language as string) ?? 'en-US';
 
     if (!text) {
       return errorResult('text parameter is required');

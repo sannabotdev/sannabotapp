@@ -19,6 +19,29 @@ class TTSModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext),
     TextToSpeech.OnInitListener {
 
+    companion object {
+        private const val TAG = "TTSModule"
+
+        /** Map regional variants to main locale for TTS voice selection (same as SpeechModule) */
+        private val ON_DEVICE_LANGUAGE_MAP = mapOf(
+            "de_AT" to "de_DE",
+            "de_CH" to "de_DE",
+            "en_GB" to "en_US",
+            "en_AU" to "en_US",
+            "en_CA" to "en_US",
+            "en_NZ" to "en_US",
+            "en_IN" to "en_US",
+            "fr_BE" to "fr_FR",
+            "fr_CA" to "fr_FR",
+            "fr_CH" to "fr_FR",
+            "es_AR" to "es_ES",
+            "es_MX" to "es_ES",
+            "es_CO" to "es_ES",
+            "pt_BR" to "pt_PT",
+            "it_CH" to "it_IT",
+        )
+    }
+
     private var tts: TextToSpeech? = null
     private var isReady = false
     private var pendingSpeak: (() -> Unit)? = null
@@ -39,7 +62,7 @@ class TTSModule(reactContext: ReactApplicationContext) :
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             isReady = true
-            tts?.language = Locale.GERMAN
+            setLanguageWithFallback("en-US")
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {
                     sendEvent("tts_started", Arguments.createMap().apply {
@@ -87,7 +110,7 @@ class TTSModule(reactContext: ReactApplicationContext) :
         val doSpeak = {
             try {
                 language?.let {
-                    tts?.language = Locale.forLanguageTag(it)
+                    setLanguageWithFallback(it)
                 }
                 val result = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, uid)
                 if (result == TextToSpeech.SUCCESS) {
@@ -125,6 +148,52 @@ class TTSModule(reactContext: ReactApplicationContext) :
     fun setSpeechRate(rate: Float, promise: Promise) {
         tts?.setSpeechRate(rate)
         promise.resolve("ok")
+    }
+
+    /**
+     * Set TTS language with fallback chain (same strategy as SpeechModule):
+     * 1. Exact locale (e.g. de-AT)
+     * 2. Mapped locale (e.g. de-AT → de-DE via ON_DEVICE_LANGUAGE_MAP)
+     * 3. Base language (e.g. de)
+     * On each successful step, selectBestVoice() is called.
+     */
+    private fun setLanguageWithFallback(language: String) {
+        val normalized = language.replace("-", "_")
+        val candidates = listOfNotNull(
+            normalized,
+            ON_DEVICE_LANGUAGE_MAP[normalized],
+            normalized.substringBefore("_").takeIf { it != normalized },
+        ).distinct()
+
+        for (tag in candidates) {
+            val locale = Locale.forLanguageTag(tag.replace("_", "-"))
+            val result = tts?.setLanguage(locale)
+            if (result != TextToSpeech.LANG_MISSING_DATA &&
+                result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                android.util.Log.i(TAG, "TTS language set to: $tag (requested: $language)")
+                selectBestVoice(locale)
+                return
+            }
+            android.util.Log.w(TAG, "TTS locale not supported: $tag (result=$result)")
+        }
+        android.util.Log.w(TAG, "No supported TTS locale found for: $language")
+    }
+
+    /**
+     * Pick the highest-quality offline voice whose language matches the given locale.
+     */
+    private fun selectBestVoice(locale: Locale) {
+        val best = tts?.voices
+            ?.filter { voice ->
+                voice.locale.language == locale.language &&
+                !voice.isNetworkConnectionRequired
+            }
+            ?.maxByOrNull { it.quality }
+            ?: return
+
+        tts?.voice = best
+        android.util.Log.i(TAG, "Selected TTS voice: ${best.name} " +
+                "(quality=${best.quality}, locale=${best.locale})")
     }
 
     private fun sendEvent(eventName: String, params: WritableMap?) {

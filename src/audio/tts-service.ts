@@ -36,7 +36,7 @@ export class TTSService {
   }
 
   /** Speak text and wait for completion */
-  async speak(text: string, language = 'de-AT'): Promise<void> {
+  async speak(text: string, language = 'en-US'): Promise<void> {
     const utteranceId = `tts_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
     return new Promise((resolve, reject) => {
@@ -49,7 +49,7 @@ export class TTSService {
   }
 
   /** Speak text without waiting */
-  speakAsync(text: string, language = 'de-AT'): void {
+  speakAsync(text: string, language = 'en-US'): void {
     TTSModule.speak(text, language, null).catch(console.error);
   }
 
