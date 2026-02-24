@@ -3,6 +3,7 @@ name: scheduler
 category: productivity
 description: Schedule time-based tasks – a sub-agent executes any instruction in the background
 test_prompt: List all existing schedules
+exclusive_tool: scheduler
 permissions:
  - android.permission.SCHEDULE_EXACT_ALARM
 ---

@@ -3,6 +3,7 @@
  */
 import type { Tool, ToolResult } from '../tools/types';
 import type { ToolDefinition } from '../llm/types';
+import type { SkillLoader } from './skill-loader';
 import { toolToDefinition, errorResult } from '../tools/types';
 
 export class ToolRegistry {
@@ -11,6 +12,27 @@ export class ToolRegistry {
   /** Register a tool. Overwrites if same name exists. */
   register(tool: Tool): void {
     this.tools.set(tool.name(), tool);
+  }
+
+  /** Remove a tool by name. No-op if the tool is not registered. */
+  unregister(name: string): void {
+    this.tools.delete(name);
+  }
+
+  /**
+   * Remove tools that belong exclusively to disabled skills.
+   * Uses `SkillLoader.getDisabledExclusiveTools()` to determine which tools
+   * should be unavailable based on the current set of enabled skills.
+   *
+   * Call this **after** registering all tools and **before** using the registry.
+   */
+  removeDisabledSkillTools(
+    skillLoader: SkillLoader,
+    enabledSkillNames: string[],
+  ): void {
+    for (const name of skillLoader.getDisabledExclusiveTools(enabledSkillNames)) {
+      this.tools.delete(name);
+    }
   }
 
   /** Get a tool by name */

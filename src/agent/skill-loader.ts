@@ -22,6 +22,8 @@ export interface SkillFrontmatter {
   category?: string;
   test_prompt?: string;
   android_package?: string;
+  /** If set, this tool is exclusive to this skill and will be removed when the skill is disabled. */
+  exclusive_tool?: string;
   permissions?: string[];
   credentials?: CredentialRequirement[];
 }
@@ -34,6 +36,8 @@ export interface SkillInfo {
   content: string;
   testPrompt?: string;
   android_package?: string;
+  /** If set, this tool is exclusive to this skill and will be removed when the skill is disabled. */
+  exclusiveTool?: string;
   permissions: string[];
   credentials: CredentialRequirement[];
 }
@@ -128,6 +132,8 @@ export function parseFrontmatter(content: string): {
           frontmatter.android_package = cleanValue;
         } else if (key === 'category') {
           frontmatter.category = cleanValue;
+        } else if (key === 'exclusive_tool') {
+          frontmatter.exclusive_tool = cleanValue;
         }
       }
     }
@@ -190,6 +196,7 @@ export class SkillLoader {
         content: body,
         testPrompt: frontmatter.test_prompt,
         android_package: frontmatter.android_package,
+        exclusiveTool: frontmatter.exclusive_tool,
         permissions: frontmatter.permissions ?? [],
         credentials: frontmatter.credentials ?? [],
       };
@@ -229,6 +236,7 @@ export class SkillLoader {
       content: body,
       testPrompt: frontmatter.test_prompt,
       android_package: frontmatter.android_package,
+      exclusiveTool: frontmatter.exclusive_tool,
       permissions: frontmatter.permissions ?? [],
       credentials: frontmatter.credentials ?? [],
     };
@@ -293,6 +301,21 @@ export class SkillLoader {
     }
 
     return result;
+  }
+
+  /**
+   * Return tool names that should be removed from the registry because their
+   * owning skill is disabled.  Only considers skills with an `exclusive_tool`.
+   */
+  getDisabledExclusiveTools(enabledSkillNames: string[]): string[] {
+    const enabledSet = new Set(enabledSkillNames);
+    const disabled: string[] = [];
+    for (const skill of this.skills.values()) {
+      if (skill.exclusiveTool && !enabledSet.has(skill.name)) {
+        disabled.push(skill.exclusiveTool);
+      }
+    }
+    return disabled;
   }
 
   /**

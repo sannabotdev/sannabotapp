@@ -19,9 +19,9 @@ import { t, setLocale } from './src/i18n';
 import { SkillLoader } from './src/agent/skill-loader';
 import { DynamicSkillStore } from './src/agent/dynamic-skill-store';
 import { validateSkillContent, extractSkillName } from './src/agent/skill-validator';
-import { ToolRegistry } from './src/agent/tool-registry';
 import { ConversationPipeline } from './src/agent/conversation-pipeline';
 import type { PipelineState } from './src/agent/conversation-pipeline';
+import { createToolRegistry } from './src/agent/create-tool-registry';
 import { runSkillTest } from './src/agent/skill-test';
 import { ClaudeProvider } from './src/llm/claude-provider';
 import { OpenAIProvider } from './src/llm/openai-provider';
@@ -39,18 +39,6 @@ import {
   createNotificationEventEmitter,
   type NotificationData,
 } from './src/native/NotificationListenerModule';
-
-// Tools
-import { IntentTool } from './src/tools/intent-tool';
-import { TTSTool } from './src/tools/tts-tool';
-import { HttpTool } from './src/tools/http-tool';
-import { QueryTool } from './src/tools/query-tool';
-import { DeviceTool } from './src/tools/device-tool';
-import { SmsTool } from './src/tools/sms-tool';
-import { SchedulerTool } from './src/tools/scheduler-tool';
-import { NotificationListenerTool } from './src/tools/notification-listener-tool';
-import { AccessibilityTool } from './src/tools/accessibility-tool';
-import { FileStorageTool } from './src/tools/file-storage-tool';
 
 // Scheduler config persistence
 import SchedulerModule from './src/native/SchedulerModule';
@@ -647,18 +635,10 @@ export default function App(): React.JSX.Element {
         ? new ClaudeProvider(apiKey, selectedModel)
         : new OpenAIProvider(apiKey, selectedModel);
 
-    const toolRegistry = new ToolRegistry();
-    toolRegistry.register(new IntentTool());
-    // TTSTool is NOT registered in the interactive pipeline –
-    // TTS is handled directly by the pipeline (driving mode) or not at all (normal mode).
-    toolRegistry.register(new HttpTool(credentialManager.current));
-    toolRegistry.register(new QueryTool());
-    toolRegistry.register(new DeviceTool());
-    toolRegistry.register(new SmsTool());
-    toolRegistry.register(new SchedulerTool());
-    toolRegistry.register(new NotificationListenerTool());
-    toolRegistry.register(new AccessibilityTool());
-    toolRegistry.register(new FileStorageTool());
+    const toolRegistry = createToolRegistry({
+      credentialManager: credentialManager.current,
+    });
+    toolRegistry.removeDisabledSkillTools(skillLoader.current, enabledSkillNames);
 
     // Resolve 'system' → actual device locale before passing to pipeline.
     // The pipeline uses this for both TTS and the system-prompt language rule.
@@ -1087,17 +1067,10 @@ export default function App(): React.JSX.Element {
           ? new ClaudeProvider(apiKey, selectedModel)
           : new OpenAIProvider(apiKey, selectedModel);
 
-      const toolRegistry = new ToolRegistry();
-      toolRegistry.register(new IntentTool());
-      toolRegistry.register(new TTSTool());
-      toolRegistry.register(new HttpTool(credentialManager.current));
-      toolRegistry.register(new QueryTool());
-      toolRegistry.register(new DeviceTool());
-      toolRegistry.register(new SmsTool());
-      toolRegistry.register(new SchedulerTool());
-      toolRegistry.register(new NotificationListenerTool());
-      toolRegistry.register(new AccessibilityTool());
-      toolRegistry.register(new FileStorageTool());
+      const toolRegistry = createToolRegistry({
+        credentialManager: credentialManager.current,
+        includeTts: true,
+      });
 
       return await runSkillTest(
         skill,

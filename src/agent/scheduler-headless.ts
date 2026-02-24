@@ -14,22 +14,12 @@
  */
 import { NativeModules } from 'react-native';
 import { SkillLoader, registerSkillContent } from './skill-loader';
-import { ToolRegistry } from './tool-registry';
+import { createToolRegistry } from './create-tool-registry';
 import { runToolLoop } from './tool-loop';
 import { buildSystemPrompt } from './system-prompt';
 import { ClaudeProvider } from '../llm/claude-provider';
 import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider, Message } from '../llm/types';
-
-// Tools
-import { IntentTool } from '../tools/intent-tool';
-import { TTSTool } from '../tools/tts-tool';
-import { HttpTool } from '../tools/http-tool';
-import { QueryTool } from '../tools/query-tool';
-import { DeviceTool } from '../tools/device-tool';
-import { SmsTool } from '../tools/sms-tool';
-import { AccessibilityTool } from '../tools/accessibility-tool';
-import { FileStorageTool } from '../tools/file-storage-tool';
 
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
@@ -162,20 +152,16 @@ export default async function schedulerHeadlessTask(
       );
     }
 
-    const toolRegistry = new ToolRegistry();
-    toolRegistry.register(new IntentTool());
-    toolRegistry.register(new TTSTool());
-    toolRegistry.register(new HttpTool(credentialManager));
-    toolRegistry.register(new QueryTool());
-    toolRegistry.register(new DeviceTool());
-    toolRegistry.register(new SmsTool());
-    toolRegistry.register(new AccessibilityTool());
-    toolRegistry.register(new FileStorageTool());
-    // NOTE: We intentionally do NOT register SchedulerTool here
-    // to prevent the sub-agent from creating recursive schedules.
+    const skillLoader = new SkillLoader();
+
+    const toolRegistry = createToolRegistry({
+      credentialManager,
+      includeTts: true,
+      includeScheduler: false, // prevent recursive schedule creation
+    });
+    toolRegistry.removeDisabledSkillTools(skillLoader, config.enabledSkillNames);
 
     // 5. Build system prompt
-    const skillLoader = new SkillLoader();
     const systemPrompt = buildSystemPrompt({
       skillLoader,
       toolRegistry,
