@@ -144,7 +144,10 @@ export class SchedulerTool implements Tool {
     }
 
     const now = Date.now();
-    const MIN_LEAD_TIME_MS = 60_000; // 1 minute minimum
+    // 15 seconds hard minimum – accounts for LLM latency between timestamp
+    // calculation and validation.  The tool description still says "~1 minute"
+    // so the LLM targets 60 s+, but we don't reject if a few seconds were lost.
+    const MIN_LEAD_TIME_MS = 15_000;
     if (triggerAtMs <= now) {
       return errorResult(
         `Trigger time is in the past. Current: ${now}, Provided: ${triggerAtMs}`,
@@ -152,7 +155,7 @@ export class SchedulerTool implements Tool {
     }
     if (triggerAtMs - now < MIN_LEAD_TIME_MS) {
       return errorResult(
-        `Trigger time must be at least 1 minute in the future. ` +
+        `Trigger time must be at least 15 seconds in the future. ` +
         `Provided: ${triggerAtMs} (${Math.round((triggerAtMs - now) / 1000)}s from now). ` +
         `For immediate alerts use the beep tool instead.`,
       );
