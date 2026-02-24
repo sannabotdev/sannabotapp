@@ -94,15 +94,24 @@ export class ConversationPipeline {
   /**
    * Process a user utterance through the full pipeline:
    * text → system prompt + history → LLM tool loop → TTS response
+   *
+   * Options:
+   *   - silent: if true, the user text is NOT shown as a bubble in the UI
+   *             (used for system-injected messages like notifications)
    */
-  async processUtterance(userText: string): Promise<string> {
+  async processUtterance(
+    userText: string,
+    options?: { silent?: boolean },
+  ): Promise<string> {
     if (this.state !== 'idle') {
       return '';
     }
 
     try {
       this.setState('processing');
-      this.onTranscript?.('user', userText);
+      if (!options?.silent) {
+        this.onTranscript?.('user', userText);
+      }
       DebugLogger.logUserMessage(userText);
 
       // Build system prompt

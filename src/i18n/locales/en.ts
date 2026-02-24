@@ -55,6 +55,15 @@ const en = {
   'settings.section.skills': 'Skills',
   'settings.section.about': 'About',
 
+  // Data management
+  'settings.clearHistory.button': 'Clear Conversation History',
+  'settings.clearHistory.description': 'Deletes all messages from the chat and the LLM memory.',
+  'settings.clearHistory.confirm.title': 'Clear conversation?',
+  'settings.clearHistory.confirm.message': 'All messages and the conversation memory will be permanently deleted.',
+  'settings.clearHistory.confirm.cancel': 'Cancel',
+  'settings.clearHistory.confirm.confirm': 'Clear',
+  'settings.clearHistory.done': 'Conversation history cleared.',
+
   // Provider
   'settings.provider.claudeModel': 'Claude Model',
   'settings.provider.openaiModel': 'OpenAI Model',

@@ -20,6 +20,7 @@ import { SkillLoader } from './src/agent/skill-loader';
 import { DynamicSkillStore } from './src/agent/dynamic-skill-store';
 import { validateSkillContent, extractSkillName } from './src/agent/skill-validator';
 import { ConversationPipeline } from './src/agent/conversation-pipeline';
+import { DebugLogger } from './src/agent/debug-logger';
 import type { PipelineState } from './src/agent/conversation-pipeline';
 import { createToolRegistry } from './src/agent/create-tool-registry';
 import { runSkillTest } from './src/agent/skill-test';
@@ -848,8 +849,32 @@ export default function App(): React.JSX.Element {
     });
   }, []);
 
+  const handleClearHistory = useCallback(() => {
+    // 1. Clear UI bubbles
+    setMessages([]);
+    // 2. Clear persisted conversation history
+    ConversationStore.clearHistory().catch(() => {});
+    // 3. Clear LLM in-memory history
+    pipelineRef.current?.clearHistory();
+  }, []);
+
   const handleNotificationReceived = useCallback(
     async (notification: NotificationData) => {
+      // Log raw notification data from ListenerService for debugging
+      DebugLogger.add(
+        'info',
+        'NOTIF',
+        `${notification.packageName}: "${notification.title}"`,
+        [
+          `packageName: ${notification.packageName}`,
+          `title: ${notification.title}`,
+          `text: ${notification.text}`,
+          `sender: ${notification.sender}`,
+          `timestamp: ${notification.timestamp}`,
+          `key: ${notification.key}`,
+        ].join('\n'),
+      );
+
       // Only process if pipeline is idle
       if (pipelineState !== 'idle' || !pipelineRef.current) {
         return;
@@ -865,21 +890,43 @@ export default function App(): React.JSX.Element {
       };
       const appName = appAliases[notification.packageName] || notification.packageName;
 
-      // Build notification message
-      const sender = notification.sender ? ` from ${notification.sender}` : '';
+      // Build notification context (language-neutral data for the LLM).
+      // Field semantics differ by app type:
+      //   Email (Gmail): sender = sender name (from Kotlin fix), title = sender name, text = subject
+      //   Messaging:     sender = contact/group, title = contact/group, text = message content
+      const isEmail = appName === 'Email' || appName === 'Gmail';
+      const senderStr = notification.sender || notification.title || '';
+      const subject = isEmail ? (notification.text || '') : '';
+      const preview = isEmail ? '' : (notification.text || '');
       const content = notification.text || notification.title || '';
-      const notificationText = `New ${appName} notification${sender}: ${content}`;
+      const notificationPrompt = [
+        `[NOTIFICATION – automatic, not typed by the user]`,
+        `App: ${appName}`,
+        senderStr ? `Sender: ${senderStr}` : '',
+        subject ? `Subject: ${subject}` : '',
+        preview ? `Message: ${preview}` : '',
+        ``,
+        `Briefly announce this notification to the user and read it aloud using the tts tool.`,
+        `Respond in the user's configured language.`,
+        ``,
+        `IMPORTANT for follow-up questions:`,
+        `If the user asks for more details about THIS notification (e.g. "what is it about?",`,
+        `"read it to me", "worum geht es da?"), look up ONLY this specific item.`,
+        isEmail
+          ? `For this email, search with: from:${senderStr} subject:${subject} — do NOT fetch other emails.`
+          : `Refer to the sender/content above — do NOT fetch unrelated messages.`,
+      ].filter(Boolean).join('\n');
 
-      // Summarize and speak via pipeline
+      // Summarize and speak via pipeline (silent = no blue user bubble)
       try {
-        await pipelineRef.current.processUtterance(
-          `Summarize and read aloud: ${notificationText}`,
-        );
+        await pipelineRef.current.processUtterance(notificationPrompt, {
+          silent: true,
+        });
       } catch (err) {
         // If pipeline fails, fall back to direct TTS
         if (settings.drivingMode) {
           const lang = settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
-          ttsService.current.speakAsync(notificationText, lang);
+          ttsService.current.speakAsync(content, lang);
         }
       }
     },
@@ -1154,6 +1201,7 @@ export default function App(): React.JSX.Element {
             onAddSkill={handleAddSkill}
             onDeleteSkill={handleDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
+            onClearHistory={handleClearHistory}
           />
         </SafeAreaProvider>
       </View>

@@ -69,6 +69,7 @@ interface SettingsScreenProps {
   onAddSkill?: (content: string) => Promise<{ success: boolean; error?: string }>;
   onDeleteSkill?: (skillName: string) => Promise<void>;
   dynamicSkillNames?: string[];
+  onClearHistory?: () => void;
 }
 
 export function SettingsScreen({
@@ -109,6 +110,7 @@ export function SettingsScreen({
   onAddSkill,
   onDeleteSkill,
   dynamicSkillNames,
+  onClearHistory,
 }: SettingsScreenProps): React.JSX.Element {
   const { skillCredentialStatus, checkSkillCredentials } = useSkillCredentials(
     allSkills,
@@ -236,7 +238,7 @@ export function SettingsScreen({
           title={t('settings.section.about')}
           expanded={openSection === 'about'}
           onToggle={() => handleSectionToggle('about')}>
-          <AboutSection />
+          <AboutSection onClearHistory={onClearHistory} />
         </CollapsibleSection>
       </ScrollView>
 

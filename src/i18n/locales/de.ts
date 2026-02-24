@@ -55,6 +55,15 @@ const de = {
   'settings.section.skills': 'Skills',
   'settings.section.about': 'Über Sanna',
 
+  // Datenverwaltung
+  'settings.clearHistory.button': 'Gesprächsverlauf löschen',
+  'settings.clearHistory.description': 'Löscht alle Nachrichten aus dem Chat und dem LLM-Gedächtnis.',
+  'settings.clearHistory.confirm.title': 'Gespräch löschen?',
+  'settings.clearHistory.confirm.message': 'Alle Nachrichten und das Gesprächsgedächtnis werden unwiderruflich gelöscht.',
+  'settings.clearHistory.confirm.cancel': 'Abbrechen',
+  'settings.clearHistory.confirm.confirm': 'Löschen',
+  'settings.clearHistory.done': 'Gesprächsverlauf gelöscht.',
+
   // Provider
   'settings.provider.claudeModel': 'Claude Modell',
   'settings.provider.openaiModel': 'OpenAI Modell',

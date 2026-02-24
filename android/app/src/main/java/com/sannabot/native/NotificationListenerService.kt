@@ -80,12 +80,25 @@ class SannaNotificationListenerService : NotificationListenerService() {
             val title = extras?.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
             val text = extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
             val subText = extras?.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString()
-            val summaryText = extras?.getCharSequence(android.app.Notification.EXTRA_SUMMARY_TEXT)?.toString()
 
-            // Try to extract sender/conversation info (for messaging apps)
-            val sender = extras?.getString("android.text") ?: 
-                        extras?.getCharSequence("android.title.big")?.toString() ?:
-                        subText ?: summaryText
+            // Extract sender depending on app type.
+            // Email apps (Gmail, Outlook): EXTRA_TITLE = sender name, EXTRA_SUB_TEXT = account email (receiver!)
+            // Messaging apps (WhatsApp, Telegram): EXTRA_TITLE = contact/group name
+            val emailPackages = setOf(
+                "com.google.android.gm",
+                "com.microsoft.office.outlook",
+                "com.android.email"
+            )
+
+            val sender = if (packageName in emailPackages) {
+                // For email: title IS the sender name; do NOT use subText (that's the receiver account)
+                title
+            } else {
+                // For messaging apps: try big title or conversation title, fall back to title
+                extras?.getCharSequence("android.title.big")?.toString()
+                    ?: extras?.getCharSequence("android.conversationTitle")?.toString()
+                    ?: title
+            }
 
             val notificationData = NotificationData(
                 packageName = packageName,
