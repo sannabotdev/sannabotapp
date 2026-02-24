@@ -115,7 +115,15 @@ npm run android:release
 
 ## 🤝 Adding a Skill
 
-Create `assets/skills/your-skill/SKILL.md`:
+There are two ways to add a skill – **no rebuild required** for the upload path:
+
+### Option 1: Upload at runtime (no rebuild)
+
+Open **Settings → Skills → Upload Skill**, pick any `.md` file from your device, and the skill is live immediately. Uploaded skills are persisted in on-device storage and survive app restarts. You can also delete them from the same screen.
+
+### Option 2: Bundle at build time
+
+Create `assets/skills/your-skill/SKILL.md` – Metro auto-discovers it on the next build:
 
 ```markdown
 ---
@@ -136,7 +144,7 @@ description: What this skill does
 }
 ```
 
-That's it. No code changes. The agent picks it up automatically.
+Both paths use the same `SKILL.md` format. The agent picks up the skill automatically – no code changes needed.
 
 ## 📄 License
 
