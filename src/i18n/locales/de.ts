@@ -103,6 +103,13 @@ const de = {
   'settings.skills.disconnect.confirm': 'Trennen',
   'settings.skills.connectError.title': 'Verbindung fehlgeschlagen',
 
+  // Skill-Kategorien
+  'settings.skills.category.communication': 'Kommunikation',
+  'settings.skills.category.productivity': 'Produktivität',
+  'settings.skills.category.information': 'Information',
+  'settings.skills.category.media': 'Medien',
+  'settings.skills.category.other': 'Anderes',
+
   // Evidence Modal
   'evidence.noDetails': 'Keine Details verfügbar',
   'evidence.close': 'Schließen',

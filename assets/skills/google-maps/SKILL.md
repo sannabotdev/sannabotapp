@@ -1,5 +1,6 @@
 ---
 name: google-maps
+category: information
 description: Navigation and route planning via the Google Maps app
 android_package: com.google.android.apps.maps
 permissions:

@@ -1,5 +1,6 @@
 ---
 name: whatsapp
+category: communication
 description: Send WhatsApp messages and open WhatsApp chats – including fully automated sending via Accessibility
 test_prompt: Open WhatsApp
 android_package: com.whatsapp

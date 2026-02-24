@@ -1,5 +1,6 @@
 ---
 name: calendar
+category: productivity
 description: Read Google Calendar and manage appointments
 test_prompt: Fetch the next 3 appointments from the calendar
 permissions:

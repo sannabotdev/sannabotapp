@@ -15,6 +15,18 @@ import type { SkillInfo } from '../../../agent/skill-loader';
 import { SettingRow } from '../components/SettingRow';
 import { useNotificationAccess } from '../hooks/useNotificationAccess';
 import { t } from '../../../i18n';
+import type { TranslationKey } from '../../../i18n';
+
+const CATEGORY_ORDER = ['communication', 'productivity', 'information', 'media', 'other'] as const;
+type SkillCategory = (typeof CATEGORY_ORDER)[number];
+
+const CATEGORY_TRANSLATION_KEY: Record<SkillCategory, TranslationKey> = {
+  communication: 'settings.skills.category.communication',
+  productivity: 'settings.skills.category.productivity',
+  information: 'settings.skills.category.information',
+  media: 'settings.skills.category.media',
+  other: 'settings.skills.category.other',
+};
 
 interface SkillsSectionProps {
   allSkills: SkillInfo[];
@@ -197,6 +209,203 @@ export function SkillsSection({
     [onDeleteSkill],
   );
 
+  /** Render a single skill row */
+  const renderSkillRow = (skill: (typeof allSkills)[number]) => {
+    const isEnabled = enabledSkillNames.includes(skill.name);
+    const isConfigured = skillCredentialStatus[skill.name] ?? true;
+    const hasCredentials = skill.credentials.length > 0;
+    const isInstalled = skillAvailability[skill.name] ?? true;
+    const testResult = testResults[skill.name];
+    const notInstalledReason: 'app' | 'config' | null = isInstalled
+      ? null
+      : skill.android_package
+        ? 'app'
+        : 'config';
+
+    const isDynamic = dynamicSkillNames.includes(skill.name);
+
+    const showConnectIcon = isEnabled && isInstalled && hasCredentials && !isConfigured;
+    const showDisconnectIcon = isEnabled && isInstalled && hasCredentials && isConfigured;
+    const showTestIcon = isEnabled && isInstalled && !!skill.testPrompt && isConfigured && !!onTestSkill;
+
+    return (
+      <View
+        key={skill.name}
+        className="p-4 border-b border-surface-tertiary"
+        style={[
+          { borderBottomWidth: StyleSheet.hairlineWidth },
+          !isInstalled && { opacity: 0.5 },
+        ]}>
+        {/* Row 1: Name + Badges + Icon actions + Switch */}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-2 flex-1 flex-wrap">
+            <Text className="text-label-primary text-[15px] font-semibold capitalize">
+              {skill.name}
+            </Text>
+            {isDynamic && (
+              <View className="px-2 py-0.5 rounded-full bg-blue-500/20">
+                <Text className="text-[10px] font-semibold text-blue-400">custom</Text>
+              </View>
+            )}
+            {!isInstalled ? (
+              <View className="px-2 py-0.5 rounded-full bg-red-500/20">
+                <Text className="text-[10px] font-semibold text-red-400">
+                  {notInstalledReason === 'config'
+                    ? t('settings.skills.badge.notConfigured')
+                    : t('settings.skills.badge.notInstalled')}
+                </Text>
+              </View>
+            ) : isEnabled && hasCredentials ? (
+              <View
+                className={`px-2 py-0.5 rounded-full ${
+                  isConfigured ? 'bg-green-500/15' : 'bg-orange-500/15'
+                }`}>
+                <Text
+                  className={`text-[10px] font-semibold ${
+                    isConfigured ? 'text-green-400' : 'text-orange-400'
+                  }`}>
+                  {isConfigured
+                    ? t('settings.skills.badge.connected')
+                    : t('settings.skills.badge.setupNeeded')}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Icon action buttons + Switch */}
+          <View className="flex-row items-center gap-1.5">
+            {/* Connect icon (shown when credentials missing) */}
+            {showConnectIcon && (
+              <TouchableOpacity
+                onPress={() => handleConnectSkill(skill)}
+                style={{ width: 28, height: 28 }}
+                className="rounded-full bg-accent items-center justify-center">
+                <Text className="text-white text-[14px] leading-none">⊕</Text>
+              </TouchableOpacity>
+            )}
+            {/* Disconnect icon */}
+            {showDisconnectIcon && (
+              <TouchableOpacity
+                onPress={() => handleDisconnectSkill(skill)}
+                style={{ width: 28, height: 28 }}
+                className="rounded-full bg-surface-tertiary items-center justify-center">
+                <Text className="text-label-primary text-[13px] leading-none">⊗</Text>
+              </TouchableOpacity>
+            )}
+            {/* Test icon / spinner */}
+            {showTestIcon && (
+              <TouchableOpacity
+                onPress={() => handleTestSkill(skill)}
+                disabled={testingSkill === skill.name}
+                style={{ width: 28, height: 28 }}
+                className="rounded-full bg-surface-tertiary items-center justify-center">
+                {testingSkill === skill.name ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-label-primary text-[13px] leading-none">▷</Text>
+                )}
+              </TouchableOpacity>
+            )}
+            {/* Test result dot */}
+            {testResult && (
+              <TouchableOpacity
+                onPress={() => testResult.evidence && showEvidencePopup(testResult)}
+                disabled={!testResult.evidence}
+                style={{ width: 20, height: 20 }}
+                className="items-center justify-center">
+                <Text
+                  className={`text-[13px] leading-none font-bold ${
+                    testResult.success ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                  {testResult.success ? '✓' : '✗'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {/* Delete icon (dynamic skills only) */}
+            {isDynamic && onDeleteSkill && (
+              <TouchableOpacity
+                onPress={() => handleDeleteSkill(skill)}
+                style={{ width: 28, height: 28 }}
+                className="rounded-full bg-red-500/15 items-center justify-center">
+                <Text className="text-red-400 text-[13px] leading-none">✕</Text>
+              </TouchableOpacity>
+            )}
+            <Switch
+              value={isEnabled}
+              onValueChange={v => onToggleSkill(skill.name, v)}
+              disabled={!isInstalled}
+              trackColor={{ false: '#3A3A3C', true: '#007AFF' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        </View>
+
+        {/* Row 2: Description */}
+        <Text className="text-label-secondary text-xs mt-1">{skill.description}</Text>
+
+        {/* Row 3: Not-available hint */}
+        {notInstalledReason === 'app' && (
+          <Text className="text-label-tertiary text-[11px] mt-1">
+            {t('settings.skills.requires').replace('{package}', skill.android_package ?? '')}
+          </Text>
+        )}
+        {notInstalledReason === 'config' && (
+          <Text className="text-label-tertiary text-[11px] mt-1">
+            {t('settings.skills.clientIdMissing')}
+          </Text>
+        )}
+
+        {/* Row 3.5: Notification access status (for notifications skill) */}
+        {skill.name === 'notifications' && isEnabled && Platform.OS === 'android' && (
+          <View className="mt-2">
+            {notificationAccessGranted === null ? (
+              <Text className="text-label-tertiary text-[11px]">
+                {t('settings.skills.notification.checking')}
+              </Text>
+            ) : notificationAccessGranted ? (
+              <View className="flex-row items-center gap-1">
+                <Text className="text-green-400 text-[11px]">✓</Text>
+                <Text className="text-label-secondary text-[11px]">
+                  {t('settings.skills.notification.granted')}
+                </Text>
+              </View>
+            ) : (
+              <View className="flex-row items-center gap-2">
+                <Text className="text-orange-400 text-[11px]">⚠</Text>
+                <Text className="text-label-secondary text-[11px] flex-1">
+                  {t('settings.skills.notification.denied')}
+                </Text>
+                <TouchableOpacity
+                  className="px-3 py-1 rounded-lg bg-accent"
+                  onPress={handleOpenNotificationSettings}>
+                  <Text className="text-white text-[11px] font-medium">
+                    {t('settings.skills.notification.allowButton')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Group skills by category, respecting the active filter
+  const filteredSkills = allSkills.filter(skill => {
+    if (showOnlyInstalled) {
+      return skillAvailability[skill.name] ?? true;
+    }
+    return true;
+  });
+
+  const skillsByCategory = CATEGORY_ORDER.reduce<Record<string, typeof allSkills>>(
+    (acc, cat) => {
+      acc[cat] = filteredSkills.filter(s => (s.category ?? 'other') === cat);
+      return acc;
+    },
+    {},
+  );
+
   return (
     <>
       {/* Upload new skill button */}
@@ -230,203 +439,26 @@ export function SkillsSection({
         />
       </SettingRow>
 
-      {allSkills
-        .filter(skill => {
-          if (showOnlyInstalled) {
-            return skillAvailability[skill.name] ?? true;
-          }
-          return true;
-        })
-        .map(skill => {
-          const isEnabled = enabledSkillNames.includes(skill.name);
-          const isConfigured = skillCredentialStatus[skill.name] ?? true;
-          const hasCredentials = skill.credentials.length > 0;
-          const isInstalled = skillAvailability[skill.name] ?? true;
-          const testResult = testResults[skill.name];
-          const notInstalledReason: 'app' | 'config' | null = isInstalled
-            ? null
-            : skill.android_package
-              ? 'app'
-              : 'config';
-
-          const isDynamic = dynamicSkillNames.includes(skill.name);
-
-          return (
+      {/* Skills grouped by category */}
+      {CATEGORY_ORDER.map(cat => {
+        const skills = skillsByCategory[cat];
+        if (!skills || skills.length === 0) return null;
+        return (
+          <View key={cat}>
+            {/* Category header */}
             <View
-              key={skill.name}
-              className="p-4 border-b border-surface-tertiary"
-              style={[
-                { borderBottomWidth: StyleSheet.hairlineWidth },
-                !isInstalled && { opacity: 0.5 },
-              ]}>
-              {/* Row 1: Name + Badge + Switch */}
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2 flex-1">
-                  <Text className="text-label-primary text-[15px] font-semibold capitalize">
-                    {skill.name}
-                  </Text>
-                  {isDynamic && (
-                    <View className="px-2 py-0.5 rounded-full bg-blue-500/20">
-                      <Text className="text-[10px] font-semibold text-blue-400">custom</Text>
-                    </View>
-                  )}
-                  {!isInstalled ? (
-                    <View className="px-2 py-0.5 rounded-full bg-red-500/20">
-                      <Text className="text-[10px] font-semibold text-red-400">
-                        {notInstalledReason === 'config'
-                          ? t('settings.skills.badge.notConfigured')
-                          : t('settings.skills.badge.notInstalled')}
-                      </Text>
-                    </View>
-                  ) : isEnabled && hasCredentials ? (
-                    <View
-                      className={`px-2 py-0.5 rounded-full ${
-                        isConfigured ? 'bg-green-500/15' : 'bg-orange-500/15'
-                      }`}>
-                      <Text
-                        className={`text-[10px] font-semibold ${
-                          isConfigured ? 'text-green-400' : 'text-orange-400'
-                        }`}>
-                        {isConfigured
-                          ? t('settings.skills.badge.connected')
-                          : t('settings.skills.badge.setupNeeded')}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                <View className="flex-row items-center gap-2">
-                  {isDynamic && onDeleteSkill && (
-                    <TouchableOpacity
-                      onPress={() => handleDeleteSkill(skill)}
-                      className="px-2 py-1 rounded-lg bg-red-500/15">
-                      <Text className="text-red-400 text-xs font-medium">Delete</Text>
-                    </TouchableOpacity>
-                  )}
-                  <Switch
-                    value={isEnabled}
-                    onValueChange={v => onToggleSkill(skill.name, v)}
-                    disabled={!isInstalled}
-                    trackColor={{ false: '#3A3A3C', true: '#007AFF' }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
-              </View>
-
-              {/* Row 2: Description */}
-              <Text className="text-label-secondary text-xs mt-1">{skill.description}</Text>
-
-              {/* Row 3: Not-available hint */}
-              {notInstalledReason === 'app' && (
-                <Text className="text-label-tertiary text-[11px] mt-1">
-                  {t('settings.skills.requires').replace('{package}', skill.android_package ?? '')}
-                </Text>
-              )}
-              {notInstalledReason === 'config' && (
-                <Text className="text-label-tertiary text-[11px] mt-1">
-                  {t('settings.skills.clientIdMissing')}
-                </Text>
-              )}
-
-              {/* Row 3.5: Notification access status (for notifications skill) */}
-              {skill.name === 'notifications' && isEnabled && Platform.OS === 'android' && (
-                <View className="mt-2">
-                  {notificationAccessGranted === null ? (
-                    <Text className="text-label-tertiary text-[11px]">
-                      {t('settings.skills.notification.checking')}
-                    </Text>
-                  ) : notificationAccessGranted ? (
-                    <View className="flex-row items-center gap-1">
-                      <Text className="text-green-400 text-[11px]">✓</Text>
-                      <Text className="text-label-secondary text-[11px]">
-                        {t('settings.skills.notification.granted')}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-orange-400 text-[11px]">⚠</Text>
-                      <Text className="text-label-secondary text-[11px] flex-1">
-                        {t('settings.skills.notification.denied')}
-                      </Text>
-                      <TouchableOpacity
-                        className="px-3 py-1 rounded-lg bg-accent"
-                        onPress={handleOpenNotificationSettings}>
-                        <Text className="text-white text-[11px] font-medium">
-                          {t('settings.skills.notification.allowButton')}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Row 4: Action buttons (only when enabled) */}
-              {isEnabled &&
-                isInstalled &&
-                (hasCredentials || (skill.testPrompt && onTestSkill)) && (
-                  <View className="flex-row items-center gap-2 mt-3">
-                    {hasCredentials && (
-                      <TouchableOpacity
-                        className={`px-3 rounded-lg flex-row items-center justify-center ${
-                          isConfigured ? 'bg-surface-tertiary' : 'bg-accent'
-                        }`}
-                        style={{ minWidth: 90, height: 32 }}
-                        onPress={() =>
-                          isConfigured ? handleDisconnectSkill(skill) : handleConnectSkill(skill)
-                        }>
-                        <Text
-                          className={`text-xs font-medium ${
-                            isConfigured ? 'text-label-secondary' : 'text-white'
-                          }`}>
-                          {isConfigured
-                            ? t('settings.skills.button.disconnect')
-                            : t('settings.skills.button.connect')}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {skill.testPrompt && isConfigured && onTestSkill && (
-                      <TouchableOpacity
-                        className="px-3 rounded-lg bg-surface-tertiary flex-row items-center justify-center gap-1.5"
-                        style={{ minWidth: 90, height: 32 }}
-                        onPress={() => handleTestSkill(skill)}
-                        disabled={testingSkill === skill.name}>
-                        {testingSkill === skill.name ? (
-                          <>
-                            <ActivityIndicator size="small" color="#8E8E93" />
-                            <Text className="text-label-secondary text-xs font-medium">
-                              {t('settings.skills.button.testing')}
-                            </Text>
-                          </>
-                        ) : (
-                          <Text className="text-label-secondary text-xs font-medium">
-                            {t('settings.skills.button.test')}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    {/* Inline test result indicator */}
-                    {testResult && (
-                      <TouchableOpacity
-                        className="flex-row items-center gap-1"
-                        onPress={() => testResult.evidence && showEvidencePopup(testResult)}
-                        disabled={!testResult.evidence}>
-                        <Text
-                          className={`text-[11px] font-medium ${
-                            testResult.success ? 'text-green-400' : 'text-red-400'
-                          }`}>
-                          {testResult.success
-                            ? t('settings.skills.testResult.ok')
-                            : t('settings.skills.testResult.error')}
-                        </Text>
-                        {testResult.evidence && (
-                          <Text className="text-[11px] text-label-tertiary">›</Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
+              className="px-4 pt-4 pb-1 bg-surface-elevated"
+              style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
+              accessible={false}>
+              <Text className="text-label-secondary text-xs font-semibold uppercase tracking-widest">
+                {t(CATEGORY_TRANSLATION_KEY[cat])}
+              </Text>
             </View>
-          );
-        })}
+            {/* Skill rows */}
+            {skills.map(skill => renderSkillRow(skill))}
+          </View>
+        );
+      })}
     </>
   );
 }

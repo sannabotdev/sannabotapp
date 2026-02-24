@@ -103,6 +103,13 @@ const en = {
   'settings.skills.disconnect.confirm': 'Disconnect',
   'settings.skills.connectError.title': 'Connection failed',
 
+  // Skill categories
+  'settings.skills.category.communication': 'Communication',
+  'settings.skills.category.productivity': 'Productivity',
+  'settings.skills.category.information': 'Information',
+  'settings.skills.category.media': 'Media',
+  'settings.skills.category.other': 'Other',
+
   // Evidence Modal
   'evidence.noDetails': 'No details available',
   'evidence.close': 'Close',

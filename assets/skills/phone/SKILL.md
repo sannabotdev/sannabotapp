@@ -1,5 +1,6 @@
 ---
 name: phone
+category: communication
 description: Make phone calls and control phone functions
 permissions:
  - android.permission.CALL_PHONE

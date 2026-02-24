@@ -1,5 +1,6 @@
 ---
 name: slack
+category: communication
 description: Read, send and manage Slack messages and channels via the Slack API
 test_prompt: List the last 3 messages from the General channel
 android_package: com.Slack

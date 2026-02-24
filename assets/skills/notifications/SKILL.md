@@ -1,5 +1,6 @@
 ---
 name: notifications
+category: information
 description: Subscribe to, summarise and read aloud notifications from apps (WhatsApp, Email, Telegram, etc.)
 test_prompt: List all subscribed apps for notifications
 permissions:

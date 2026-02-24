@@ -19,6 +19,7 @@ export interface CredentialRequirement {
 export interface SkillFrontmatter {
   name: string;
   description: string;
+  category?: string;
   test_prompt?: string;
   android_package?: string;
   permissions?: string[];
@@ -28,6 +29,7 @@ export interface SkillFrontmatter {
 export interface SkillInfo {
   name: string;
   description: string;
+  category: string;
   path: string;
   content: string;
   testPrompt?: string;
@@ -124,6 +126,8 @@ export function parseFrontmatter(content: string): {
           frontmatter.test_prompt = cleanValue;
         } else if (key === 'android_package') {
           frontmatter.android_package = cleanValue;
+        } else if (key === 'category') {
+          frontmatter.category = cleanValue;
         }
       }
     }
@@ -181,6 +185,7 @@ export class SkillLoader {
       const skillInfo: SkillInfo = {
         name: frontmatter.name || key,
         description: frontmatter.description,
+        category: frontmatter.category ?? 'other',
         path: `assets/skills/${key}/SKILL.md`,
         content: body,
         testPrompt: frontmatter.test_prompt,
@@ -219,6 +224,7 @@ export class SkillLoader {
     const skillInfo: SkillInfo = {
       name: frontmatter.name || key,
       description: frontmatter.description,
+      category: frontmatter.category ?? 'other',
       path: `dynamic/${key}/SKILL.md`,
       content: body,
       testPrompt: frontmatter.test_prompt,

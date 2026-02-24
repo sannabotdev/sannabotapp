@@ -1,5 +1,6 @@
 ---
 name: spotify
+category: media
 description: Play and control music via Spotify
 test_prompt: Fetch the currently playing track or show the user profile
 android_package: com.spotify.music

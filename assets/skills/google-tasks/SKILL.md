@@ -1,5 +1,6 @@
 ---
 name: google-tasks
+category: productivity
 description: Read, create and manage tasks via the Google Tasks API
 test_prompt: Fetch the task lists and show the open tasks from the first list
 permissions:

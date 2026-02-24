@@ -1,5 +1,6 @@
 ---
 name: contacts
+category: information
 description: Search contacts and retrieve contact information
 test_prompt: Search for contacts and show the first 3
 permissions:

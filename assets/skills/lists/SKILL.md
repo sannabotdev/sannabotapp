@@ -1,5 +1,6 @@
 ---
 name: lists
+category: productivity
 description: Manage local lists (shopping list, to-do, etc.) – add, remove, read and check items
 ---
 # Lists Skill

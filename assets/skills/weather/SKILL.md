@@ -1,7 +1,8 @@
 ---
 name: weather
+category: information
 description: Get current weather and forecasts for any location (no API key required)
-test_prompt: What is the current weather in Vienna?
+test_prompt: What is the current weather in London?
 permissions:
  - android.permission.INTERNET
 ---
@@ -127,6 +128,25 @@ Use the Open-Meteo geocoding API first:
 
 Returns `results[0].latitude` and `results[0].longitude`.
 
+### Find city name for coordinates (Reverse Geocoding)
+
+If you only have coordinates (e.g. from GPS or Open-Meteo) and need the place name, use the **Nominatim** reverse geocoding API (free, no API key):
+
+```json
+{
+  "method": "GET",
+  "url": "https://nominatim.openstreetmap.org/reverse?lat={LAT}&lon={LON}&format=json&accept-language=de",
+  "headers": { "User-Agent": "SannaBot/1.0" }
+}
+```
+
+Returns JSON with `address.city` (or `address.town` / `address.village` for smaller places) and `display_name` (full human-readable address).
+
+Use this when:
+- Open-Meteo returns only coordinates and you need to tell the user the location name
+- `device` → `get_location` gives GPS coords and you want to greet with "Das Wetter in **{city}**…"
+- wttr.in's `%l` format didn't return a useful location name
+
 ### Full workflow (Open-Meteo)
 
 **With city name:**
@@ -137,7 +157,8 @@ Returns `results[0].latitude` and `results[0].longitude`.
 **Without city name (current location):**
 1. `device` → `get_location` → get `latitude` and `longitude` directly
 2. Query the forecast API with those coordinates (skip geocoding)
-3. Interpret `weathercode`
+3. Optionally: reverse-geocode via Nominatim to get a city name for the response
+4. Interpret `weathercode`
 
 ---
 
@@ -147,7 +168,8 @@ Returns `results[0].latitude` and `results[0].longitude`.
 
 1. `device` → `get_location` → returns e.g. `48.2082, 16.3738`
 2. `http` → GET `https://wttr.in/48.2082,16.3738?format=%l:+%c+%t+%h+%w` with `response_format: "text"`
-3. Summarise: "At your current location it's partly cloudy, 14 degrees, 65% humidity."
+3. If wttr.in's `%l` doesn't return a useful location name, reverse-geocode via Nominatim: GET `https://nominatim.openstreetmap.org/reverse?lat=48.2082&lon=16.3738&format=json&accept-language=de` (with header `User-Agent: SannaBot/1.0`) → use `address.city` for the response
+4. Summarise: "In **Wien** ist es teilweise bewölkt, 14 Grad, 65 % Luftfeuchtigkeit."
 
 ### "What's the weather in London?"
 
@@ -159,11 +181,11 @@ Returns `results[0].latitude` and `results[0].longitude`.
 1. `http` → GET `https://wttr.in/Berlin?T` with `response_format: "text"`
 2. Summarise the multi-day forecast for the user
 
-### "Will it rain tomorrow in Vienna?"
+### "Will it rain tomorrow in London?"
 
-1. `http` → GET `https://wttr.in/Vienna?1&T` with `response_format: "text"`
+1. `http` → GET `https://wttr.in/London?1&T` with `response_format: "text"`
 2. Check the forecast for rain indicators
-3. Answer: "Tomorrow in Vienna light rain is expected in the afternoon, around 12 °C."
+3. Answer: "Tomorrow in London light rain is expected in the afternoon, around 12 °C."
 
 ### "What's the temperature in New York right now?"
 

@@ -58,6 +58,9 @@ import SchedulerModule from './src/native/SchedulerModule';
 // Conversation persistence
 import { ConversationStore } from './src/agent/conversation-store';
 
+// AsyncStorage for lightweight pre-unlock preferences (dark mode)
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -197,6 +200,9 @@ const SECURE_KEY_IDS = {
   spotifyClientId: 'svc_spotify_client_id',
   slackClientId: 'svc_slack_client_id',
 } as const;
+
+/** AsyncStorage key for dark-mode preference – readable without biometric unlock */
+const DARK_MODE_STORAGE_KEY = 'sanna_dark_mode';
 
 /** Load preferences from Keychain */
 async function loadPreferences(store: TokenStore): Promise<AppPreferences> {
@@ -444,6 +450,9 @@ export default function App(): React.JSX.Element {
     setSettingsLoaded(true);
     setInitializing(false);
 
+    // Mirror dark mode to AsyncStorage so it's available before the next unlock
+    AsyncStorage.setItem(DARK_MODE_STORAGE_KEY, prefs.darkMode ? 'true' : 'false').catch(() => {});
+
     // Load user-uploaded dynamic skills from AsyncStorage
     await skillLoader.current.loadDynamicSkills(dynamicSkillStore.current);
     const dynamicNames = await dynamicSkillStore.current.getSkillNames();
@@ -457,6 +466,16 @@ export default function App(): React.JSX.Element {
         storedMessages.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
       );
     }
+  }, []);
+
+  // Load dark mode from AsyncStorage immediately (before biometric unlock)
+  // so the lock screen already uses the correct theme.
+  useEffect(() => {
+    AsyncStorage.getItem(DARK_MODE_STORAGE_KEY).then(value => {
+      if (value !== null) {
+        setSettings(s => ({ ...s, darkMode: value === 'true' }));
+      }
+    }).catch(() => {});
   }, []);
 
   // Auto-unlock on mount
@@ -529,6 +548,7 @@ export default function App(): React.JSX.Element {
     settings.wakeWordEnabled,
     settings.enabledSkillNames,
     settings.drivingMode,
+    settings.darkMode,
     settings.sttLanguage,
     settings.sttMode,
     settings.appLanguage,
@@ -825,7 +845,13 @@ export default function App(): React.JSX.Element {
   }, []);
 
   const handleToggleDarkMode = useCallback(() => {
-    setSettings(s => ({ ...s, darkMode: !s.darkMode }));
+    setSettings(s => {
+      const next = !s.darkMode;
+      // Persist immediately to AsyncStorage so it survives reinstall and loads
+      // before the next biometric unlock (lock screen already uses the right theme).
+      AsyncStorage.setItem(DARK_MODE_STORAGE_KEY, next ? 'true' : 'false').catch(() => {});
+      return { ...s, darkMode: next };
+    });
   }, []);
 
   const handleNotificationReceived = useCallback(

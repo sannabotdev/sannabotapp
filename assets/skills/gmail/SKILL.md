@@ -1,5 +1,6 @@
 ---
 name: gmail
+category: communication
 description: Read, search and send emails via Gmail API
 test_prompt: Fetch the last 3 emails from the inbox and return sender and subject
 permissions:
