@@ -17,16 +17,18 @@
 -->
 <full-backup-content>
 
-  <!-- Exclude sensitive keychain / credential files -->
-  <exclude domain="sharedpref" path="react-native-keychain.xml"/>
-  <exclude domain="sharedpref" path="com.facebook.react.modules.storage.ReactDatabaseSupplier.xml"/>
-
   <!-- Include ONLY the AsyncStorage shared-preferences file.
        Android's selective backup supports wildcard key matching only in
        Cloud Backup (dataExtractionRules), not in full-backup-content.
        We therefore include the whole AsyncStorage file – the sensitive
        preferences (API keys etc.) are stored in Keychain, NOT in
-       AsyncStorage, so this is safe. -->
+       AsyncStorage, so this is safe.
+
+       Note: When <include> rules are present, only the listed paths are
+       backed up.  All other shared-prefs files (react-native-keychain,
+       ReactDatabaseSupplier, etc.) are implicitly excluded, so explicit
+       <exclude> entries are unnecessary and would trigger a
+       FullBackupContent lint error. -->
   <include domain="sharedpref" path="RCTAsyncLocalStorage_V1.xml"/>
 
 </full-backup-content>
