@@ -88,11 +88,11 @@ export class GoogleAuth {
       return tokens.accessToken;
     } catch (error) {
       if ((error as { code?: string }).code === statusCodes.SIGN_IN_CANCELLED) {
-        throw new Error('Google Sign-In abgebrochen');
+        throw new Error('Google Sign-In cancelled');
       } else if ((error as { code?: string }).code === statusCodes.IN_PROGRESS) {
-        throw new Error('Google Sign-In läuft bereits');
+        throw new Error('Google Sign-In already in progress');
       } else if ((error as { code?: string }).code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        throw new Error('Google Play Services nicht verfügbar');
+        throw new Error('Google Play Services not available');
       }
       throw error;
     }

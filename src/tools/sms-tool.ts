@@ -14,7 +14,7 @@ export class SmsTool implements Tool {
   }
 
   description(): string {
-    return 'SMS direkt senden ohne die SMS-App zu öffnen. Sendet die Nachricht sofort im Hintergrund.';
+    return 'Send SMS directly without opening the SMS app. Sends the message immediately in the background.';
   }
 
   parameters(): Record<string, unknown> {
@@ -24,11 +24,11 @@ export class SmsTool implements Tool {
         phone_number: {
           type: 'string',
           description:
-            'Telefonnummer des Empfängers (z.B. "+4366012345678", "06601234567")',
+            'Recipient phone number (e.g. "+4366012345678", "06601234567")',
         },
         message: {
           type: 'string',
-          description: 'Der SMS-Text der gesendet werden soll',
+          description: 'The SMS text to send',
         },
       },
       required: ['phone_number', 'message'],
@@ -40,21 +40,21 @@ export class SmsTool implements Tool {
     const message = args.message as string;
 
     if (!phoneNumber) {
-      return errorResult('phone_number Parameter fehlt');
+      return errorResult('Missing phone_number parameter');
     }
     if (!message) {
-      return errorResult('message Parameter fehlt');
+      return errorResult('Missing message parameter');
     }
 
     try {
       await SmsModule.sendSms(phoneNumber, message);
       return successResult(
-        `SMS an ${phoneNumber} gesendet: "${message}"`,
-        `SMS wurde gesendet`,
+        `SMS sent to ${phoneNumber}: "${message}"`,
+        `SMS sent`,
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      return errorResult(`SMS senden fehlgeschlagen: ${errMsg}`);
+      return errorResult(`Failed to send SMS: ${errMsg}`);
     }
   }
 }

@@ -56,13 +56,13 @@ class DebugLoggerImpl {
 
   /** Log available tools at startup */
   logRegisteredTools(toolNames: string[], definitions: unknown[]): void {
-    this.add('info', 'TOOLS', `${toolNames.length} Tools registriert: ${toolNames.join(', ')}`, JSON.stringify(definitions, null, 2));
+    this.add('info', 'TOOLS', `${toolNames.length} tools registered: ${toolNames.join(', ')}`, JSON.stringify(definitions, null, 2));
   }
 
   /** Log the full system prompt sent to the LLM */
   logSystemPrompt(prompt: string): void {
     const lines = prompt.split('\n').length;
-    this.add('prompt', 'SYSTEM', `System-Prompt (${lines} Zeilen, ${prompt.length} Zeichen)`, prompt);
+    this.add('prompt', 'SYSTEM', `System prompt (${lines} lines, ${prompt.length} chars)`, prompt);
   }
 
   /** Log user message */
@@ -72,23 +72,23 @@ class DebugLoggerImpl {
 
   /** Log LLM request (messages count, model) */
   logLLMRequest(model: string, messageCount: number, toolCount: number): void {
-    this.add('llm', 'LLM→', `Anfrage an ${model} (${messageCount} msgs, ${toolCount} tools)`);
+    this.add('llm', 'LLM→', `Request to ${model} (${messageCount} msgs, ${toolCount} tools)`);
   }
 
   /** Log LLM response */
   logLLMResponse(content: string, toolCalls: { name: string; arguments: Record<string, unknown> }[], usage?: { promptTokens: number; completionTokens: number; totalTokens: number }): void {
     const toolStr = toolCalls.length > 0
       ? `+ ${toolCalls.length} Tool-Calls: ${toolCalls.map(tc => tc.name).join(', ')}`
-      : '(keine Tool-Calls)';
+      : '(no tool calls)';
     const usageStr = usage ? ` [${usage.promptTokens}+${usage.completionTokens}=${usage.totalTokens} tokens]` : '';
-    const contentPreview = content ? `"${content.slice(0, 100)}${content.length > 100 ? '…' : ''}"` : '(leer)';
+    const contentPreview = content ? `"${content.slice(0, 100)}${content.length > 100 ? '…' : ''}"` : '(empty)';
     this.add('llm', '←LLM', `${contentPreview} ${toolStr}${usageStr}`, JSON.stringify({ content, toolCalls, usage }, null, 2));
   }
 
   /** Log tool execution start */
   logToolCall(name: string, args: Record<string, unknown>): void {
     const argsStr = JSON.stringify(args);
-    this.add('tool', `TOOL:${name}`, `Aufruf: ${argsStr.slice(0, 120)}${argsStr.length > 120 ? '…' : ''}`, JSON.stringify(args, null, 2));
+    this.add('tool', `TOOL:${name}`, `Call: ${argsStr.slice(0, 120)}${argsStr.length > 120 ? '…' : ''}`, JSON.stringify(args, null, 2));
   }
 
   /** Log tool result */
@@ -105,7 +105,7 @@ class DebugLoggerImpl {
 
   /** Log final result */
   logFinalResult(content: string, iterations: number): void {
-    this.add('info', 'DONE', `Fertig nach ${iterations} Iteration(en): "${content.slice(0, 100)}${content.length > 100 ? '…' : ''}"`);
+    this.add('info', 'DONE', `Done after ${iterations} iteration(s): "${content.slice(0, 100)}${content.length > 100 ? '…' : ''}"`);
   }
 
   /** Log an error */
@@ -142,7 +142,7 @@ class DebugLoggerImpl {
     const MAX_DETAIL = 100_000;
     const detailStr = detail
       ? detail.length > MAX_DETAIL
-        ? detail.slice(0, MAX_DETAIL) + `\n... (abgeschnitten nach ${MAX_DETAIL} Zeichen)`
+        ? detail.slice(0, MAX_DETAIL) + `\n... (truncated after ${MAX_DETAIL} chars)`
         : detail
       : undefined;
     switch (level) {

@@ -66,11 +66,11 @@ export class ContextManager {
     return [
       {
         role: 'user',
-        content: `[Zusammenfassung früherer Konversation]\n${this.summaryPrefix}\n[Ende der Zusammenfassung]`,
+        content: `[Summary of earlier conversation]\n${this.summaryPrefix}\n[End of summary]`,
       },
       {
         role: 'assistant',
-        content: 'Ich habe die Zusammenfassung der bisherigen Konversation zur Kenntnis genommen.',
+        content: 'I have noted the summary of the previous conversation.',
       },
       ...this.history,
     ];
@@ -116,7 +116,7 @@ export class ContextManager {
   private async summarize(messages: Message[]): Promise<string> {
     const conversationText = messages
       .map(m => {
-        const role = m.role === 'user' ? 'Nutzer' : m.role === 'assistant' ? 'Assistent' : m.role;
+        const role = m.role === 'user' ? 'User' : m.role === 'assistant' ? 'Assistant' : m.role;
         return `${role}: ${m.content}`;
       })
       .join('\n\n');
@@ -124,12 +124,12 @@ export class ContextManager {
     const summaryPrompt: Message[] = [
       {
         role: 'user',
-        content: `Fasse die folgende Konversation kurz und prägnant zusammen. Behalte alle wichtigen Fakten, getroffene Entscheidungen und Aktionen. Nutze Stichpunkte.
+        content: `Summarize the following conversation briefly and concisely. Keep all important facts, decisions made, and actions taken. Use bullet points.
 
-Konversation:
+Conversation:
 ${conversationText}
 
-Zusammenfassung:`,
+Summary:`,
       },
     ];
 
@@ -144,7 +144,7 @@ Zusammenfassung:`,
     } catch (err) {
       // Fallback: simple truncation summary
       const words = conversationText.split(' ').slice(0, 100);
-      return `[Zusammenfassung nicht verfügbar] Themen: ${words.join(' ')}...`;
+      return `[Summary not available] Topics: ${words.join(' ')}...`;
     }
   }
 

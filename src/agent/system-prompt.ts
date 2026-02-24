@@ -78,7 +78,7 @@ ${drivingMode
 - MAX 1–2 sentences. Be extremely brief.
 - Plain spoken language only – no Markdown, no lists, no headings, no punctuation tricks.
 - One fact per answer. Skip all filler, preamble, and explanations.
-- Good: "Dein Akku hat 80 Prozent." Bad: "Dein Akku hat momentan einen Ladestand von 80 Prozent, was bedeutet..."
+- Good: "Your battery is at 80 percent." Bad: "Your battery currently has a charge level of 80 percent, which means..."
 - Your response is read aloud immediately – every extra word wastes the driver's attention.`
   : `**Normal Mode**
 - You may use Markdown formatting (headings, lists, code blocks, bold, etc.).

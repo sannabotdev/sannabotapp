@@ -59,7 +59,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
 
             promise.resolve("ok")
         } catch (e: Exception) {
-            promise.reject("SCHEDULE_ERROR", e.message ?: "setSchedule fehlgeschlagen", e)
+            promise.reject("SCHEDULE_ERROR", e.message ?: "setSchedule failed", e)
         }
     }
 
@@ -74,7 +74,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             removeScheduleFromPrefs(context, id)
             promise.resolve("ok")
         } catch (e: Exception) {
-            promise.reject("REMOVE_ERROR", e.message ?: "removeSchedule fehlgeschlagen", e)
+            promise.reject("REMOVE_ERROR", e.message ?: "removeSchedule failed", e)
         }
     }
 
@@ -89,7 +89,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             val schedule = loadScheduleById(context, id)
             promise.resolve(schedule?.toString())
         } catch (e: Exception) {
-            promise.reject("GET_ERROR", e.message ?: "getSchedule fehlgeschlagen", e)
+            promise.reject("GET_ERROR", e.message ?: "getSchedule failed", e)
         }
     }
 
@@ -104,7 +104,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             val schedules = loadAllSchedules(context)
             promise.resolve(schedules.toString())
         } catch (e: Exception) {
-            promise.reject("LIST_ERROR", e.message ?: "getAllSchedules fehlgeschlagen", e)
+            promise.reject("LIST_ERROR", e.message ?: "getAllSchedules failed", e)
         }
     }
 
@@ -117,7 +117,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
         try {
             val context = reactApplicationContext
             val schedule = loadScheduleById(context, id) ?: run {
-                promise.reject("NOT_FOUND", "Schedule $id nicht gefunden")
+                promise.reject("NOT_FOUND", "Schedule $id not found")
                 return
             }
             schedule.put("triggerAtMs", newTriggerAtMs.toLong())
@@ -128,7 +128,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             }
             promise.resolve("ok")
         } catch (e: Exception) {
-            promise.reject("UPDATE_ERROR", e.message ?: "updateTrigger fehlgeschlagen", e)
+            promise.reject("UPDATE_ERROR", e.message ?: "updateTrigger failed", e)
         }
     }
 
@@ -140,14 +140,14 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
         try {
             val context = reactApplicationContext
             val schedule = loadScheduleById(context, id) ?: run {
-                promise.reject("NOT_FOUND", "Schedule $id nicht gefunden")
+                promise.reject("NOT_FOUND", "Schedule $id not found")
                 return
             }
             schedule.put("lastExecutedAt", System.currentTimeMillis())
             saveScheduleToPrefs(context, schedule)
             promise.resolve("ok")
         } catch (e: Exception) {
-            promise.reject("UPDATE_ERROR", e.message ?: "markExecuted fehlgeschlagen", e)
+            promise.reject("UPDATE_ERROR", e.message ?: "markExecuted failed", e)
         }
     }
 
@@ -165,7 +165,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             prefs.edit().putString(PREFS_AGENT_CONFIG_KEY, configJson).apply()
             promise.resolve("ok")
         } catch (e: Exception) {
-            promise.reject("CONFIG_ERROR", e.message ?: "saveAgentConfig fehlgeschlagen", e)
+            promise.reject("CONFIG_ERROR", e.message ?: "saveAgentConfig failed", e)
         }
     }
 
@@ -180,7 +180,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             val config = prefs.getString(PREFS_AGENT_CONFIG_KEY, null)
             promise.resolve(config)
         } catch (e: Exception) {
-            promise.reject("CONFIG_ERROR", e.message ?: "getAgentConfig fehlgeschlagen", e)
+            promise.reject("CONFIG_ERROR", e.message ?: "getAgentConfig failed", e)
         }
     }
 
@@ -193,7 +193,7 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!alarmManager.canScheduleExactAlarms()) {
                 throw IllegalStateException(
-                    "Exakte Alarme nicht erlaubt. Bitte in den Android-Einstellungen aktivieren."
+                    "Exact alarms not allowed. Please enable in Android settings."
                 )
             }
         }

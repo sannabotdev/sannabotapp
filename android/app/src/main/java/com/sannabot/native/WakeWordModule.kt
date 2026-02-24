@@ -296,7 +296,7 @@ class WakeWordService : Service() {
                 "Sanna Wake Word",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Hört auf das Wake Word 'Hey Sanna'"
+                description = "Listening for the wake word 'Hey Sanna'"
                 setShowBadge(false)
             }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -313,7 +313,7 @@ class WakeWordService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Sanna")
-            .setContentText("Hört auf 'Hey Sanna'...")
+            .setContentText("Listening for 'Hey Sanna'...")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

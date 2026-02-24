@@ -14,7 +14,7 @@ export class IntentTool implements Tool {
   }
 
   description(): string {
-    return 'Android-Apps über Intents steuern. Öffnet Apps, startet Navigation, macht Anrufe, sendet SMS, etc.';
+    return 'Control Android apps via Intents. Opens apps, starts navigation, makes calls, sends SMS, etc.';
   }
 
   parameters(): Record<string, unknown> {
@@ -24,20 +24,20 @@ export class IntentTool implements Tool {
         action: {
           type: 'string',
           description:
-            'Intent action (z.B. "android.intent.action.VIEW", "android.intent.action.CALL", "android.intent.action.SENDTO")',
+            'Intent action (e.g. "android.intent.action.VIEW", "android.intent.action.CALL", "android.intent.action.SENDTO")',
         },
         uri: {
           type: 'string',
           description:
-            'URI für den Intent (z.B. "google.navigation:q=Wien", "tel:+43...", "smsto:+43...")',
+            'URI for the intent (e.g. "google.navigation:q=Vienna", "tel:+43...", "smsto:+43...")',
         },
         package: {
           type: 'string',
-          description: 'Optionales Ziel-Package (z.B. "com.google.android.apps.maps")',
+          description: 'Optional target package (e.g. "com.google.android.apps.maps")',
         },
         extras: {
           type: 'object',
-          description: 'Optionale Intent-Extras als key-value Paare',
+          description: 'Optional intent extras as key-value pairs',
           additionalProperties: { type: 'string' },
         },
       },
@@ -59,12 +59,12 @@ export class IntentTool implements Tool {
       await IntentModule.sendIntent(action, uri, pkg, extras);
       const description = uri ? `${action} → ${uri}` : action;
       return successResult(
-        `Intent ausgeführt: ${description}`,
+        `Intent executed: ${description}`,
         undefined, // Don't speak "Intent executed" – LLM will say what happened
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Intent fehlgeschlagen: ${message}`);
+      return errorResult(`Intent failed: ${message}`);
     }
   }
 }

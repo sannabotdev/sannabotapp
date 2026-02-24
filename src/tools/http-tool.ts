@@ -24,7 +24,7 @@ export class HttpTool implements Tool {
   }
 
   description(): string {
-    return 'REST API Anfragen stellen. Unterstützt GET/POST/PUT/DELETE mit automatischem OAuth Token-Management.';
+    return 'Make REST API requests. Supports GET/POST/PUT/DELETE with automatic OAuth token management.';
   }
 
   parameters(): Record<string, unknown> {
@@ -34,30 +34,30 @@ export class HttpTool implements Tool {
         method: {
           type: 'string',
           enum: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-          description: 'HTTP Methode',
+          description: 'HTTP method',
         },
         url: {
           type: 'string',
-          description: 'Vollständige URL inkl. Query-Parameter',
+          description: 'Full URL including query parameters',
         },
         auth_provider: {
           type: 'string',
           description:
-            'Auth-Provider für automatisches Token-Management (z.B. "google", "spotify"). Leer lassen wenn kein Auth nötig.',
+            'Auth provider for automatic token management (e.g. "google", "spotify"). Leave empty if no auth needed.',
         },
         headers: {
           type: 'object',
-          description: 'Optionale HTTP-Header',
+          description: 'Optional HTTP headers',
           additionalProperties: { type: 'string' },
         },
         body: {
           type: 'object',
-          description: 'Request-Body für POST/PUT/PATCH Anfragen',
+          description: 'Request body for POST/PUT/PATCH requests',
         },
         response_format: {
           type: 'string',
           enum: ['json', 'text'],
-          description: 'Erwartetes Antwortformat (Standard: json)',
+          description: 'Expected response format (default: json)',
         },
       },
       required: ['method', 'url'],
@@ -82,7 +82,7 @@ export class HttpTool implements Tool {
         const token = await this.credentialManager.getToken(authProvider);
         if (!token) {
           return errorResult(
-            `Kein gültiger Token für "${authProvider}". Bitte in den Einstellungen anmelden.`,
+            `No valid token for "${authProvider}". Please sign in via settings.`,
           );
         }
         headers['Authorization'] = `Bearer ${token}`;
@@ -103,7 +103,7 @@ export class HttpTool implements Tool {
       const response = await fetch(url, requestInit);
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Keine Fehlermeldung verfügbar');
+        const errorText = await response.text().catch(() => 'No error message available');
         return errorResult(
           `HTTP ${response.status} ${response.statusText}: ${errorText.slice(0, 200)}`,
         );
@@ -116,7 +116,7 @@ export class HttpTool implements Tool {
       let responseText: string;
       if (!rawText) {
         // Empty body – treat as success with no content (e.g. Spotify play/pause/skip)
-        responseText = `HTTP ${response.status} (kein Body)`;
+        responseText = `HTTP ${response.status} (no body)`;
       } else if (responseFormat === 'json') {
         try {
           const json = JSON.parse(rawText);
@@ -131,13 +131,13 @@ export class HttpTool implements Tool {
 
       // Truncate very long responses
       const truncated = responseText.length > 5000
-        ? responseText.slice(0, 5000) + '\n... (abgeschnitten, Antwort zu lang)'
+        ? responseText.slice(0, 5000) + '\n... (truncated, response too long)'
         : responseText;
 
       return successResult(truncated);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`HTTP Anfrage fehlgeschlagen: ${message}`);
+      return errorResult(`HTTP request failed: ${message}`);
     }
   }
 }

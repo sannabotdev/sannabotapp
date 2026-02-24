@@ -68,7 +68,7 @@ import type { SkillInfo } from './src/agent/skill-loader';
 import { SannaAvatar } from './src/components/SannaAvatar';
 
 // Local dev config (gitignored – never shipped to production)
-// Falls die Datei fehlt (z.B. in CI/Production), werden leere Defaults verwendet.
+// If the file is missing (e.g. in CI/Production), empty defaults are used.
 let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string } = {
   openAIApiKey: '',
   claudeApiKey: '',

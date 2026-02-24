@@ -1,43 +1,43 @@
 /**
- * local.config.example.ts – Vorlage für lokale Dev-Konfiguration
+ * local.config.example.ts – Template for local dev configuration
  *
- * Kopiere diese Datei zu `local.config.ts` und trage deine Keys ein.
- * local.config.ts ist in .gitignore – kommt NIE ins Repository.
+ * Copy this file to `local.config.ts` and fill in your keys.
+ * local.config.ts is in .gitignore – NEVER committed to the repository.
  *
  *   cp local.config.example.ts local.config.ts
  */
 const LOCAL_DEV_CONFIG = {
-  /** OpenAI API Key für lokale Entwicklung */
+  /** OpenAI API Key for local development */
   openAIApiKey: '',
 
-  /** Anthropic Claude API Key für lokale Entwicklung */
+  /** Anthropic Claude API Key for local development */
   claudeApiKey: '',
 
-  /** Standard-Provider: 'claude' | 'openai' */
+  /** Default provider: 'claude' | 'openai' */
   selectedProvider: 'openai' as 'claude' | 'openai',
 
-  /** OpenAI Modell (optional, Standard: 'gpt-5.2') */
+  /** OpenAI model (optional, default: 'gpt-5.2') */
   openAIModel: 'gpt-5.2',
 
-  /** Claude Modell (optional, Standard: 'claude-sonnet-4-6') */
+  /** Claude model (optional, default: 'claude-sonnet-4-6') */
   claudeModel: 'claude-sonnet-4-6',
 
-  /** Spotify Client ID für lokale Entwicklung */
+  /** Spotify Client ID for local development */
   spotifyClientId: '',
 
-  /** Google OAuth Web Client ID (aus Google Cloud Console) */
+  /** Google OAuth Web Client ID (from Google Cloud Console) */
   googleWebClientId: '',
 
-  /** Picovoice Access Key für lokale Entwicklung */
+  /** Picovoice Access Key for local development */
   picovoiceAccessKey: '',
 
-  /** Slack Client ID für lokale Entwicklung */
+  /** Slack Client ID for local development */
   slackClientId: '',
 
   /**
-   * Slack OAuth Redirect URL (HTTPS erforderlich – siehe DEV_SETUP.md).
-   * Trage hier die URL deiner GitHub Pages Redirect-Seite ein.
-   * Beispiel: 'https://deinname.github.io/sanna-oauth/slack'
+   * Slack OAuth Redirect URL (HTTPS required – see DEV_SETUP.md).
+   * Enter the URL of your GitHub Pages redirect page here.
+   * Example: 'https://yourname.github.io/sanna-oauth/slack'
    */
   slackRedirectUrl: '',
 };

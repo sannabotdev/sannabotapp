@@ -253,9 +253,9 @@ class SpeechModule(reactContext: ReactApplicationContext) :
             sendEvent("speech_error", Arguments.createMap().apply {
                 putInt("code", ERROR_LANGUAGE_NOT_SUPPORTED)
                 putString("message",
-                    "Spracherkennung nicht verfügbar. Bitte lade das " +
-                    "Sprachpaket herunter (Einstellungen → System → Sprachen → " +
-                    "Spracherkennung) oder melde einen Google-Account an.")
+                    "Speech recognition not available. Please download the " +
+                    "language pack (Settings → System → Languages → " +
+                    "Speech recognition) or sign in with a Google account.")
             })
             return
         }
@@ -324,9 +324,9 @@ class SpeechModule(reactContext: ReactApplicationContext) :
                     sendEvent("speech_error", Arguments.createMap().apply {
                         putInt("code", ERROR_LANGUAGE_NOT_SUPPORTED)
                         putString("message",
-                            "Spracherkennung nicht verfügbar. Bitte lade das " +
-                            "Sprachpaket in den Geräteeinstellungen herunter oder " +
-                            "melde einen Google-Account an.")
+                            "Speech recognition not available. Please download the " +
+                            "language pack in device settings or " +
+                            "sign in with a Google account.")
                     })
                 }
             }

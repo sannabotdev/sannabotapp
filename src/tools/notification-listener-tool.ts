@@ -71,9 +71,9 @@ export class NotificationListenerTool implements Tool {
 
   description(): string {
     return [
-      'Verwaltet Benachrichtigungen von Apps (WhatsApp, Email, Telegram, etc.).',
-      'Aktionen: subscribe (abonnieren), unsubscribe (abmelden), list_subscriptions (Liste anzeigen),',
-      'get_recent (letzte Benachrichtigungen abrufen), clear (Puffer löschen).',
+      'Manage notifications from apps (WhatsApp, Email, Telegram, etc.).',
+      'Actions: subscribe, unsubscribe, list_subscriptions (show all),',
+      'get_recent (retrieve recent notifications), clear (clear buffer).',
     ].join(' ');
   }
 
@@ -85,16 +85,16 @@ export class NotificationListenerTool implements Tool {
           type: 'string',
           enum: ['subscribe', 'unsubscribe', 'list_subscriptions', 'get_recent', 'clear'],
           description:
-            'Aktion: subscribe (App abonnieren), unsubscribe (abmelden), list_subscriptions (alle anzeigen), get_recent (letzte abrufen), clear (Puffer löschen)',
+            'Action: subscribe (subscribe to app), unsubscribe, list_subscriptions (show all), get_recent (retrieve recent), clear (clear buffer)',
         },
         app: {
           type: 'string',
           description:
-            'App-Name oder Paketname (z.B. "whatsapp", "email", "telegram" oder "com.whatsapp"). Für subscribe/unsubscribe.',
+            'App name or package name (e.g. "whatsapp", "email", "telegram" or "com.whatsapp"). For subscribe/unsubscribe.',
         },
         filter_app: {
           type: 'string',
-          description: 'Optional: Filter für get_recent nach App-Name oder Paketname',
+          description: 'Optional: filter get_recent by app name or package name',
         },
       },
       required: ['action'],
@@ -104,7 +104,7 @@ export class NotificationListenerTool implements Tool {
   async execute(args: Record<string, unknown>): Promise<ToolResult> {
     const module = getNotificationListenerModule();
     if (!module) {
-      return errorResult('NotificationListener ist nur auf Android verfügbar');
+      return errorResult('NotificationListener is only available on Android');
     }
 
     const action = args.action as NotificationAction;
@@ -122,11 +122,11 @@ export class NotificationListenerTool implements Tool {
         case 'clear':
           return this.clear(module);
         default:
-          return errorResult(`Unbekannte Aktion: ${action}`);
+          return errorResult(`Unknown action: ${action}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Fehler: ${message}`);
+      return errorResult(`Error: ${message}`);
     }
   }
 
@@ -138,7 +138,7 @@ export class NotificationListenerTool implements Tool {
   ): Promise<ToolResult> {
     const app = args.app as string;
     if (!app) {
-      return errorResult('app Parameter fehlt – welche App soll abonniert werden?');
+      return errorResult('Missing app parameter – which app should be subscribed?');
     }
 
     const packageName = resolvePackageName(app);
@@ -149,8 +149,8 @@ export class NotificationListenerTool implements Tool {
 
       if (subscribed.includes(packageName)) {
         return successResult(
-          `${getAppDisplayName(packageName)} ist bereits abonniert.`,
-          `${getAppDisplayName(packageName)} ist bereits aktiv`,
+          `${getAppDisplayName(packageName)} is already subscribed.`,
+          `${getAppDisplayName(packageName)} is already active`,
         );
       }
 
@@ -158,12 +158,12 @@ export class NotificationListenerTool implements Tool {
       await module.setSubscribedApps(JSON.stringify(subscribed));
 
       return successResult(
-        `${getAppDisplayName(packageName)} erfolgreich abonniert. Neue Benachrichtigungen werden erfasst.`,
-        `${getAppDisplayName(packageName)} abonniert`,
+        `${getAppDisplayName(packageName)} subscribed successfully. New notifications will be captured.`,
+        `${getAppDisplayName(packageName)} subscribed`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Abonnieren fehlgeschlagen: ${message}`);
+      return errorResult(`Subscribe failed: ${message}`);
     }
   }
 
@@ -175,7 +175,7 @@ export class NotificationListenerTool implements Tool {
   ): Promise<ToolResult> {
     const app = args.app as string;
     if (!app) {
-      return errorResult('app Parameter fehlt – welche App soll abgemeldet werden?');
+      return errorResult('Missing app parameter – which app should be unsubscribed?');
     }
 
     const packageName = resolvePackageName(app);
@@ -187,8 +187,8 @@ export class NotificationListenerTool implements Tool {
       const index = subscribed.indexOf(packageName);
       if (index === -1) {
         return successResult(
-          `${getAppDisplayName(packageName)} ist nicht abonniert.`,
-          `${getAppDisplayName(packageName)} war nicht aktiv`,
+          `${getAppDisplayName(packageName)} is not subscribed.`,
+          `${getAppDisplayName(packageName)} was not active`,
         );
       }
 
@@ -196,12 +196,12 @@ export class NotificationListenerTool implements Tool {
       await module.setSubscribedApps(JSON.stringify(subscribed));
 
       return successResult(
-        `${getAppDisplayName(packageName)} erfolgreich abgemeldet. Benachrichtigungen werden ignoriert.`,
-        `${getAppDisplayName(packageName)} abgemeldet`,
+        `${getAppDisplayName(packageName)} unsubscribed successfully. Notifications will be ignored.`,
+        `${getAppDisplayName(packageName)} unsubscribed`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Abmelden fehlgeschlagen: ${message}`);
+      return errorResult(`Unsubscribe failed: ${message}`);
     }
   }
 
@@ -216,8 +216,8 @@ export class NotificationListenerTool implements Tool {
 
       if (subscribed.length === 0) {
         return successResult(
-          'Keine Apps abonniert. Nutze subscribe um Benachrichtigungen zu aktivieren.',
-          'Keine Apps abonniert',
+          'No apps subscribed. Use subscribe to activate notifications.',
+          'No apps subscribed',
         );
       }
 
@@ -225,12 +225,12 @@ export class NotificationListenerTool implements Tool {
       const list = displayNames.join(', ');
 
       return successResult(
-        `Abonnierte Apps (${subscribed.length}): ${list}`,
-        `${subscribed.length} Apps abonniert: ${list}`,
+        `Subscribed apps (${subscribed.length}): ${list}`,
+        `${subscribed.length} apps subscribed: ${list}`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Auflisten fehlgeschlagen: ${message}`);
+      return errorResult(`Failed to list subscriptions: ${message}`);
     }
   }
 
@@ -253,28 +253,28 @@ export class NotificationListenerTool implements Tool {
 
       if (notifications.length === 0) {
         return successResult(
-          'Keine Benachrichtigungen vorhanden.',
-          'Keine Benachrichtigungen',
+          'No notifications available.',
+          'No notifications',
         );
       }
 
       // Format notifications for LLM
       const lines = notifications.map((n, idx) => {
         const appName = getAppDisplayName(n.packageName);
-        const sender = n.sender ? ` von ${n.sender}` : '';
-        const time = new Date(n.timestamp).toLocaleTimeString('de-AT', {
+        const sender = n.sender ? ` from ${n.sender}` : '';
+        const time = new Date(n.timestamp).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
         });
         return `${idx + 1}. ${appName}${sender} (${time}): ${n.title || ''} ${n.text || ''}`.trim();
       });
 
-      const summary = `${notifications.length} Benachrichtigung(en):\n${lines.join('\n')}`;
+      const summary = `${notifications.length} notification(s):\n${lines.join('\n')}`;
 
-      return successResult(summary, `${notifications.length} Benachrichtigungen gefunden`);
+      return successResult(summary, `${notifications.length} notifications found`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Abrufen fehlgeschlagen: ${message}`);
+      return errorResult(`Failed to retrieve notifications: ${message}`);
     }
   }
 
@@ -286,12 +286,12 @@ export class NotificationListenerTool implements Tool {
     try {
       await module.clearNotifications();
       return successResult(
-        'Benachrichtigungs-Puffer gelöscht.',
-        'Puffer gelöscht',
+        'Notification buffer cleared.',
+        'Buffer cleared',
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Löschen fehlgeschlagen: ${message}`);
+      return errorResult(`Failed to clear buffer: ${message}`);
     }
   }
 }

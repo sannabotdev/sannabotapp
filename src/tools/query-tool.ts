@@ -22,7 +22,7 @@ export class QueryTool implements Tool {
   }
 
   description(): string {
-    return 'Lokale Gerätedaten abfragen: Kontakte, SMS-Eingang, Anrufliste. Kein Internet nötig.';
+    return 'Query local device data: contacts, SMS inbox, call log. No internet required.';
   }
 
   parameters(): Record<string, unknown> {
@@ -32,15 +32,15 @@ export class QueryTool implements Tool {
         type: {
           type: 'string',
           enum: ['contacts', 'sms', 'call_log'],
-          description: 'Was abgefragt werden soll',
+          description: 'What to query',
         },
         query: {
           type: 'string',
-          description: 'Suchbegriff (für contacts: Name; für sms: Absender oder Inhalt)',
+          description: 'Search term (for contacts: name; for sms: sender or content)',
         },
         limit: {
           type: 'number',
-          description: 'Maximale Anzahl Ergebnisse (Standard: 10)',
+          description: 'Maximum number of results (default: 10)',
         },
       },
       required: ['type'],
@@ -61,11 +61,11 @@ export class QueryTool implements Tool {
         case 'call_log':
           return this.queryCallLog(limit);
         default:
-          return errorResult(`Unbekannter Typ: ${type}`);
+          return errorResult(`Unknown type: ${type}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Query fehlgeschlagen: ${message}`);
+      return errorResult(`Query failed: ${message}`);
     }
   }
 
@@ -75,12 +75,12 @@ export class QueryTool implements Tool {
       : await DeviceQueryModule.searchContacts('', limit);
 
     if (!contacts || contacts.length === 0) {
-      return successResult(query ? `Keine Kontakte für "${query}" gefunden.` : 'Keine Kontakte vorhanden.');
+      return successResult(query ? `No contacts found for "${query}".` : 'No contacts available.');
     }
 
     const lines = contacts.map(c => `- ${c.name}: ${c.number}`);
     return successResult(
-      `Kontakte (${contacts.length}):\n${lines.join('\n')}`,
+      `Contacts (${contacts.length}):\n${lines.join('\n')}`,
       contacts.length === 1 ? `${contacts[0].name}: ${contacts[0].number}` : undefined,
     );
   }
@@ -91,13 +91,13 @@ export class QueryTool implements Tool {
       : await DeviceQueryModule.getRecentSMS(limit);
 
     if (!messages || messages.length === 0) {
-      return successResult('Keine SMS gefunden.');
+      return successResult('No SMS found.');
     }
 
     const lines = messages.map(m => {
-      const date = new Date(m.date).toLocaleString('de-AT');
-      const type = m.type === 1 ? 'Empfangen' : 'Gesendet';
-      return `[${date}] ${type} von/an ${m.address}: ${m.body.slice(0, 100)}`;
+      const date = new Date(m.date).toLocaleString('en-US');
+      const type = m.type === 1 ? 'Received' : 'Sent';
+      return `[${date}] ${type} from/to ${m.address}: ${m.body.slice(0, 100)}`;
     });
 
     return successResult(`SMS (${messages.length}):\n${lines.join('\n')}`);
@@ -107,23 +107,23 @@ export class QueryTool implements Tool {
     const calls: CallEntry[] = await DeviceQueryModule.getRecentCalls(limit);
 
     if (!calls || calls.length === 0) {
-      return successResult('Keine Anrufe im Verlauf.');
+      return successResult('No calls in history.');
     }
 
     const typeLabel: Record<string, string> = {
-      incoming: 'Eingehend',
-      outgoing: 'Ausgehend',
-      missed: 'Verpasst',
+      incoming: 'Incoming',
+      outgoing: 'Outgoing',
+      missed: 'Missed',
     };
 
     const lines = calls.map(c => {
-      const date = new Date(c.date).toLocaleString('de-AT');
+      const date = new Date(c.date).toLocaleString('en-US');
       const name = c.name || c.number;
       const type = typeLabel[c.type] ?? c.type;
       const dur = c.duration > 0 ? ` (${c.duration}s)` : '';
       return `[${date}] ${type}: ${name}${dur}`;
     });
 
-    return successResult(`Anrufliste (${calls.length}):\n${lines.join('\n')}`);
+    return successResult(`Call log (${calls.length}):\n${lines.join('\n')}`);
   }
 }

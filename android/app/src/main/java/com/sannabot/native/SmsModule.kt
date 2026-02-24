@@ -38,7 +38,7 @@ class SmsModule(reactContext: ReactApplicationContext) :
 
             promise.resolve("ok")
         } catch (e: Exception) {
-            promise.reject("SMS_ERROR", e.message ?: "SMS senden fehlgeschlagen", e)
+            promise.reject("SMS_ERROR", e.message ?: "Failed to send SMS", e)
         }
     }
 }

@@ -14,7 +14,7 @@ export class TTSTool implements Tool {
   }
 
   description(): string {
-    return 'Text vorlesen. Im Fahrermodus für ALLE Antworten verwenden. Kurze, klare Sätze sprechen.';
+    return 'Read text aloud. Use for ALL responses in driving mode. Speak short, clear sentences.';
   }
 
   parameters(): Record<string, unknown> {
@@ -23,11 +23,11 @@ export class TTSTool implements Tool {
       properties: {
         text: {
           type: 'string',
-          description: 'Text der vorgelesen werden soll',
+          description: 'Text to be read aloud',
         },
         language: {
           type: 'string',
-          description: 'Sprach-Tag (z.B. "de-AT", "de-DE", "en-US"). Standard: en-US',
+          description: 'Language tag (e.g. "de-AT", "de-DE", "en-US"). Default: en-US',
         },
       },
       required: ['text'],
@@ -48,7 +48,7 @@ export class TTSTool implements Tool {
       return successResult(`TTS: "${text.slice(0, 50)}${text.length > 50 ? '...' : ''}"`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`TTS fehlgeschlagen: ${message}`);
+      return errorResult(`TTS failed: ${message}`);
     }
   }
 }

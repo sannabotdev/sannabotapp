@@ -59,7 +59,7 @@ export class STTService {
             DebugLogger.add(
               'info',
               'STT',
-              `✓ Ergebnis via ${sType} (lang=${sLang}): "${lastResult}"`,
+              `✓ Result via ${sType} (lang=${sLang}): "${lastResult}"`,
             );
             // speech_results is the final result – resolve immediately
             doResolve(lastResult);
@@ -86,10 +86,10 @@ export class STTService {
           // 6  = ERROR_SPEECH_TIMEOUT
           // 11 = ERROR_SERVER_DISCONNECTED (emulator / flaky network)
           if (event.code === 7 || event.code === 6 || event.code === 11) {
-            DebugLogger.add('info', 'STT', `Kein Ergebnis (code=${event.code}: ${event.message})`);
+            DebugLogger.add('info', 'STT', `No result (code=${event.code}: ${event.message})`);
             doResolve('');
           } else {
-            DebugLogger.add('error', 'STT', `Fehler ${event.code}: ${event.message}`);
+            DebugLogger.add('error', 'STT', `Error ${event.code}: ${event.message}`);
             doReject(new Error(`STT error ${event.code}: ${event.message}`));
           }
         },

@@ -118,7 +118,7 @@ export class AccessibilityTool implements Tool {
     }
 
     // Return a normal success result.  The main pipeline will make one more
-    // LLM call to formulate a brief confirmation ("Wird gesendet...").
+    // LLM call to formulate a brief confirmation ("Sending...").
     // This is intentional: the extra LLM call + TTS keeps the JS thread busy,
     // preventing React Native from throttling it while WhatsApp is in the foreground.
     // The real result from the headless task arrives later via ConversationStore.

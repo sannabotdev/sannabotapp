@@ -27,8 +27,8 @@ export class FileStorageTool implements Tool {
 
   description(): string {
     return (
-      'Einfache Datei-Ablage im Gerätespeicher: Textdateien lesen, schreiben, auflisten und löschen. ' +
-      'Wird genutzt, um Listen (Einkaufsliste, To-do etc.) lokal zu speichern.'
+      'Simple file storage on the device: read, write, list, and delete text files. ' +
+      'Used to persist lists (shopping list, to-do, etc.) locally.'
     );
   }
 
@@ -40,23 +40,23 @@ export class FileStorageTool implements Tool {
           type: 'string',
           enum: ['read', 'write', 'list', 'delete'],
           description:
-            'read: Dateiinhalt lesen. ' +
-            'write: Dateiinhalt schreiben (überschreibt). ' +
-            'list: Alle gespeicherten Dateinamen auflisten. ' +
-            'delete: Eine Datei löschen.',
+            'read: Read file content. ' +
+            'write: Write file content (overwrites). ' +
+            'list: List all stored file names. ' +
+            'delete: Delete a file.',
         },
         filename: {
           type: 'string',
           description:
-            'Dateiname ohne Pfad oder Endung, z.B. "einkaufsliste". ' +
-            'Nur Kleinbuchstaben, Ziffern und Bindestriche. ' +
-            'Erforderlich für read, write und delete.',
+            'File name without path or extension, e.g. "shopping-list". ' +
+            'Lowercase letters, digits, and hyphens only. ' +
+            'Required for read, write, and delete.',
         },
         content: {
           type: 'string',
           description:
-            'Vollständiger Dateiinhalt, der gespeichert werden soll. ' +
-            'Nur für action=write. Für Listen: ein Eintrag pro Zeile.',
+            'Full file content to store. ' +
+            'Only for action=write. For lists: one entry per line.',
         },
       },
       required: ['action'],
@@ -77,11 +77,11 @@ export class FileStorageTool implements Tool {
         case 'delete':
           return this.deleteFile(args.filename as string);
         default:
-          return errorResult(`Unbekannte Aktion: ${String(action)}`);
+          return errorResult(`Unknown action: ${String(action)}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`FileStorage-Fehler: ${message}`);
+      return errorResult(`FileStorage error: ${message}`);
     }
   }
 
@@ -96,17 +96,17 @@ export class FileStorageTool implements Tool {
   private async readFile(filename: string | undefined): Promise<ToolResult> {
     const name = this.sanitizeFilename(filename);
     if (!name) {
-      return errorResult('"filename" Parameter fehlt oder ist ungültig.');
+      return errorResult('Missing or invalid "filename" parameter.');
     }
 
     const key = `${FILE_KEY_PREFIX}${name}`;
     const value = await AsyncStorage.getItem(key);
 
     if (value === null) {
-      return successResult(`Datei "${name}" existiert nicht oder ist leer.`);
+      return successResult(`File "${name}" does not exist or is empty.`);
     }
 
-    return successResult(`Inhalt von "${name}":\n${value}`);
+    return successResult(`Content of "${name}":\n${value}`);
   }
 
   private async writeFile(
@@ -115,10 +115,10 @@ export class FileStorageTool implements Tool {
   ): Promise<ToolResult> {
     const name = this.sanitizeFilename(filename);
     if (!name) {
-      return errorResult('"filename" Parameter fehlt oder ist ungültig.');
+      return errorResult('Missing or invalid "filename" parameter.');
     }
     if (typeof content !== 'string') {
-      return errorResult('"content" Parameter fehlt.');
+      return errorResult('Missing "content" parameter.');
     }
 
     const key = `${FILE_KEY_PREFIX}${name}`;
@@ -126,7 +126,7 @@ export class FileStorageTool implements Tool {
 
     const lineCount = content.split('\n').filter(l => l.trim().length > 0).length;
     return successResult(
-      `Datei "${name}" gespeichert (${lineCount} Einträge).`,
+      `File "${name}" saved (${lineCount} entries).`,
     );
   }
 
@@ -137,28 +137,28 @@ export class FileStorageTool implements Tool {
     );
 
     if (fileKeys.length === 0) {
-      return successResult('Keine Dateien gespeichert.');
+      return successResult('No files stored.');
     }
 
     const names = fileKeys.map(k => k.slice(FILE_KEY_PREFIX.length));
     return successResult(
-      `Gespeicherte Dateien (${names.length}):\n${names.map(n => `- ${n}`).join('\n')}`,
+      `Stored files (${names.length}):\n${names.map(n => `- ${n}`).join('\n')}`,
     );
   }
 
   private async deleteFile(filename: string | undefined): Promise<ToolResult> {
     const name = this.sanitizeFilename(filename);
     if (!name) {
-      return errorResult('"filename" Parameter fehlt oder ist ungültig.');
+      return errorResult('Missing or invalid "filename" parameter.');
     }
 
     const key = `${FILE_KEY_PREFIX}${name}`;
     const existing = await AsyncStorage.getItem(key);
     if (existing === null) {
-      return successResult(`Datei "${name}" existiert nicht (nichts zu löschen).`);
+      return successResult(`File "${name}" does not exist (nothing to delete).`);
     }
 
     await AsyncStorage.removeItem(key);
-    return successResult(`Datei "${name}" wurde gelöscht.`);
+    return successResult(`File "${name}" deleted.`);
   }
 }
