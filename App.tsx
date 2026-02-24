@@ -168,7 +168,7 @@ interface AppSettings extends AppPreferences {
 const DEFAULT_PREFS: AppPreferences = {
   selectedProvider: LOCAL_CONFIG.selectedProvider,
   wakeWordEnabled: !!LOCAL_CONFIG.picovoiceAccessKey,
-  enabledSkillNames: ['google-maps', 'phone', 'sms'],
+  enabledSkillNames: [],
   drivingMode: false,
   darkMode: true,
   sttLanguage: 'system',
@@ -204,18 +204,18 @@ const SECURE_KEY_IDS = {
 /** AsyncStorage key for dark-mode preference – readable without biometric unlock */
 const DARK_MODE_STORAGE_KEY = 'sanna_dark_mode';
 
-/** Load preferences from Keychain */
-async function loadPreferences(store: TokenStore): Promise<AppPreferences> {
+/** Load preferences from Keychain. Returns isFirstRun=true when no saved prefs exist. */
+async function loadPreferences(store: TokenStore): Promise<{ prefs: AppPreferences; isFirstRun: boolean }> {
   try {
     const json = await store.getApiKey(SECURE_KEY_IDS.preferences);
     if (json) {
       const saved = JSON.parse(json) as Partial<AppPreferences>;
-      return { ...DEFAULT_PREFS, ...saved };
+      return { prefs: { ...DEFAULT_PREFS, ...saved }, isFirstRun: false };
     }
   } catch {
     // Corrupt or missing – fall through to defaults
   }
-  return DEFAULT_PREFS;
+  return { prefs: DEFAULT_PREFS, isFirstRun: true };
 }
 
 /** Persist preferences to Keychain (survives app reinstallation) */
@@ -438,10 +438,15 @@ export default function App(): React.JSX.Element {
     await seedLocalConfigKeys(store);
 
     // Load preferences + secure keys in parallel (both from Keychain)
-    const [prefs, secureKeys] = await Promise.all([
+    const [{ prefs, isFirstRun }, secureKeys] = await Promise.all([
       loadPreferences(store),
       loadSecureKeys(store),
     ]);
+
+    // On first start, auto-enable only skills that need no runtime permissions
+    if (isFirstRun) {
+      prefs.enabledSkillNames = skillLoader.current.getPermissionFreeSkillNames();
+    }
 
     // Apply locale from loaded preferences immediately
     setLocale(prefs.appLanguage);
@@ -465,6 +470,15 @@ export default function App(): React.JSX.Element {
       setMessages(
         storedMessages.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
       );
+    }
+
+    // On very first start, show onboarding hint about enabling skills
+    if (isFirstRun && storedMessages.length === 0) {
+      setMessages([{
+        role: 'assistant',
+        text: t('app.onboarding.skillHint'),
+        timestamp: new Date(),
+      }]);
     }
   }, []);
 

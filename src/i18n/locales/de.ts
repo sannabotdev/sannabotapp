@@ -8,6 +8,7 @@ const de = {
   'app.locked.subtitle': 'Entsperre mit Fingerabdruck oder PIN, um auf deine Keys und Tokens zuzugreifen.',
   'app.locked.button': '🔓 Entsperren',
   'app.locked.authError': 'Authentifizierung fehlgeschlagen. Versuche es erneut.',
+  'app.onboarding.skillHint': 'Willkommen! 👋 Einige Skills (z.\u00A0B. Telefon, SMS, Google Maps) benötigen zusätzliche Berechtigungen und sind standardmäßig deaktiviert. Gehe zu **Einstellungen → Skills**, um sie zu aktivieren.',
 
   // ── Alerts ───────────────────────────────────────────────────────────────
   'alert.error': 'Fehler',

@@ -110,11 +110,13 @@ class DeviceQueryModule(reactContext: ReactApplicationContext) :
             )
             val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
             val selectionArgs = arrayOf("%$query%")
-            val sortOrder = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT $limit"
+            val sortOrder = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
 
             val cursor: Cursor? = contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)
             cursor?.use {
-                while (it.moveToNext()) {
+                var count = 0
+                while (it.moveToNext() && count < limit) {
+                    count++
                     val contact = WritableNativeMap().apply {
                         putString("name", it.getString(0) ?: "")
                         putString("number", it.getString(1) ?: "")
@@ -179,11 +181,13 @@ class DeviceQueryModule(reactContext: ReactApplicationContext) :
                 Telephony.Sms.DATE,
                 Telephony.Sms.TYPE,
             )
-            val sortOrder = "${Telephony.Sms.DATE} DESC LIMIT $limit"
+            val sortOrder = "${Telephony.Sms.DATE} DESC"
 
             val cursor = contentResolver.query(uri, projection, null, null, sortOrder)
             cursor?.use {
-                while (it.moveToNext()) {
+                var count = 0
+                while (it.moveToNext() && count < limit) {
+                    count++
                     val sms = WritableNativeMap().apply {
                         putString("address", it.getString(0) ?: "")
                         putString("body", it.getString(1) ?: "")
@@ -215,11 +219,13 @@ class DeviceQueryModule(reactContext: ReactApplicationContext) :
             )
             val selection = "${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?"
             val selectionArgs = arrayOf("%$query%", "%$query%")
-            val sortOrder = "${Telephony.Sms.DATE} DESC LIMIT $limit"
+            val sortOrder = "${Telephony.Sms.DATE} DESC"
 
             val cursor = contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)
             cursor?.use {
-                while (it.moveToNext()) {
+                var count = 0
+                while (it.moveToNext() && count < limit) {
+                    count++
                     val sms = WritableNativeMap().apply {
                         putString("address", it.getString(0) ?: "")
                         putString("body", it.getString(1) ?: "")
@@ -253,11 +259,13 @@ class DeviceQueryModule(reactContext: ReactApplicationContext) :
                 CallLog.Calls.DURATION,
                 CallLog.Calls.TYPE, // 1=incoming, 2=outgoing, 3=missed
             )
-            val sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $limit"
+            val sortOrder = "${CallLog.Calls.DATE} DESC"
 
             val cursor = contentResolver.query(uri, projection, null, null, sortOrder)
             cursor?.use {
-                while (it.moveToNext()) {
+                var count = 0
+                while (it.moveToNext() && count < limit) {
+                    count++
                     val callTypeStr = when (it.getInt(4)) {
                         CallLog.Calls.INCOMING_TYPE -> "incoming"
                         CallLog.Calls.OUTGOING_TYPE -> "outgoing"

@@ -4,6 +4,7 @@
  */
 import { NativeEventEmitter } from 'react-native';
 import TTSModule, { TTSEvents } from '../native/TTSModule';
+import { DebugLogger } from '../agent/debug-logger';
 
 type TTSEventCallback = () => void;
 
@@ -38,6 +39,7 @@ export class TTSService {
   /** Speak text and wait for completion */
   async speak(text: string, language = 'en-US'): Promise<void> {
     const utteranceId = `tts_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    DebugLogger.add('info', 'TTS', `Speaking (lang=${language}): "${text.slice(0, 80)}${text.length > 80 ? '…' : ''}"`);
 
     return new Promise((resolve, reject) => {
       this.pendingCallbacks.set(utteranceId, resolve);
@@ -50,6 +52,7 @@ export class TTSService {
 
   /** Speak text without waiting */
   speakAsync(text: string, language = 'en-US'): void {
+    DebugLogger.add('info', 'TTS', `Speaking async (lang=${language}): "${text.slice(0, 80)}${text.length > 80 ? '…' : ''}"`);
     TTSModule.speak(text, language, null).catch(console.error);
   }
 

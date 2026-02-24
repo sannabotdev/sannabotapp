@@ -251,6 +251,17 @@ export class SkillLoader {
     return skill?.path?.startsWith('dynamic/') ?? false;
   }
 
+  /**
+   * Return names of skills that require no Android runtime permissions.
+   * Install-time permissions (e.g. INTERNET) don't count as "required".
+   */
+  getPermissionFreeSkillNames(): string[] {
+    const INSTALL_TIME = new Set(['android.permission.INTERNET']);
+    return Array.from(this.skills.values())
+      .filter(s => s.permissions.every(p => INSTALL_TIME.has(p)))
+      .map(s => s.name);
+  }
+
   /** Get all skills (regardless of permission/credential status) */
   getAllSkills(): SkillInfo[] {
     return Array.from(this.skills.values());

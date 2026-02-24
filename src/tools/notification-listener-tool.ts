@@ -133,7 +133,7 @@ export class NotificationListenerTool implements Tool {
   // ── Subscribe ──────────────────────────────────────────────────────────────
 
   private async subscribe(
-    module: ReturnType<typeof getNotificationListenerModule>,
+    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
     args: Record<string, unknown>,
   ): Promise<ToolResult> {
     const app = args.app as string;
@@ -170,7 +170,7 @@ export class NotificationListenerTool implements Tool {
   // ── Unsubscribe ───────────────────────────────────────────────────────────
 
   private async unsubscribe(
-    module: ReturnType<typeof getNotificationListenerModule>,
+    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
     args: Record<string, unknown>,
   ): Promise<ToolResult> {
     const app = args.app as string;
@@ -208,7 +208,7 @@ export class NotificationListenerTool implements Tool {
   // ── List Subscriptions ──────────────────────────────────────────────────────
 
   private async listSubscriptions(
-    module: ReturnType<typeof getNotificationListenerModule>,
+    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
   ): Promise<ToolResult> {
     try {
       const json = await module.getSubscribedApps();
@@ -237,7 +237,7 @@ export class NotificationListenerTool implements Tool {
   // ── Get Recent ─────────────────────────────────────────────────────────────
 
   private async getRecent(
-    module: ReturnType<typeof getNotificationListenerModule>,
+    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
     args: Record<string, unknown>,
   ): Promise<ToolResult> {
     try {
@@ -281,7 +281,7 @@ export class NotificationListenerTool implements Tool {
   // ── Clear ──────────────────────────────────────────────────────────────────
 
   private async clear(
-    module: ReturnType<typeof getNotificationListenerModule>,
+    module: NonNullable<ReturnType<typeof getNotificationListenerModule>>,
   ): Promise<ToolResult> {
     try {
       await module.clearNotifications();

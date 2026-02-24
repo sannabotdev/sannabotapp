@@ -8,6 +8,7 @@ const en = {
   'app.locked.subtitle': 'Unlock with fingerprint or PIN to access your keys and tokens.',
   'app.locked.button': '🔓 Unlock',
   'app.locked.authError': 'Authentication failed. Please try again.',
+  'app.onboarding.skillHint': 'Welcome! 👋 Some skills (e.g. Phone, SMS, Google Maps) need extra permissions and are disabled by default. Go to **Settings → Skills** to enable them.',
 
   // ── Alerts ───────────────────────────────────────────────────────────────
   'alert.error': 'Error',

@@ -4,6 +4,7 @@ category: communication
 description: Send SMS directly and open the messaging app
 permissions:
  - android.permission.SEND_SMS
+ - android.permission.READ_SMS
  - android.permission.READ_CONTACTS
 ---
 # SMS / Messages
