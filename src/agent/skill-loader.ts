@@ -252,13 +252,17 @@ export class SkillLoader {
   }
 
   /**
-   * Return names of skills that require no Android runtime permissions.
+   * Return names of skills that work out-of-the-box: no runtime permissions
+   * and no OAuth/API-key credentials required.
    * Install-time permissions (e.g. INTERNET) don't count as "required".
    */
   getPermissionFreeSkillNames(): string[] {
     const INSTALL_TIME = new Set(['android.permission.INTERNET']);
     return Array.from(this.skills.values())
-      .filter(s => s.permissions.every(p => INSTALL_TIME.has(p)))
+      .filter(s =>
+        s.permissions.every(p => INSTALL_TIME.has(p)) &&
+        s.credentials.length === 0,
+      )
       .map(s => s.name);
   }
 

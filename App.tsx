@@ -1093,6 +1093,11 @@ export default function App(): React.JSX.Element {
       toolRegistry.register(new HttpTool(credentialManager.current));
       toolRegistry.register(new QueryTool());
       toolRegistry.register(new DeviceTool());
+      toolRegistry.register(new SmsTool());
+      toolRegistry.register(new SchedulerTool());
+      toolRegistry.register(new NotificationListenerTool());
+      toolRegistry.register(new AccessibilityTool());
+      toolRegistry.register(new FileStorageTool());
 
       return await runSkillTest(
         skill,
