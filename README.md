@@ -36,6 +36,27 @@ An open-source AI assistant that runs on Android and actually *controls* your ph
 | 📋 Lists | Manage local lists (shopping, to-do, packing) – fully offline |
 | 🌤️ Weather | Current weather & forecasts via wttr.in / Open-Meteo – no API key |
 
+## 🚗 Driving Mode
+
+Toggle driving mode with one tap. Sanna becomes a fully hands-free co-pilot:
+
+| Feature | How it works |
+|---------|-------------|
+| **Voice-only interaction** | Wake word ("Hey Sanna") → speak your request → hear the answer. No screen touch needed. |
+| **Ultra-short answers** | The LLM is instructed to reply in 1–2 sentences max – every word is read aloud, so brevity saves attention. |
+| **Auto-read notifications** | Subscribe to WhatsApp, Telegram, SMS, email, etc. – incoming messages are summarised and spoken automatically. |
+| **Navigation** | "Navigate to the airport" → opens Google Maps turn-by-turn navigation instantly. |
+| **Calls & messages** | "Call Mom" / "Text Sarah: running 10 minutes late" / "WhatsApp Stefan: on my way" – contact lookup, confirmation, and send, all by voice. |
+| **Music control** | "Play Rammstein on Spotify" / "Next song" / "Pause" – full Spotify playback control via voice. |
+| **Volume control** | "Set volume to 80 percent" / "Turn it down" – adjusts media volume directly. |
+| **Calendar & schedule** | "What's my next appointment?" / "Am I free at 3 PM?" – reads your Google Calendar aloud. |
+| **Weather** | "Will it rain tomorrow?" / "What's the weather?" – fetches weather for your GPS location or any city. |
+| **Screen stays on** | Display never sleeps while driving mode is active – no unlock needed. |
+| **Email triage** | "Read my latest emails" / "Reply to the last email: sounds good" – hands-free Gmail access. |
+
+> Driving mode optimises every part of the pipeline: the system prompt enforces brevity,
+> all responses are auto-spoken via TTS, and notifications from subscribed apps are read aloud in real time.
+
 ## 🏗️ Architecture
 
 ```

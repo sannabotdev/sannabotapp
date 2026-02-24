@@ -23,6 +23,7 @@ class SannaPackage : ReactPackage {
             KeepAwakeModule(reactContext),
             AccessibilityModule(reactContext),
             AccessibilityJobModule(reactContext),
+            VolumeModule(reactContext),
         )
     }
 

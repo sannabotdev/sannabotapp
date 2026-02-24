@@ -15,6 +15,7 @@ type DeviceAction =
   | 'get_battery'
   | 'get_time'
   | 'get_volume'
+  | 'set_volume'
   | 'get_wifi_status'
   | 'encode_base64url';
 
@@ -24,7 +25,7 @@ export class DeviceTool implements Tool {
   }
 
   description(): string {
-    return 'Gerätestatus abfragen: GPS-Position, Akkustand, Uhrzeit, Lautstärke, WLAN-Status.';
+    return 'Query and control device state: GPS location, battery level, time, volume (read/set), Wi-Fi status.';
   }
 
   parameters(): Record<string, unknown> {
@@ -33,12 +34,16 @@ export class DeviceTool implements Tool {
       properties: {
         action: {
           type: 'string',
-          enum: ['get_location', 'get_battery', 'get_time', 'get_volume', 'get_wifi_status', 'encode_base64url'],
-          description: 'Was abgefragt oder gesteuert werden soll. encode_base64url: Kodiert einen Text als base64url (UTF-8) für die Gmail API.',
+          enum: ['get_location', 'get_battery', 'get_time', 'get_volume', 'set_volume', 'get_wifi_status', 'encode_base64url'],
+          description: 'Action to perform. set_volume: set media volume (0–100). encode_base64url: encode text as base64url (UTF-8) for the Gmail API.',
+        },
+        volume: {
+          type: 'number',
+          description: 'Only for set_volume: desired volume in percent (0–100).',
         },
         text: {
           type: 'string',
-          description: 'Nur für encode_base64url: Der zu kodierende Text (z.B. eine RFC 2822 E-Mail).',
+          description: 'Only for encode_base64url: the text to encode (e.g. an RFC 2822 email).',
         },
       },
       required: ['action'],
@@ -58,16 +63,18 @@ export class DeviceTool implements Tool {
           return this.getTime();
         case 'get_volume':
           return this.getVolume();
+        case 'set_volume':
+          return this.setVolume(args.volume as number);
         case 'get_wifi_status':
           return await this.getWifiStatus();
         case 'encode_base64url':
           return this.encodeBase64url(args.text as string);
         default:
-          return errorResult(`Unbekannte Aktion: ${action}`);
+          return errorResult(`Unknown action: ${action}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return errorResult(`Device-Abfrage fehlgeschlagen: ${message}`);
+      return errorResult(`Device query failed: ${message}`);
     }
   }
 
@@ -77,19 +84,19 @@ export class DeviceTool implements Tool {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
-          title: 'GPS-Berechtigung',
-          message: 'Sanna benötigt Zugriff auf deinen Standort.',
+          title: 'GPS permission',
+          message: 'Sanna needs access to your location.',
           buttonPositive: 'Erlauben',
         },
       );
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        return errorResult('GPS-Berechtigung verweigert');
+        return errorResult('GPS permission denied');
       }
     }
 
     return new Promise(resolve => {
       const timeout = setTimeout(() => {
-        resolve(errorResult('GPS-Timeout – kein Signal'));
+        resolve(errorResult('GPS timeout – no signal'));
       }, 15_000);
 
       Geolocation.getCurrentPosition(
@@ -98,14 +105,14 @@ export class DeviceTool implements Tool {
           const { latitude, longitude, accuracy } = pos.coords;
           resolve(
             successResult(
-              `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (Genauigkeit: ${accuracy?.toFixed(0) ?? '?'}m)`,
+              `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (accuracy: ${accuracy?.toFixed(0) ?? '?'}m)`,
               `Position: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
             ),
           );
         },
         err => {
           clearTimeout(timeout);
-          resolve(errorResult(`GPS-Fehler: ${err.message}`));
+          resolve(errorResult(`GPS error: ${err.message}`));
         },
         { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
       );
@@ -117,11 +124,11 @@ export class DeviceTool implements Tool {
       if (DeviceQueryModule?.getBatteryLevel) {
         const level: number = await DeviceQueryModule.getBatteryLevel();
         const percent = Math.round(level * 100);
-        return successResult(`Akkustand: ${percent}%`);
+        return successResult(`Battery: ${percent}%`);
       }
-      return successResult('Akkustand: nicht verfügbar');
+      return successResult('Battery: not available');
     } catch (err) {
-      return errorResult(`Akku-Abfrage fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      return errorResult(`Battery query failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -149,41 +156,62 @@ export class DeviceTool implements Tool {
       if (VolumeManager) {
         const volume: number = await VolumeManager.getVolume();
         const percent = Math.round(volume * 100);
-        return successResult(`Lautstärke: ${percent}%`);
+        return successResult(`Volume: ${percent}%`);
       }
-      return successResult('Lautstärke: nicht verfügbar (VolumeManager fehlt)');
+      return successResult('Volume: not available (VolumeManager missing)');
     } catch (err) {
-      return errorResult(`Lautstärke-Abfrage fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      return errorResult(`Volume query failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private async setVolume(percent: number): Promise<ToolResult> {
+    try {
+      if (typeof percent !== 'number' || isNaN(percent)) {
+        return errorResult('set_volume: "volume" parameter missing or invalid.');
+      }
+      if (!VolumeManager) {
+        return errorResult('Volume: not available (VolumeManager missing)');
+      }
+      const clamped = Math.max(0, Math.min(100, percent));
+      const level = clamped / 100; // 0.0–1.0
+      const actual: number = await VolumeManager.setVolume(level);
+      const actualPercent = Math.round(actual * 100);
+      return successResult(
+        `Volume set to ${actualPercent}%`,
+        `Volume ${actualPercent}%`,
+      );
+    } catch (err) {
+      return errorResult(`Set volume failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   private async getWifiStatus(): Promise<ToolResult> {
     try {
       if (!DeviceQueryModule?.getWifiStatus) {
-        return errorResult('WLAN-Status nicht verfügbar (DeviceQueryModule fehlt)');
+        return errorResult('Wi-Fi status not available (DeviceQueryModule missing)');
       }
       const status: { connected: boolean; ssid?: string; rssi?: number; signalLevel?: number } =
         await DeviceQueryModule.getWifiStatus();
 
       if (!status.connected) {
-        return successResult('WLAN: nicht verbunden');
+        return successResult('Wi-Fi: not connected');
       }
 
-      const levelLabels = ['sehr schwach', 'schwach', 'mittel', 'gut', 'sehr gut'];
-      const signalStr = status.signalLevel != null ? (levelLabels[status.signalLevel] ?? 'unbekannt') : 'unbekannt';
+      const levelLabels = ['very weak', 'weak', 'fair', 'good', 'excellent'];
+      const signalStr = status.signalLevel != null ? (levelLabels[status.signalLevel] ?? 'unknown') : 'unknown';
       return successResult(
-        `WLAN verbunden: ${status.ssid ?? 'unbekannt'}, Signal: ${signalStr} (${status.rssi ?? '?'} dBm)`,
+        `Wi-Fi connected: ${status.ssid ?? 'unknown'}, signal: ${signalStr} (${status.rssi ?? '?'} dBm)`,
       );
     } catch (err) {
       return errorResult(
-        `WLAN-Status konnte nicht abgerufen werden: ${err instanceof Error ? err.message : String(err)}`,
+        `Wi-Fi status query failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
 
   private encodeBase64url(text: string): ToolResult {
     if (typeof text !== 'string' || text.length === 0) {
-      return errorResult('encode_base64url: "text" Parameter fehlt oder ist leer.');
+      return errorResult('encode_base64url: "text" parameter missing or empty.');
     }
     try {
       // encodeURIComponent → percent-encodes every non-ASCII byte
@@ -195,7 +223,7 @@ export class DeviceTool implements Tool {
       const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
       return successResult(base64url);
     } catch (err) {
-      return errorResult(`base64url-Kodierung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+      return errorResult(`base64url encoding failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }
