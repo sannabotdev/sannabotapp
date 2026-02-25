@@ -6,6 +6,13 @@ An open-source AI assistant that runs on Android and actually *controls* your ph
 
 > "Hey Sanna, read my last 3 emails, summarize them, and text the summary to Sarah" — just works.
 
+## 🎯 Beta Testing
+
+There are two ways to get a beta release of Sanna:
+
+1. **Build it yourself** – Configure and build the app following the instructions in [DEVELOP.md](DEVELOP.md). Note that this can be time-consuming as you'll need to create many API keys (OpenAI/Claude, Google, Spotify, Picovoice, Slack) for the app to be fully functional.
+2. **Request a Test APK** – Write to [sannabot@proton.me](mailto:sannabot@proton.me) and you'll receive a pre-built test APK for beta testing.
+
 ## ✨ Highlights
 
 - **🗣️ Voice-first** – Wake word ("Hey Sanna") → Speech-to-Text → LLM agent → Text-to-Speech, fully hands-free
@@ -197,14 +204,6 @@ Main Pipeline (user conversation)
 3. `npm install && npm run android`
 
 See [DEVELOP.md](DEVELOP.md) for detailed credential setup (API keys, OAuth, etc.) and building instructions.
-
-## 🎯 Beta Release
-
-There are two ways to get a beta release of Sanna:
-
-1. **Build it yourself** – Configure and build the app following the instructions in [DEVELOP.md](DEVELOP.md). Note that this can be time-consuming as you'll need to create many API keys (OpenAI/Claude, Google, Spotify, Picovoice, Slack) for the app to be fully functional.
-2. **Request a Test APK** – Write to [sannabot@proton.me](mailto:sannabot@proton.me) and you'll receive a pre-built test APK for beta testing.
-
 
 ## 🤝 Adding a Skill
 
