@@ -87,8 +87,33 @@ class DebugLoggerImpl {
 
   /** Log tool execution start */
   logToolCall(name: string, args: Record<string, unknown>): void {
-    const argsStr = JSON.stringify(args);
-    this.add('tool', `TOOL:${name}`, `Call: ${argsStr.slice(0, 120)}${argsStr.length > 120 ? '…' : ''}`, JSON.stringify(args, null, 2));
+    // Special formatting for http tool calls
+    if (name === 'http') {
+      const method = (args.method as string) ?? 'GET';
+      const url = (args.url as string) ?? '';
+      const headers = (args.headers as Record<string, string>) ?? {};
+      const body = args.body;
+      
+      const summary = `${method} ${url}`;
+      const detailParts: string[] = [];
+      detailParts.push(`Method: ${method}`);
+      detailParts.push(`URL: ${url}`);
+      
+      if (Object.keys(headers).length > 0) {
+        detailParts.push(`\nHeaders:\n${JSON.stringify(headers, null, 2)}`);
+      }
+      
+      if (body !== undefined && body !== null) {
+        detailParts.push(`\nBody:\n${JSON.stringify(body, null, 2)}`);
+      }
+      
+      const detail = detailParts.join('\n');
+      this.add('tool', `TOOL:${name}`, summary, detail);
+    } else {
+      // Default formatting for other tools
+      const argsStr = JSON.stringify(args);
+      this.add('tool', `TOOL:${name}`, `Call: ${argsStr.slice(0, 120)}${argsStr.length > 120 ? '…' : ''}`, JSON.stringify(args, null, 2));
+    }
   }
 
   /** Log tool result */
