@@ -38,6 +38,8 @@ interface HomeScreenProps {
   isDark: boolean;
   onToggleDarkMode: () => void;
   historyLoading?: boolean;
+  /** BCP-47 language tag for time formatting (e.g. 'de-AT', 'en-US') */
+  language: string;
 }
 
 const STATE_COLORS: Record<PipelineState, string> = {
@@ -67,6 +69,7 @@ export function HomeScreen({
   isDark,
   onToggleDarkMode,
   historyLoading,
+  language,
 }: HomeScreenProps): React.JSX.Element {
   const scrollRef = useRef<ScrollView>(null);
   const isBusy = pipelineState !== 'idle';
@@ -195,7 +198,7 @@ export function HomeScreen({
                 </View>
               ) : (
                 messages.map((msg, idx) => (
-                  <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} />
+                  <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} language={language} />
                 ))
               )}
               {pipelineState === 'processing' && (
@@ -237,7 +240,7 @@ export function HomeScreen({
               </View>
             ) : (
               messages.map((msg, idx) => (
-                <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} />
+                <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} language={language} />
               ))
             )}
 
@@ -460,13 +463,15 @@ function MessageBubble({
   message,
   mdStyles,
   isDark,
+  language,
 }: {
   message: Message;
   mdStyles: ReturnType<typeof makeMdStyles>;
   isDark: boolean;
+  language: string;
 }): React.JSX.Element {
   const isUser = message.role === 'user';
-  const time = message.timestamp.toLocaleTimeString(undefined, {
+  const time = message.timestamp.toLocaleTimeString(language, {
     hour: '2-digit',
     minute: '2-digit',
   });

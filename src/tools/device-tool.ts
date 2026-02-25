@@ -149,7 +149,7 @@ export class DeviceTool implements Tool {
             resolve(
               successResult(
                 `Approximate location (network-based, not GPS): ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (accuracy: ~${accuracy?.toFixed(0) ?? '?'}m)`,
-                `Ungefähre Position: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                `Approximate position: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
               ),
             );
           }
@@ -200,9 +200,9 @@ export class DeviceTool implements Tool {
     // If the user explicitly asks for the time, the LLM should use the tts tool.
     // This prevents the time from being auto-spoken as an intermediate step in driving mode.
     return successResult(
-      `Zeit: ${timeStr}, Datum: ${dateStr}, ISO-Datum: ${isoDate}, ` +
-      `Heute ist der ${now.getDate()}. (${isoDate}), ` +
-      `now_ms: ${nowMs} (Unix-Timestamp in Millisekunden – für scheduler trigger_at_ms: einfach now_ms + gewünschte Dauer in ms rechnen)`,
+      `Time: ${timeStr}, Date: ${dateStr}, ISO-Date: ${isoDate}, ` +
+      `Today is ${dateStr} (${isoDate}), ` +
+      `now_ms: ${nowMs} (Unix timestamp in milliseconds – for scheduler trigger_at_ms: simply calculate now_ms + desired duration in ms)`,
     );
   }
 
