@@ -30,3 +30,11 @@ AppRegistry.registerHeadlessTask(
   'SannaAccessibilityTask',
   () => require('./src/agent/accessibility-headless-task').default,
 );
+
+// Register the headless task for notification sub-agent processing.
+// Started directly by SannaNotificationListenerService (native) when a notification
+// from a subscribed app arrives.  Runs completely in the background.
+AppRegistry.registerHeadlessTask(
+  'SannaNotificationTask',
+  () => require('./src/agent/notification-headless').default,
+);

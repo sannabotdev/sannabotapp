@@ -1,20 +1,24 @@
 package com.sannabot.native
 
 import android.content.Context
-import android.content.SharedPreferences
+import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.WritableMap
-import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.facebook.react.HeadlessJsTaskService
 import org.json.JSONArray
 
 /**
- * NotificationListenerService – Captures incoming notifications from all apps
+ * NotificationListenerService – Captures incoming notifications and starts the
+ * background sub-agent directly.
  *
- * When a notification arrives from a subscribed app (package name in allowlist),
- * extracts the notification data and emits it to React Native via DeviceEventEmitter.
+ * When a notification arrives from a subscribed app, the service serialises the
+ * notification data and starts NotificationHeadlessService, which in turn runs
+ * the 'SannaNotificationTask' JS headless task.
+ *
+ * This approach bypasses the React Native DeviceEventEmitter entirely – the
+ * notification sub-agent always runs in a dedicated background thread, regardless
+ * of whether SannaBot's Activity is in the foreground or not.
  *
  * Requires the user to grant "Notification Access" permission in Android Settings.
  */
@@ -108,7 +112,6 @@ class SannaNotificationListenerService : NotificationListenerService() {
             // Extract notification data
             val title = extras?.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
             val text = extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
-            val subText = extras?.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString()
 
             // Extract sender depending on app type.
             // Email apps (Gmail, Outlook): EXTRA_TITLE = sender name, EXTRA_SUB_TEXT = account email (receiver!)
@@ -133,16 +136,17 @@ class SannaNotificationListenerService : NotificationListenerService() {
                 packageName = packageName,
                 title = title,
                 text = text,
-                sender = sender ?: "",
+                sender = sender,
                 timestamp = sbn.postTime,
                 key = sbn.key
             )
 
-            // Save to buffer
+            // Save to buffer (for get_recent tool access)
             addToBuffer(this, notificationData)
 
-            // Emit to React Native
-            emitNotificationEvent(notificationData)
+            // Start headless task directly – no dependency on React Native foreground
+            startHeadlessTask(notificationData)
+
         } catch (e: Exception) {
             Log.e(TAG, "Error processing notification: ${e.message}", e)
         }
@@ -153,30 +157,21 @@ class SannaNotificationListenerService : NotificationListenerService() {
     }
 
     /**
-     * Emit notification event to React Native via DeviceEventEmitter.
-     * Uses the ReactApplicationContext stored in NotificationListenerModule.
+     * Serialise notification data and start NotificationHeadlessService.
+     * Acquires a wake lock so the device stays awake during JS processing.
      */
-    private fun emitNotificationEvent(data: NotificationData) {
-        val reactContext = NotificationListenerModule.getReactContext()
-            ?: run {
-                Log.w(TAG, "ReactContext not available, notification not emitted")
-                return
+    private fun startHeadlessTask(data: NotificationData) {
+        try {
+            val notificationJson = data.toJSON().toString()
+            val serviceIntent = Intent(this, NotificationHeadlessService::class.java).apply {
+                putExtra("notificationJson", notificationJson)
             }
-
-        val params = Arguments.createMap().apply {
-            putString("packageName", data.packageName)
-            putString("title", data.title)
-            putString("text", data.text)
-            putString("sender", data.sender)
-            putDouble("timestamp", data.timestamp.toDouble())
-            putString("key", data.key)
+            startService(serviceIntent)
+            HeadlessJsTaskService.acquireWakeLockNow(this)
+            Log.d(TAG, "Started headless task for: ${data.packageName} – \"${data.title}\"")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start headless task: ${e.message}", e)
         }
-
-        reactContext
-            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-            .emit("onNotification", params)
-
-        Log.d(TAG, "Emitted notification: ${data.packageName} - ${data.title}")
     }
 
     /**

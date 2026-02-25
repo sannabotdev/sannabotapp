@@ -115,6 +115,14 @@
         </intent-filter>
       </service>
 
+      <!-- Notification: HeadlessJS service for background notification sub-agent -->
+      <!-- Started directly by SannaNotificationListenerService – no foreground  -->
+      <!-- thread dependency.                                                     -->
+      <service
+        android:name=".native.NotificationHeadlessService"
+        android:enabled="true"
+        android:exported="false" />
+
       <!-- Accessibility: HeadlessJS service for background UI automation -->
       <!-- This runs the SannaAccessibilityTask JS in a separate context so the   -->
       <!-- JS runtime is not throttled when SannaBot's Activity is in background. -->

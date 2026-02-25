@@ -29,6 +29,15 @@ export interface NotificationListenerModuleType {
 
   /** Clear the notification buffer */
   clearNotifications(): Promise<string>;
+
+  /**
+   * Save agent config so the headless notification sub-agent can create a pipeline.
+   * Config JSON: { apiKey, provider, model, enabledSkillNames, drivingMode, language, ... }
+   */
+  saveAgentConfig(configJson: string): Promise<string>;
+
+  /** Get saved agent config. Returns JSON string or null. */
+  getAgentConfig(): Promise<string | null>;
 }
 
 export interface NotificationData {

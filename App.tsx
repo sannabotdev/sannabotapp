@@ -35,11 +35,7 @@ import { PermissionManager } from './src/permissions/permission-manager';
 import { SpotifyAuth } from './src/permissions/spotify-auth';
 import { GoogleAuth } from './src/permissions/google-auth';
 import { SlackAuth } from './src/permissions/slack-auth';
-import {
-  getNotificationListenerModule,
-  createNotificationEventEmitter,
-  type NotificationData,
-} from './src/native/NotificationListenerModule';
+import NotificationListenerModule from './src/native/NotificationListenerModule';
 
 // Scheduler config persistence
 import SchedulerModule from './src/native/SchedulerModule';
@@ -47,10 +43,8 @@ import SchedulerModule from './src/native/SchedulerModule';
 // Conversation persistence
 import { ConversationStore } from './src/agent/conversation-store';
 
-// Notification sub-agent
-import { runNotificationSubAgent } from './src/agent/notification-sub-agent';
-import type { NotificationPayload } from './src/agent/notification-sub-agent';
-import { loadRules, getRulesForApp, syncOnStartup as syncNotificationRules, type NotificationRule } from './src/agent/notification-rules-store';
+// Notification rules – only startup sync needed; sub-agent runs in headless task
+import { syncOnStartup as syncNotificationRules } from './src/agent/notification-rules-store';
 
 // AsyncStorage for lightweight pre-unlock preferences (dark mode)
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -403,12 +397,6 @@ export default function App(): React.JSX.Element {
   const slackAuth = useRef(new SlackAuth(credentialManager.current));
   const pipelineRef = useRef<ConversationPipeline | null>(null);
 
-  // Notification sub-agent queue (processed sequentially, independent of main pipeline)
-  const notifQueueRef = useRef<NotificationData[]>([]);
-  const notifProcessingRef = useRef(false);
-  // Dedup: track notification keys already emitted to the sub-agent (JS-side safety net)
-  const processedNotifKeysRef = useRef(new Set<string>());
-
   const skillLoader = useRef(new SkillLoader());
   const dynamicSkillStore = useRef(new DynamicSkillStore());
   const [allSkills, setAllSkills] = useState(() => skillLoader.current.getAllSkills());
@@ -712,7 +700,7 @@ export default function App(): React.JSX.Element {
 
     pipelineRef.current = pipeline;
 
-    // Persist agent config so the headless scheduler sub-agent can use it
+    // Persist agent config so all headless sub-agents (scheduler, notifications, …) can use it
     const agentConfig = {
       apiKey: apiKey,
       provider: selectedProvider,
@@ -722,7 +710,9 @@ export default function App(): React.JSX.Element {
       drivingMode: settings.drivingMode,
       language: resolvedLanguage,
     };
-    SchedulerModule.saveAgentConfig(JSON.stringify(agentConfig)).catch(() => {});
+    const agentConfigJson = JSON.stringify(agentConfig);
+    SchedulerModule.saveAgentConfig(agentConfigJson).catch(() => {});
+    NotificationListenerModule?.saveAgentConfig(agentConfigJson).catch(() => {});
   }, [
     vaultUnlocked,
     settingsLoaded,
@@ -759,34 +749,6 @@ export default function App(): React.JSX.Element {
     };
   }, [vaultUnlocked, settings.wakeWordEnabled, settings.wakeWordKey]);
 
-  // Notification listener management
-  useEffect(() => {
-    if (!vaultUnlocked || !settingsLoaded) return;
-    if (!settings.enabledSkillNames.includes('notifications')) return;
-
-    const module = getNotificationListenerModule();
-    if (!module) return;
-
-    // Check if notification access is granted
-    module.isNotificationAccessGranted().then(granted => {
-      if (!granted) {
-        // Access not granted - user needs to enable it in settings
-        return;
-      }
-
-      // Set up event listener for incoming notifications
-      const eventEmitter = createNotificationEventEmitter();
-      if (!eventEmitter) return;
-
-      const subscription = eventEmitter.addListener('onNotification', (notification: NotificationData) => {
-        handleNotificationReceived(notification);
-      });
-
-      return () => {
-        subscription.remove();
-      };
-    });
-  }, [vaultUnlocked, settingsLoaded, settings.enabledSkillNames]);
 
   // ─── Handlers ───────────────────────────────────────────────────────────
 
@@ -875,154 +837,6 @@ export default function App(): React.JSX.Element {
     // 3. Clear LLM in-memory history
     pipelineRef.current?.clearHistory();
   }, []);
-
-  // ── Notification sub-agent queue processor ──────────────────────────────
-  // Each notification gets its own sub-agent (own tool loop, own LLM call).
-  // The queue ensures sequential processing; the main pipeline stays free.
-
-  const appAliasMap: Record<string, string> = {
-    'com.whatsapp': 'WhatsApp',
-    'com.google.android.gm': 'Email',
-    'org.telegram.messenger': 'Telegram',
-    'org.thoughtcrime.securesms': 'Signal',
-    'com.android.mms': 'SMS',
-  };
-
-  const processNotificationQueue = useCallback(async () => {
-    if (notifProcessingRef.current) return;
-    notifProcessingRef.current = true;
-
-    // Load rules once for this batch
-    let rules: NotificationRule[] = [];
-    try {
-      rules = await loadRules();
-    } catch (err) {
-      DebugLogger.add('error', 'NOTIF', `Failed to load notification rules: ${err}`);
-    }
-
-    while (notifQueueRef.current.length > 0) {
-      const notification = notifQueueRef.current.shift()!;
-
-      // Get all enabled rules for this app (LLM evaluates conditions)
-      const appRules = getRulesForApp(rules, notification.packageName);
-      if (appRules.length === 0) {
-        DebugLogger.add(
-          'info',
-          'NOTIF',
-          `No rules for ${notification.packageName}: "${notification.title}" – skipping`,
-        );
-        continue;
-      }
-
-      DebugLogger.add(
-        'info',
-        'NOTIF',
-        `${appRules.length} rule(s) for ${notification.packageName}: "${notification.title}"`,
-        appRules.map(r => `[${r.id}] ${r.condition || '(catch-all)'} → ${r.instruction}`).join('\n'),
-      );
-
-      // Build provider from current settings
-      const { claudeApiKey, openAIApiKey, selectedProvider, enabledSkillNames } = settings;
-      const apiKey = selectedProvider === 'claude' ? claudeApiKey : openAIApiKey;
-      if (!apiKey) {
-        DebugLogger.add('error', 'NOTIF', 'No API key – skipping notification');
-        continue;
-      }
-
-      const selectedModel = selectedProvider === 'claude'
-        ? settings.selectedClaudeModel
-        : settings.selectedOpenAIModel;
-
-      const provider = selectedProvider === 'claude'
-        ? new ClaudeProvider(apiKey, selectedModel)
-        : new OpenAIProvider(apiKey, selectedModel);
-
-      const resolvedLanguage =
-        settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
-
-      // Map to display name + extract fields
-      const appName = appAliasMap[notification.packageName] || notification.packageName;
-      const isEmail = appName === 'Email' || appName === 'Gmail';
-
-      const payload: NotificationPayload = {
-        appName,
-        sender: notification.sender || notification.title || '',
-        subject: isEmail ? (notification.text || '') : '',
-        preview: isEmail ? '' : (notification.text || ''),
-        packageName: notification.packageName,
-      };
-
-      try {
-        const resultText = await runNotificationSubAgent(
-          {
-            provider,
-            credentialManager: credentialManager.current,
-            enabledSkillNames,
-            drivingMode: settings.drivingMode,
-            language: resolvedLanguage,
-          },
-          payload,
-          appRules,
-        );
-
-        // Show the assistant response as a bubble (unless no rule matched)
-        if (resultText && !resultText.includes('__NO_MATCH__')) {
-          setMessages(prev => {
-            const updated = [
-              ...prev,
-              { role: 'assistant' as const, text: resultText, timestamp: new Date() },
-            ];
-            ConversationStore.saveHistory(
-              updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
-            ).catch(() => {});
-            return updated;
-          });
-        } else if (resultText?.includes('__NO_MATCH__')) {
-          DebugLogger.add('info', 'NOTIF', `No condition matched for "${notification.title}" – no bubble shown`);
-        }
-      } catch (err) {
-        DebugLogger.add('error', 'NOTIF', `Sub-agent failed: ${err}`);
-      }
-    }
-
-    notifProcessingRef.current = false;
-  }, [settings]);
-
-  const handleNotificationReceived = useCallback(
-    (notification: NotificationData) => {
-      // Log raw notification data from ListenerService for debugging
-      DebugLogger.add(
-        'info',
-        'NOTIF',
-        `${notification.packageName}: "${notification.title}"`,
-        [
-          `packageName: ${notification.packageName}`,
-          `title: ${notification.title}`,
-          `text: ${notification.text}`,
-          `sender: ${notification.sender}`,
-          `timestamp: ${notification.timestamp}`,
-          `key: ${notification.key}`,
-        ].join('\n'),
-      );
-
-      // Deduplicate: Android may re-post existing notifications when a new sibling arrives
-      if (processedNotifKeysRef.current.has(notification.key)) {
-        DebugLogger.add('info', 'NOTIF', `Skipping duplicate (JS): ${notification.key}`);
-        return;
-      }
-      processedNotifKeysRef.current.add(notification.key);
-      // Trim set to prevent unbounded growth
-      if (processedNotifKeysRef.current.size > 200) {
-        const keys = [...processedNotifKeysRef.current];
-        processedNotifKeysRef.current = new Set(keys.slice(-100));
-      }
-
-      // Add to queue and kick off processing (no idle check – runs independently)
-      notifQueueRef.current.push(notification);
-      processNotificationQueue();
-    },
-    [processNotificationQueue],
-  );
 
   /** Save a secure key to Keychain AND update local state */
   const updateSecureKey = useCallback(
@@ -1299,6 +1113,10 @@ export default function App(): React.JSX.Element {
     );
   }
 
+  // Resolve language: 'system' -> device locale, otherwise use setting
+  const resolvedLanguage =
+    settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
+
   return (
     <View style={[{ flex: 1 }, themeVars]}>
       <SafeAreaProvider>
@@ -1313,6 +1131,7 @@ export default function App(): React.JSX.Element {
           isDark={isDark}
           onToggleDarkMode={handleToggleDarkMode}
           historyLoading={historyLoading}
+          language={resolvedLanguage}
         />
       </SafeAreaProvider>
     </View>

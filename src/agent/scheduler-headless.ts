@@ -12,7 +12,6 @@
  *   5. Handles recurrence: calculates next trigger or cleans up one-time schedules
  *   6. Shows a notification with the execution result
  */
-import { NativeModules } from 'react-native';
 import { SkillLoader, registerSkillContent } from './skill-loader';
 import { createToolRegistry } from './create-tool-registry';
 import { runToolLoop } from './tool-loop';
@@ -32,6 +31,9 @@ import { GoogleAuth } from '../permissions/google-auth';
 import SchedulerModule from '../native/SchedulerModule';
 import { calculateNextTrigger } from '../tools/scheduler-tool';
 import type { Schedule } from '../tools/scheduler-tool';
+
+// Intent – for bringing SannaBot back to the foreground after a result is ready
+import IntentModule from '../native/IntentModule';
 
 // Skills – imported at bundle time (metro md-transformer)
 import googleMapsSkill from '../../assets/skills/google-maps/SKILL.md';
@@ -76,14 +78,12 @@ interface AgentConfig {
 
 const TAG = 'Scheduler';
 
-async function speakResult(text: string, language: string = 'en-US'): Promise<void> {
+/** Bring SannaBot's Activity to the foreground. Non-fatal on failure. */
+async function bringToForeground(): Promise<void> {
   try {
-    const { TTSModule } = NativeModules;
-    if (TTSModule) {
-      await TTSModule.speak(text, language, `sched_${Date.now()}`);
-    }
+    await IntentModule.sendIntent('android.intent.action.MAIN', null, 'com.sannabot', null);
   } catch (err) {
-    DebugLogger.add('error', TAG, `TTS failed: ${err}`);
+    DebugLogger.add('error', TAG, `Could not bring app to foreground: ${err}`);
   }
 }
 
@@ -244,8 +244,7 @@ export default async function schedulerHeadlessTask(
       ``,
       `IMPORTANT: You are a background agent. There is no direct user interaction.`,
       `- Execute the task directly without asking for clarification.`,
-      `- Use the tts tool to inform the user about the result.`,
-      `- On errors: Use the tts tool to report the error.`,
+      `- Only use the tts tool if the task explicitly requires it (e.g. "Sag mir…", "Lies vor…").`,
     ].join('\n');
 
     // 7. Run the sub-agent
@@ -268,9 +267,11 @@ export default async function schedulerHeadlessTask(
 
     DebugLogger.add('info', TAG, `✅ Sub-agent done (${result.iterations} iterations)`, result.content);
 
-    // Write the assistant result to the pending queue so it appears as a bubble
+    // Write the assistant result to the pending queue so it appears as a bubble,
+    // then bring the app to the foreground so the user sees it immediately.
     if (result.content) {
       await ConversationStore.appendPending('assistant', result.content).catch(() => {});
+      await bringToForeground();
     }
 
     // 8. Mark as executed
@@ -302,11 +303,12 @@ export default async function schedulerHeadlessTask(
         drivingMode,
         language: lang,
       });
-      await speakResult(userMessage, lang);
       await ConversationStore.appendPending('assistant', userMessage).catch(() => {});
     } else {
       // No provider available (config/key error) – write raw error to pending
       await ConversationStore.appendPending('assistant', `❌ ${errMsg}`).catch(() => {});
     }
+    // Bring app to foreground so user sees the error result
+    await bringToForeground();
   }
 }

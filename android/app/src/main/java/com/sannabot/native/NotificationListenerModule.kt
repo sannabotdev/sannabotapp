@@ -27,6 +27,7 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
         private const val PREFS_NAME = "sanna_notifications"
         private const val PREFS_SUBSCRIBED_APPS_KEY = "subscribed_apps"
         private const val PREFS_NOTIFICATIONS_BUFFER_KEY = "notifications_buffer"
+        private const val PREFS_AGENT_CONFIG_KEY = "agent_config"
         
         // Store ReactContext for use by NotificationListenerService
         @Volatile
@@ -148,6 +149,40 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
             promise.resolve("ok")
         } catch (e: Exception) {
             promise.reject("CLEAR_ERROR", e.message ?: "Failed to clear notifications", e)
+        }
+    }
+
+    // ── Agent Config (for HeadlessJS notification sub-agent) ─────────────────
+
+    /**
+     * Save agent config so the headless notification sub-agent can create a pipeline.
+     * Config: { apiKey, provider, model, enabledSkillNames, drivingMode, language, ... }
+     */
+    @ReactMethod
+    fun saveAgentConfig(configJson: String, promise: Promise) {
+        try {
+            val context = reactApplicationContext
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(PREFS_AGENT_CONFIG_KEY, configJson).apply()
+            promise.resolve("ok")
+        } catch (e: Exception) {
+            promise.reject("CONFIG_ERROR", e.message ?: "saveAgentConfig failed", e)
+        }
+    }
+
+    /**
+     * Get saved agent config.
+     * Returns JSON string or null.
+     */
+    @ReactMethod
+    fun getAgentConfig(promise: Promise) {
+        try {
+            val context = reactApplicationContext
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val config = prefs.getString(PREFS_AGENT_CONFIG_KEY, null)
+            promise.resolve(config)
+        } catch (e: Exception) {
+            promise.reject("CONFIG_ERROR", e.message ?: "getAgentConfig failed", e)
         }
     }
 }
