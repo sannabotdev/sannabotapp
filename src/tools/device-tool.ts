@@ -24,7 +24,8 @@ type DeviceAction =
   | 'get_volume'
   | 'set_volume'
   | 'get_wifi_status'
-  | 'encode_base64url';
+  | 'encode_base64url'
+  | 'get_date_timestamp';
 
 export class DeviceTool implements Tool {
   name(): string {
@@ -32,7 +33,7 @@ export class DeviceTool implements Tool {
   }
 
   description(): string {
-    return 'Query and control device state: GPS location, battery level, time, volume (read/set), Wi-Fi status.';
+    return 'Query and control device state: GPS location, battery level, time, volume (read/set), Wi-Fi status. Calculate Unix timestamps for dates (today, yesterday, tomorrow, or YYYY-MM-DD).';
   }
 
   parameters(): Record<string, unknown> {
@@ -41,8 +42,8 @@ export class DeviceTool implements Tool {
       properties: {
         action: {
           type: 'string',
-          enum: ['get_location', 'get_battery', 'get_time', 'get_volume', 'set_volume', 'get_wifi_status', 'encode_base64url'],
-          description: 'Action to perform. set_volume: set media volume (0–100). encode_base64url: encode text as base64url (UTF-8) for the Gmail API.',
+          enum: ['get_location', 'get_battery', 'get_time', 'get_volume', 'set_volume', 'get_wifi_status', 'encode_base64url', 'get_date_timestamp'],
+          description: 'Action to perform. set_volume: set media volume (0–100). encode_base64url: encode text as base64url (UTF-8) for the Gmail API. get_date_timestamp: calculate Unix timestamp for a date.',
         },
         volume: {
           type: 'number',
@@ -51,6 +52,19 @@ export class DeviceTool implements Tool {
         text: {
           type: 'string',
           description: 'Only for encode_base64url: the text to encode (e.g. an RFC 2822 email).',
+        },
+        date: {
+          type: 'string',
+          description: 'Only for get_date_timestamp: date specification. Can be "today", "yesterday", "tomorrow", or a date in YYYY-MM-DD format.',
+        },
+        time: {
+          type: 'string',
+          description: 'Only for get_date_timestamp: time specification in HH:MM:SS format (default: "00:00:00" for midnight).',
+        },
+        unit: {
+          type: 'string',
+          enum: ['seconds', 'milliseconds'],
+          description: 'Only for get_date_timestamp: return timestamp in "seconds" or "milliseconds" (default: "seconds").',
         },
       },
       required: ['action'],
@@ -76,6 +90,12 @@ export class DeviceTool implements Tool {
           return await this.getWifiStatus();
         case 'encode_base64url':
           return this.encodeBase64url(args.text as string);
+        case 'get_date_timestamp':
+          return this.getDateTimestamp(
+            args.date as string,
+            args.time as string | undefined,
+            args.unit as 'seconds' | 'milliseconds' | undefined,
+          );
         default:
           return errorResult(`Unknown action: ${action}`);
       }
@@ -187,8 +207,8 @@ export class DeviceTool implements Tool {
   private getTime(): ToolResult {
     const now = new Date();
     const nowMs = now.getTime();
-    const timeStr = now.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = now.toLocaleDateString('de-AT', {
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString('en-US', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -279,6 +299,63 @@ export class DeviceTool implements Tool {
       return successResult(base64url);
     } catch (err) {
       return errorResult(`base64url encoding failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private getDateTimestamp(
+    date: string,
+    time?: string,
+    unit: 'seconds' | 'milliseconds' = 'seconds',
+  ): ToolResult {
+    if (!date || typeof date !== 'string') {
+      return errorResult('get_date_timestamp: "date" parameter is required.');
+    }
+
+    try {
+      const now = new Date();
+      let targetDate: Date;
+
+      // Parse date specification
+      if (date === 'today') {
+        targetDate = new Date(now);
+      } else if (date === 'yesterday') {
+        targetDate = new Date(now);
+        targetDate.setDate(targetDate.getDate() - 1);
+      } else if (date === 'tomorrow') {
+        targetDate = new Date(now);
+        targetDate.setDate(targetDate.getDate() + 1);
+      } else {
+        // Try to parse as YYYY-MM-DD
+        const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!dateMatch) {
+          return errorResult(`get_date_timestamp: invalid date format. Use "today", "yesterday", "tomorrow", or YYYY-MM-DD.`);
+        }
+        const [, year, month, day] = dateMatch;
+        targetDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+      }
+
+      // Parse time specification (default: midnight 00:00:00)
+      const timeStr = time || '00:00:00';
+      const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (!timeMatch) {
+        return errorResult(`get_date_timestamp: invalid time format. Use HH:MM:SS or HH:MM.`);
+      }
+      const [, hours, minutes, seconds = '0'] = timeMatch;
+      targetDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds, 10), 0);
+
+      // Calculate timestamp
+      const timestampMs = targetDate.getTime();
+      const timestamp = unit === 'seconds' ? Math.floor(timestampMs / 1000) : timestampMs;
+
+      const dateStr = targetDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
+      const timeStrFormatted = targetDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      return successResult(
+        `${timestamp}`,
+        `Unix timestamp (${unit}): ${timestamp} for ${dateStr} ${timeStrFormatted}`,
+      );
+    } catch (err) {
+      return errorResult(`get_date_timestamp failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }

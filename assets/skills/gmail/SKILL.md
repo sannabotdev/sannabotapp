@@ -89,9 +89,49 @@ Example search terms:
 - `from:boss@company.com` - From a specific person
 - `subject:Meeting` - Subject contains "Meeting"
 - `is:unread` - Unread emails
-- `after:2024/01/01` - After a date
+- `newer_than:1d` - Emails from the last 24 hours
+- `newer_than:7d` - Emails from the last 7 days
+- `newer_than:1m` - Emails from the last month
+- `newer_than:1y` - Emails from the last year
+- `older_than:5d` - Emails older than 5 days
+- `after:1388552400` - After a date/time (Unix timestamp in seconds). Use `device` tool with `get_date_timestamp` action to calculate timestamps.
+- `before:1391230800` - Before a date/time (Unix timestamp in seconds)
+- `after:2024/01/01` - After a date (YYYY/MM/DD, uses PST - may miss emails in other timezones)
+- `before:2024/01/31` - Before a date (YYYY/MM/DD, uses PST)
 - `category:primary` - Primary/personal emails only
 - `category:promotions` - Promotions only
+
+### Date filtering
+
+**For accurate timezone handling, use Unix timestamps with the `device` tool:**
+
+Use `device` tool with `get_date_timestamp` action to get Unix timestamps in local timezone:
+
+```json
+{
+  "action": "get_date_timestamp",
+  "date": "today",
+  "unit": "seconds"
+}
+```
+
+**Available date values:**
+- `"today"` - Midnight of today in local timezone
+- `"yesterday"` - Midnight of yesterday in local timezone
+- `"tomorrow"` - Midnight of tomorrow in local timezone
+- `"YYYY-MM-DD"` - Specific date (e.g., `"2024-12-20"`)
+
+**Optional parameters:**
+- `time`: `"HH:MM:SS"` format (default: `"00:00:00"` for midnight)
+- `unit`: `"seconds"` (default) or `"milliseconds"`
+
+**Date filtering examples:**
+- "What emails did I receive today?" -> Use `device` with `{"action": "get_date_timestamp", "date": "today", "unit": "seconds"}`, then use `q=after:{TIMESTAMP} category:primary`
+- "What emails did I receive in the last 24 hours?" -> `q=newer_than:1d category:primary`
+- "Emails from this week" -> `q=newer_than:7d category:primary`
+- "Emails from yesterday" -> Use `device` with `{"action": "get_date_timestamp", "date": "yesterday", "unit": "seconds"}`, then use `q=after:{TIMESTAMP} category:primary`
+
+**Note:** Date formats like `after:YYYY/MM/DD` use PST timezone and may miss emails in other timezones. Always use Unix timestamps for accurate filtering.
 
 ### Send email
 
@@ -231,6 +271,9 @@ Only if the user then **explicitly** asks for a verbatim/word-for-word reading, 
 - "What did Georg write?" -> Fetch & **summarize** Georg's email, announce attachments
 - "Read it to me word for word" -> Read the full original email text verbatim
 - "Read my unread emails" -> Search `is:unread category:primary`, fetch details, **summarize** each + TTS
+- "What emails did I receive today?" -> Use `device` with `{"action": "get_date_timestamp", "date": "today", "unit": "seconds"}`, then search `q=after:{TIMESTAMP} category:primary`, fetch details, **summarize** each
+- "What emails did I receive in the last 24 hours?" -> Search `q=newer_than:1d category:primary`, fetch details, **summarize** each
+- "Show me emails from this week" -> Search `q=newer_than:7d category:primary`, present overview
 - "Do I have any promotions?" -> Fetch with `q=category:promotions`, present overview
 - "Is there an email from the bank?" -> Search `from:bank`
 - "Write an email to..." -> Look up contact first, then send
@@ -242,3 +285,4 @@ Only if the user then **explicitly** asks for a verbatim/word-for-word reading, 
 - Always ask for confirmation before sending
 - Use `format=metadata` (with `metadataHeaders=From,Subject,Date`) for the overview to save bandwidth; use `format=full` only when the user drills down into a specific email
 - Use `q=category:primary` for default inbox queries (works regardless of account label setup); fall back to `labelIds=INBOX` if no results
+- **Date filtering:** For "today" queries, use `device` tool with `get_date_timestamp` action: `{"action": "get_date_timestamp", "date": "today", "unit": "seconds"}`. Returns Unix timestamp in local timezone. Use with `after:{TIMESTAMP}` or `before:{TIMESTAMP}`. Reference: [Gmail API filtering](https://developers.google.com/workspace/gmail/api/guides/filtering)

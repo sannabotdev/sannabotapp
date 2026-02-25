@@ -169,18 +169,21 @@ const LogEntryRow = React.memo(function LogEntryRow({
       <View className="flex-row items-start gap-1 flex-wrap">
         <Text
           className="text-[10px] text-label-tertiary min-w-[56px]"
-          style={{ fontFamily: 'monospace' }}>
+          style={{ fontFamily: 'monospace' }}
+          selectable>
           {timeStr}
         </Text>
         <Text className="text-xs">{icon}</Text>
         <Text
           className={`text-[11px] font-bold ${color}`}
-          style={{ fontFamily: 'monospace' }}>
+          style={{ fontFamily: 'monospace' }}
+          selectable>
           [{entry.tag}]
         </Text>
         <Text
           className="flex-1 text-xs text-[#D1D1D6] leading-4"
-          numberOfLines={isOpen ? 0 : 2}>
+          numberOfLines={isOpen ? 0 : 2}
+          selectable>
           {entry.summary}
         </Text>
         {hasDetail && (
