@@ -35,6 +35,7 @@ import { runAccessibilitySubAgent } from './accessibility-sub-agent';
 import SchedulerModule from '../native/SchedulerModule';
 import { ConversationStore } from './conversation-store';
 import { DebugLogger } from './debug-logger';
+import { formulateResponse } from './system-prompt';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,73 +66,6 @@ async function restoreSannaBot(): Promise<void> {
   }
 }
 
-/**
- * Ask the LLM to reformulate a result (success or failure) as a natural
- * assistant response in the user's language, tailored to the output mode.
- *
- * Driving mode  → short spoken sentence, no markdown
- * Normal mode   → concise markdown bubble with a status icon
- *
- * Falls back to the raw message if the LLM call itself fails.
- */
-async function formulateResponse(opts: {
-  provider: LLMProvider;
-  model: string;
-  packageName: string;
-  goal: string;
-  status: 'success' | 'failed' | 'timeout';
-  rawMessage: string;
-  drivingMode: boolean;
-  language: string;
-}): Promise<string> {
-  const { provider, model, packageName, goal, status, rawMessage, drivingMode, language } = opts;
-
-  const outputStyle = drivingMode
-    ? 'a single short spoken sentence, no markdown, no bullet points – optimised for text-to-speech'
-    : 'a concise markdown message with a status icon (✅ or ❌) on the first line, followed by one or two plain sentences';
-
-  const systemPrompt =
-    `You are Sanna, a friendly AI assistant confirming the outcome of a background task. ` +
-    `Respond as ${outputStyle}. ` +
-    `Respond in the language with BCP-47 code "${language}". ` +
-    `Rules: ` +
-    `(1) Base your reply on what the USER wanted to achieve (the Goal), not on the technical steps the automation took. ` +
-    `(2) Do NOT mention clicking, typing, tapping, nodes, buttons, or any UI internals. ` +
-    `(3) On success: confirm the user's intent was fulfilled in one short sentence. ` +
-    `(4) On failure: explain what did NOT work in plain language, in one short sentence. ` +
-    `(5) The app package name is provided – refer to it by its common name (e.g. "com.whatsapp" → "WhatsApp").`;
-
-  const userPrompt =
-    `App package: ${packageName}\n` +
-    `Goal: ${goal}\n` +
-    `Status: ${status}\n` +
-    `Raw result: ${rawMessage}`;
-
-  DebugLogger.add(
-    'llm',
-    'FormatResponse',
-    `Formulating ${status} response for "${goal}"`,
-    `System:\n${systemPrompt}\n\nUser:\n${userPrompt}`,
-  );
-
-  try {
-    const response = await provider.chat(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      [],
-      model,
-    );
-    const result = response.content?.trim() || rawMessage;
-    DebugLogger.add('llm', 'FormatResponse', `→ ${result}`);
-    return result;
-  } catch (err) {
-    console.warn('[AccessibilityTask] formulateResponse LLM call failed:', err);
-    DebugLogger.add('error', 'FormatResponse', `LLM call failed: ${err}`);
-    return rawMessage;
-  }
-}
 
 /**
  * Formulate an error message via LLM, restore SannaBot, and write to the

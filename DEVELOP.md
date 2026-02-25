@@ -1,4 +1,4 @@
-# Dev Setup – API Keys & Credentials
+# Development Setup – API Keys, Credentials & Building
 
 First, copy the template:
 
@@ -165,4 +165,97 @@ const LOCAL_DEV_CONFIG = {
 };
 
 export default LOCAL_DEV_CONFIG;
+```
+
+---
+
+## 🛠️ Development Workflow
+
+The project includes several npm/pnpm scripts to streamline development:
+
+### Start Metro Bundler
+
+```bash
+pnpm start
+# or
+npm start
+```
+
+Starts the React Native Metro bundler. Keep this running in a separate terminal during development.
+
+### Run on Android Device/Emulator
+
+```bash
+# Debug build
+pnpm android
+# or
+npm run android
+
+# Release build
+pnpm android:release
+# or
+npm run android:release
+```
+
+Builds and installs the app on a connected Android device or emulator. The debug build includes development tools and hot reloading.
+
+### View Logs
+
+```bash
+pnpm logcat
+# or
+npm run logcat
+```
+
+Clears and displays Android logcat output, filtered to show React Native JavaScript logs. Useful for debugging runtime issues.
+
+### Typical Development Flow
+
+1. Start Metro bundler in one terminal:
+   ```bash
+   pnpm start
+   ```
+
+2. In another terminal, run the app:
+   ```bash
+   pnpm android
+   ```
+
+3. For debugging, open a third terminal for logs:
+   ```bash
+   pnpm logcat
+   ```
+
+---
+
+## 📲 Building an APK
+
+**Debug APK** (for testing):
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+The APK will be at `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+**Release APK** (optimized, minified):
+
+```bash
+cd android
+./gradlew assembleRelease
+```
+
+The APK will be at `android/app/build/outputs/release/app-release.apk`.
+
+> **Note:** The release build currently uses the debug keystore. For production distribution, [generate your own keystore](https://reactnative.dev/docs/signed-apk-android) and update `android/app/build.gradle`.
+
+You can also build and run directly on a connected device:
+
+```bash
+# Debug
+npm run android
+
+# Release
+npm run android:release
 ```

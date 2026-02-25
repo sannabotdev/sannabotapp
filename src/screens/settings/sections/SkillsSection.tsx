@@ -216,11 +216,16 @@ export function SkillsSection({
     const hasCredentials = skill.credentials.length > 0;
     const isInstalled = skillAvailability[skill.name] ?? true;
     const testResult = testResults[skill.name];
+    // If skill is unavailable due to missing Client ID (has OAuth credentials but availability is false),
+    // treat it as 'config' issue, not 'app' issue
+    const hasOAuthCredentials = skill.credentials.some(c => c.type === 'oauth');
     const notInstalledReason: 'app' | 'config' | null = isInstalled
       ? null
-      : skill.android_package
-        ? 'app'
-        : 'config';
+      : hasOAuthCredentials && skillAvailability[skill.name] === false
+        ? 'config'
+        : skill.android_package
+          ? 'app'
+          : 'config';
 
     const isDynamic = dynamicSkillNames.includes(skill.name);
 

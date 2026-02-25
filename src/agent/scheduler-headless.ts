@@ -15,7 +15,7 @@
 import { SkillLoader, registerSkillContent } from './skill-loader';
 import { createToolRegistry } from './create-tool-registry';
 import { runToolLoop } from './tool-loop';
-import { buildSystemPrompt } from './system-prompt';
+import { buildSystemPrompt, formulateError } from './system-prompt';
 import { ClaudeProvider } from '../llm/claude-provider';
 import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider, Message } from '../llm/types';
@@ -87,56 +87,6 @@ async function bringToForeground(): Promise<void> {
   }
 }
 
-/**
- * Ask the LLM to turn a raw error into a short, user-friendly message
- * in the user's language. Falls back to the raw message if the LLM call fails.
- */
-async function formulateError(opts: {
-  provider: LLMProvider;
-  model: string;
-  instruction: string;
-  rawError: string;
-  drivingMode: boolean;
-  language: string;
-}): Promise<string> {
-  const { provider, model, instruction, rawError, drivingMode, language } = opts;
-
-  const outputStyle = drivingMode
-    ? 'a single short spoken sentence, no markdown – optimised for text-to-speech'
-    : 'a concise message with a ❌ status icon, followed by one or two plain sentences';
-
-  const systemPrompt =
-    `You are Sanna, a friendly AI assistant reporting the outcome of a scheduled background task. ` +
-    `Respond as ${outputStyle}. ` +
-    `Respond in the language with BCP-47 code "${language}". ` +
-    `Rules: ` +
-    `(1) Base your reply on the user's original instruction, not on technical internals. ` +
-    `(2) Explain what did NOT work in plain language. Do NOT include stack traces or error codes. ` +
-    `(3) If possible, hint at what the user could do to fix it.`;
-
-  const userPrompt =
-    `Scheduled instruction: ${instruction}\n` +
-    `Error: ${rawError}`;
-
-  DebugLogger.add('llm', TAG, `Formulating error response for "${instruction}"`, userPrompt);
-
-  try {
-    const response = await provider.chat(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      [],
-      model,
-    );
-    const result = response.content?.trim() || rawError;
-    DebugLogger.add('llm', TAG, `Formatted error → ${result}`);
-    return result;
-  } catch (err) {
-    DebugLogger.add('error', TAG, `formulateError LLM call failed: ${err}`);
-    return rawError;
-  }
-}
 
 // ── Main headless task ───────────────────────────────────────────────────
 
@@ -218,7 +168,7 @@ export default async function schedulerHeadlessTask(
 
     const toolRegistry = createToolRegistry({
       credentialManager,
-      includeTts: true,
+      includeTts: false, // result is passed to foreground via appendPending; no TTS in background
       includeScheduler: false, // prevent recursive schedule creation
     });
     toolRegistry.removeDisabledSkillTools(skillLoader, config.enabledSkillNames);
@@ -244,7 +194,7 @@ export default async function schedulerHeadlessTask(
       ``,
       `IMPORTANT: You are a background agent. There is no direct user interaction.`,
       `- Execute the task directly without asking for clarification.`,
-      `- Only use the tts tool if the task explicitly requires it (e.g. "Sag mir…", "Lies vor…").`,
+      `- Do NOT use any speech or TTS. Return your result as text only.`,
     ].join('\n');
 
     // 7. Run the sub-agent

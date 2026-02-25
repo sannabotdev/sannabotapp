@@ -35,7 +35,7 @@ const LOCAL_DEV_CONFIG = {
   slackClientId: '',
 
   /**
-   * Slack OAuth Redirect URL (HTTPS required – see DEV_SETUP.md).
+   * Slack OAuth Redirect URL (HTTPS required – see DEVELOP.md).
    * Enter the URL of your GitHub Pages redirect page here.
    * Example: 'https://yourname.github.io/sanna-oauth/slack'
    */

@@ -5,9 +5,14 @@
  * The prompt is always written in English (for best LLM reasoning quality).
  * The configured app language is enforced via an explicit rule so that the
  * assistant always responds in the user's chosen language.
+ *
+ * Also provides centralized text generation functions for headless tasks that
+ * respect drivingMode and language settings consistently with the main system prompt.
  */
 import type { SkillLoader } from './skill-loader';
 import type { ToolRegistry } from './tool-registry';
+import type { LLMProvider } from '../llm/types';
+import { DebugLogger } from './debug-logger';
 
 export interface SystemPromptConfig {
   skillLoader: SkillLoader;
@@ -75,11 +80,14 @@ ${dateStr}
 ## Operating Mode
 ${drivingMode
   ? `**DRIVING MODE ACTIVE**
-- MAX 1–2 sentences. Be extremely brief.
-- Plain spoken language only – no Markdown, no lists, no headings, no punctuation tricks.
-- One fact per answer. Skip all filler, preamble, and explanations.
-- Good: "Your battery is at 80 percent." Bad: "Your battery currently has a charge level of 80 percent, which means..."
-- Your response is read aloud immediately – every extra word wastes the driver's attention.`
+- **Headline style.** Drop articles, auxiliary verbs, and filler words. Speak like a news ticker.
+- MAX 1 sentence (2 only if a follow-up question is needed).
+- No Markdown, no lists, no headings, no preamble.
+- Good: "Battery 80 percent." / "Mail from John – no subject." / "Navigation started."
+- Bad: "Your battery currently has a charge level of 80 percent." / "I found an email from John."
+- If you need more info from the user, ask in ONE short question – headline style too.
+- **Time formatting:** Always write times in a format that reads naturally when spoken aloud in the target language. Avoid bare "HH:MM" format – use words that make it clear it's a time (e.g., "11 Uhr 23" in German, "11:23 AM" in English).
+- **Always use correct punctuation.** End statements with a period (.) and questions with a question mark (?). This is critical – the app uses punctuation to detect whether you are asking something.`
   : `**Normal Mode**
 - You may use Markdown formatting (headings, lists, code blocks, bold, etc.).
 - Respond in detail when helpful.`}
@@ -117,4 +125,194 @@ ${skillsSummary}`);
   }
 
   return parts.join('\n\n---\n\n');
+}
+
+// ── Centralized Text Generation Functions ──────────────────────────────────────
+
+/**
+ * Builds the output style description based on drivingMode, matching the main system prompt.
+ */
+function getOutputStyleDescription(drivingMode: boolean): string {
+  if (drivingMode) {
+    return `**DRIVING MODE ACTIVE**
+- **Headline style.** Drop articles, auxiliary verbs, and filler words. Speak like a news ticker.
+- MAX 1 sentence (2 only if a follow-up question is needed).
+- No Markdown, no lists, no headings, no preamble.
+- Good: "Battery 80 percent." / "Mail from John – no subject." / "Navigation started."
+- Bad: "Your battery currently has a charge level of 80 percent." / "I found an email from John."
+- If you need more info from the user, ask in ONE short question – headline style too.
+- **Time formatting:** Always write times in a format that reads naturally when spoken aloud in the target language. Avoid bare "HH:MM" format – use words that make it clear it's a time (e.g., "11 Uhr 23" in German, "11:23 AM" in English).
+- **Always use correct punctuation.** End statements with a period (.) and questions with a question mark (?). This is critical – the app uses punctuation to detect whether you are asking something.`;
+  } else {
+    return `**Normal Mode**
+- You may use Markdown formatting (headings, lists, code blocks, bold, etc.).
+- Respond in detail when helpful.`;
+  }
+}
+
+/**
+ * Ask the LLM to turn a raw error into a short, user-friendly message
+ * in the user's language. Falls back to the raw message if the LLM call fails.
+ */
+export async function formulateError(opts: {
+  provider: LLMProvider;
+  model: string;
+  instruction: string;
+  rawError: string;
+  drivingMode: boolean;
+  language: string;
+}): Promise<string> {
+  const { provider, model, instruction, rawError, drivingMode, language } = opts;
+
+  const langName = resolveLanguageName(language);
+  const outputStyle = getOutputStyleDescription(drivingMode);
+
+  const systemPrompt =
+    `You are Sanna, a friendly AI assistant reporting the outcome of a scheduled background task. ` +
+    `\n\n## Operating Mode\n${outputStyle}\n\n` +
+    `## Important Rules\n` +
+    `1. **Language** – You MUST respond in **${langName}**. Always use this language for every reply. ` +
+    `2. Base your reply on the user's original instruction, not on technical internals. ` +
+    `3. Explain what did NOT work in plain language. Do NOT include stack traces or error codes. ` +
+    `4. If possible, hint at what the user could do to fix it.`;
+
+  const userPrompt =
+    `Scheduled instruction: ${instruction}\n` +
+    `Error: ${rawError}`;
+
+  DebugLogger.add('llm', 'FormulateError', `Formulating error response for "${instruction}"`, userPrompt);
+
+  try {
+    const response = await provider.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      [],
+      model,
+    );
+    const result = response.content?.trim() || rawError;
+    DebugLogger.add('llm', 'FormulateError', `Formatted error → ${result}`);
+    return result;
+  } catch (err) {
+    DebugLogger.add('error', 'FormulateError', `formulateError LLM call failed: ${err}`);
+    return rawError;
+  }
+}
+
+/**
+ * Generate a short spoken announcement acknowledging receipt and indicating
+ * that the notification is being processed.
+ * Falls back to a simple template if the LLM call fails.
+ */
+export async function generateAnnouncement(opts: {
+  provider: LLMProvider;
+  model: string;
+  appName: string;
+  sender: string;
+  preview: string;
+  language: string;
+  drivingMode: boolean;
+}): Promise<string> {
+  const { provider, model, appName, sender, preview, language, drivingMode } = opts;
+
+  const langName = resolveLanguageName(language);
+  const outputStyle = getOutputStyleDescription(drivingMode);
+
+  const systemPrompt =
+    `You are Sanna, a friendly AI assistant acknowledging receipt of a notification. ` +
+    `\n\n## Operating Mode\n${outputStyle}\n\n` +
+    `## Important Rules\n` +
+    `1. **Language** – You MUST respond in **${langName}**. Always use this language for every reply. ` +
+    `2. Generate exactly ONE short spoken sentence (max 10 words) acknowledging receipt and that you are now processing it. ` +
+    `3. No markdown. ` +
+    `4. Example: "WhatsApp von John erhalten, verarbeite…"`;
+
+  const userPrompt =
+    `App: ${appName}\n` +
+    `Sender: ${sender}\n` +
+    (preview ? `Preview: ${preview.slice(0, 80)}\n` : '') +
+    `\n` +
+    `Generate exactly ONE short spoken sentence (max 10 words) acknowledging receipt ` +
+    `and that you are now processing it. No markdown. ` +
+    `Example: "WhatsApp von John erhalten, verarbeite…"\n` +
+    `Respond in the language with BCP-47 code "${language}".`;
+
+  try {
+    const response = await provider.chat(
+      [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+      [],
+      model,
+    );
+    return response.content?.trim() || `${appName} von ${sender} erhalten, verarbeite…`;
+  } catch (err) {
+    DebugLogger.add('error', 'GenerateAnnouncement', `Announcement LLM call failed: ${err}`);
+    return `${appName} von ${sender} erhalten, verarbeite…`;
+  }
+}
+
+/**
+ * Ask the LLM to reformulate a result (success or failure) as a natural
+ * assistant response in the user's language, tailored to the output mode.
+ *
+ * Driving mode  → short spoken sentence, no markdown
+ * Normal mode   → concise markdown bubble with a status icon
+ *
+ * Falls back to the raw message if the LLM call itself fails.
+ */
+export async function formulateResponse(opts: {
+  provider: LLMProvider;
+  model: string;
+  packageName: string;
+  goal: string;
+  status: 'success' | 'failed' | 'timeout';
+  rawMessage: string;
+  drivingMode: boolean;
+  language: string;
+}): Promise<string> {
+  const { provider, model, packageName, goal, status, rawMessage, drivingMode, language } = opts;
+
+  const langName = resolveLanguageName(language);
+  const outputStyle = getOutputStyleDescription(drivingMode);
+
+  const systemPrompt =
+    `You are Sanna, a friendly AI assistant confirming the outcome of a background task. ` +
+    `\n\n## Operating Mode\n${outputStyle}\n\n` +
+    `## Important Rules\n` +
+    `1. **Language** – You MUST respond in **${langName}**. Always use this language for every reply. ` +
+    `2. Base your reply on what the USER wanted to achieve (the Goal), not on the technical steps the automation took. ` +
+    `3. Do NOT mention clicking, typing, tapping, nodes, buttons, or any UI internals. ` +
+    `4. On success: confirm the user's intent was fulfilled in one short sentence. ` +
+    `5. On failure: explain what did NOT work in plain language, in one short sentence. ` +
+    `6. The app package name is provided – refer to it by its common name (e.g. "com.whatsapp" → "WhatsApp").`;
+
+  const userPrompt =
+    `App package: ${packageName}\n` +
+    `Goal: ${goal}\n` +
+    `Status: ${status}\n` +
+    `Raw result: ${rawMessage}`;
+
+  DebugLogger.add(
+    'llm',
+    'FormulateResponse',
+    `Formulating ${status} response for "${goal}"`,
+    `System:\n${systemPrompt}\n\nUser:\n${userPrompt}`,
+  );
+
+  try {
+    const response = await provider.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      [],
+      model,
+    );
+    const result = response.content?.trim() || rawMessage;
+    DebugLogger.add('llm', 'FormulateResponse', `→ ${result}`);
+    return result;
+  } catch (err) {
+    DebugLogger.add('error', 'FormulateResponse', `LLM call failed: ${err}`);
+    return rawMessage;
+  }
 }

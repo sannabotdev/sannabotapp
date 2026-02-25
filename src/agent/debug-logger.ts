@@ -6,6 +6,7 @@
  *
  * Subscribers get notified in real-time (for UI display).
  */
+import type { Message } from '../llm/types';
 
 export type LogLevel = 'info' | 'llm' | 'tool' | 'prompt' | 'error';
 
@@ -71,18 +72,25 @@ class DebugLoggerImpl {
   }
 
   /** Log LLM request (messages count, model) */
-  logLLMRequest(model: string, messageCount: number, toolCount: number): void {
-    this.add('llm', 'LLM→', `Request to ${model} (${messageCount} msgs, ${toolCount} tools)`);
+  logLLMRequest(model: string, messageCount: number, toolCount: number, messages?: Message[]): void {
+    const summary = `Request to ${model} (${messageCount} msgs, ${toolCount} tools)`;
+    const detail = messages ? JSON.stringify(messages, null, 2) : undefined;
+    this.add('llm', 'LLM→', summary, detail);
   }
 
   /** Log LLM response */
-  logLLMResponse(content: string, toolCalls: { name: string; arguments: Record<string, unknown> }[], usage?: { promptTokens: number; completionTokens: number; totalTokens: number }): void {
+  logLLMResponse(content: string, toolCalls: { name: string; arguments: Record<string, unknown> }[], usage?: { promptTokens: number; completionTokens: number; totalTokens: number }, fullResponse?: unknown): void {
     const toolStr = toolCalls.length > 0
       ? `+ ${toolCalls.length} Tool-Calls: ${toolCalls.map(tc => tc.name).join(', ')}`
       : '(no tool calls)';
     const usageStr = usage ? ` [${usage.promptTokens}+${usage.completionTokens}=${usage.totalTokens} tokens]` : '';
     const contentPreview = content ? `"${content.slice(0, 100)}${content.length > 100 ? '…' : ''}"` : '(empty)';
-    this.add('llm', '←LLM', `${contentPreview} ${toolStr}${usageStr}`, JSON.stringify({ content, toolCalls, usage }, null, 2));
+    const summary = `${contentPreview} ${toolStr}${usageStr}`;
+    // Include full response if provided, otherwise use the structured format
+    const detail = fullResponse 
+      ? JSON.stringify(fullResponse, null, 2)
+      : JSON.stringify({ content, toolCalls, usage }, null, 2);
+    this.add('llm', '←LLM', summary, detail);
   }
 
   /** Log tool execution start */

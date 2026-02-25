@@ -29,6 +29,7 @@ import { OpenAIProvider } from './src/llm/openai-provider';
 import { TTSService } from './src/audio/tts-service';
 import { STTService } from './src/audio/stt-service';
 import { WakeWordService } from './src/audio/wake-word-service';
+import { TTSEvents } from './src/native/TTSModule';
 import { TokenStore } from './src/permissions/token-store';
 import { CredentialManager } from './src/permissions/credential-manager';
 import { PermissionManager } from './src/permissions/permission-manager';
@@ -126,6 +127,15 @@ function getSystemLocale(): string {
   }
   // iOS fallback
   return 'en-US';
+}
+
+/**
+ * Returns true if the text contains a question mark, indicating that the
+ * assistant is expecting a response from the user.
+ * Used in driving mode to decide whether to start concurrent listening.
+ */
+function containsQuestion(text: string): boolean {
+  return text.includes('?');
 }
 
 /** App preferences (stored as JSON blob in Keychain) */
@@ -403,6 +413,12 @@ export default function App(): React.JSX.Element {
   const [dynamicSkillNames, setDynamicSkillNames] = useState<string[]>([]);
   const [skillAvailability, setSkillAvailability] = useState<Record<string, boolean>>({});
 
+  // ─── Driving-mode auto-listening state ───────────────────────────────────
+  // Stores the last assistant response text so we can detect questions.
+  const currentResponseTextRef = useRef('');
+  // True while a concurrent STT session is active (listening during TTS).
+  const autoListeningStartedRef = useRef(false);
+
   // ─── i18n: apply locale whenever appLanguage changes ────────────────────
   useEffect(() => {
     setLocale(settings.appLanguage);
@@ -671,6 +687,12 @@ export default function App(): React.JSX.Element {
         Alert.alert(t('alert.error'), err);
       },
       onTranscript: (role: 'user' | 'assistant', text: string) => {
+        // Capture the latest assistant response for driving-mode question detection.
+        // This ref is read by the tts_started handler to decide whether to start
+        // concurrent listening.
+        if (role === 'assistant') {
+          currentResponseTextRef.current = text;
+        }
         setMessages(prev => {
           const updated = [...prev, { role, text, timestamp: new Date() }];
           // Fire-and-forget: persist conversation after each message
@@ -750,6 +772,97 @@ export default function App(): React.JSX.Element {
   }, [vaultUnlocked, settings.wakeWordEnabled, settings.wakeWordKey]);
 
 
+  // ─── Driving-mode: auto-listening after TTS ──────────────────────────────
+
+  /**
+   * Automatically start STT after TTS has finished speaking.
+   * Only called (via the tts_done handler below) when a question is detected
+   * in the assistant's response and driving mode is active.
+   */
+  const startAutoListening = useCallback(async () => {
+    if (autoListeningStartedRef.current) return; // already listening
+
+    const permResult = await permissionManager.current.ensurePermissions([
+      'android.permission.RECORD_AUDIO',
+    ]);
+    if (!permResult.allGranted) return;
+
+    autoListeningStartedRef.current = true;
+    setPipelineState('listening');
+    try {
+      const language = settings.sttLanguage === 'system'
+        ? getSystemLocale()
+        : settings.sttLanguage;
+      const transcript = await sttService.current.listen(language, settings.sttMode);
+      autoListeningStartedRef.current = false;
+
+      if (!transcript?.trim()) {
+        setPipelineState('idle');
+        return;
+      }
+
+      // Stop TTS if it is still speaking (it may have finished on its own)
+      if (pipelineRef.current?.getState() === 'speaking') {
+        await pipelineRef.current.stopSpeaking();
+      }
+
+      await pipelineRef.current?.processUtterance(transcript);
+    } catch (err) {
+      autoListeningStartedRef.current = false;
+      setPipelineState('idle');
+      if (err instanceof Error && !err.message.includes('cancel')) {
+        Alert.alert(t('alert.sttError'), err.message);
+      }
+    }
+  }, [settings.sttLanguage, settings.sttMode]);
+
+  /**
+   * Subscribe to tts_done:
+   * If driving mode is active and the assistant's response contains a question,
+   * start listening automatically once TTS has fully finished.
+   * We deliberately wait for tts_done (not tts_started) to avoid the echo
+   * problem: if we open the microphone while the phone speaker is still playing,
+   * the mic picks up the TTS audio and submits it as user input.
+   * A 300 ms delay is added to let the last TTS audio fade and allow the
+   * pipeline state to settle back to 'idle'.
+   */
+  useEffect(() => {
+    let delayTimer: ReturnType<typeof setTimeout> | null = null;
+    const sub = TTSEvents.addListener('tts_done', () => {
+      if (settings.drivingMode && containsQuestion(currentResponseTextRef.current)) {
+        delayTimer = setTimeout(() => {
+          // Only start if pipeline is idle (not already processing a new utterance)
+          if (pipelineRef.current?.getState() === 'idle') {
+            startAutoListening();
+          }
+        }, 300);
+      }
+    });
+    return () => {
+      if (delayTimer !== null) clearTimeout(delayTimer);
+      sub.remove();
+    };
+  }, [settings.drivingMode, startAutoListening]);
+
+  /**
+   * Subscribe to tts_done:
+   * Reset pipeline state to 'idle' when TTS finishes, regardless of who started it.
+   * This handles cases where TTS is started outside the pipeline (notifications,
+   * pending messages, etc.) and ensures the UI button state is always correct.
+   * Only resets if we're currently in 'speaking' state to avoid race conditions
+   * with the pipeline's own state management.
+   */
+  useEffect(() => {
+    const sub = TTSEvents.addListener('tts_done', () => {
+      // Only reset to idle if we're currently in speaking state
+      // This prevents race conditions with the pipeline's own state management
+      if (pipelineState === 'speaking') {
+        setPipelineState('idle');
+      }
+    });
+    return () => sub.remove();
+  }, [pipelineState]);
+
   // ─── Handlers ───────────────────────────────────────────────────────────
 
   const handleWakeWordDetected = useCallback(async (_keyword: string) => {
@@ -762,6 +875,12 @@ export default function App(): React.JSX.Element {
     if (!pipelineRef.current) {
       Alert.alert(t('alert.noApiKey.title'), t('alert.noApiKey.message'));
       return;
+    }
+    // If concurrent auto-listening is already active (driving-mode question flow),
+    // cancel it first so we don't have two overlapping STT sessions.
+    if (autoListeningStartedRef.current) {
+      autoListeningStartedRef.current = false;
+      await sttService.current.cancel().catch(() => {});
     }
     // If TTS is currently speaking, stop it immediately and start listening
     if (pipelineState === 'speaking') {

@@ -97,7 +97,7 @@ const de = {
   'settings.skills.badge.connected': '● Verbunden',
   'settings.skills.badge.setupNeeded': '○ Setup nötig',
   'settings.skills.requires': 'Benötigt: {package}',
-  'settings.skills.clientIdMissing': 'Client-ID fehlt – siehe DEV_SETUP.md',
+  'settings.skills.clientIdMissing': 'Client-ID fehlt – siehe DEVELOP.md',
   'settings.skills.button.connect': 'Verbinden',
   'settings.skills.button.disconnect': 'Trennen',
   'settings.skills.button.test': 'Testen',

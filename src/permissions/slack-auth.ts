@@ -6,7 +6,7 @@
  *
  * Setup:
  *   1. Create a Slack App at https://api.slack.com/apps
- *   2. Enable OAuth 2.0 + add your HTTPS redirect URL (see DEV_SETUP.md)
+ *   2. Enable OAuth 2.0 + add your HTTPS redirect URL (see DEVELOP.md)
  *      Slack requires HTTPS – use a tiny GitHub Pages redirect page that
  *      forwards back to the app via the custom scheme sannabot://slack-callback
  *   3. Add the required User Token Scopes (see SCOPES below)
@@ -31,7 +31,7 @@ const SCOPES = [
 ];
 
 // Fallback redirect URL – must match what's registered in the Slack App Dashboard.
-// Slack requires HTTPS; use the GitHub Pages redirect page (see DEV_SETUP.md).
+// Slack requires HTTPS; use the GitHub Pages redirect page (see DEVELOP.md).
 const DEFAULT_REDIRECT_URL = 'sannabot://slack-callback';
 
 export class SlackAuth {

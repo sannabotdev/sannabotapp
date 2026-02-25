@@ -11,12 +11,10 @@
  *   2. Loads agent config (API key, provider, enabled skills) from native storage
  *   3. Loads notification rules from AsyncStorage
  *   4. Checks if any rules apply to this notification's app
- *   5. Generates and speaks a short LLM announcement ("WhatsApp von John erhalten, verarbeite…")
- *   6. Runs the full notification sub-agent (evaluates conditions, executes matching rule)
- *   7. Writes the final result to ConversationStore pending queue
- *   8. Brings SannaBot back to the foreground so the user sees the result
+ *   5. Runs the full notification sub-agent (evaluates conditions, executes matching rule)
+ *   6. Writes the final result to ConversationStore pending queue
+ *   7. Brings SannaBot back to the foreground – the app then speaks the result via drainPending
  */
-import { NativeModules } from 'react-native';
 import { SkillLoader, registerSkillContent } from './skill-loader';
 import { runNotificationSubAgent } from './notification-sub-agent';
 import type { NotificationPayload } from './notification-sub-agent';
@@ -94,56 +92,6 @@ const APP_ALIAS_MAP: Record<string, string> = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Generate a short spoken announcement acknowledging receipt and indicating
- * that the notification is being processed.
- * Falls back to a simple template if the LLM call fails.
- */
-async function generateAnnouncement(opts: {
-  provider: LLMProvider;
-  model: string;
-  appName: string;
-  sender: string;
-  preview: string;
-  language: string;
-}): Promise<string> {
-  const { provider, model, appName, sender, preview, language } = opts;
-
-  const userPrompt =
-    `App: ${appName}\n` +
-    `Sender: ${sender}\n` +
-    (preview ? `Preview: ${preview.slice(0, 80)}\n` : '') +
-    `\n` +
-    `Generate exactly ONE short spoken sentence (max 10 words) acknowledging receipt ` +
-    `and that you are now processing it. No markdown. ` +
-    `Example: "WhatsApp von John erhalten, verarbeite…"\n` +
-    `Respond in the language with BCP-47 code "${language}".`;
-
-  try {
-    const response = await provider.chat(
-      [{ role: 'user', content: userPrompt }],
-      [],
-      model,
-    );
-    return response.content?.trim() || `${appName} von ${sender} erhalten, verarbeite…`;
-  } catch (err) {
-    DebugLogger.add('error', TAG, `Announcement LLM call failed: ${err}`);
-    return `${appName} von ${sender} erhalten, verarbeite…`;
-  }
-}
-
-/** Speak text via TTS native module. Non-fatal on failure. */
-async function speakText(text: string, language: string): Promise<void> {
-  try {
-    const { TTSModule } = NativeModules;
-    if (TTSModule) {
-      await TTSModule.speak(text, language, `notif_announce_${Date.now()}`);
-    }
-  } catch (err) {
-    DebugLogger.add('error', TAG, `TTS announcement failed: ${err}`);
-  }
-}
 
 /** Bring SannaBot's Activity to the foreground. Non-fatal on failure. */
 async function bringToForeground(): Promise<void> {
@@ -252,23 +200,7 @@ export default async function notificationHeadlessTask(
     packageName,
   };
 
-  // 6. Generate and speak short announcement (non-blocking for sub-agent start)
-  try {
-    const announcement = await generateAnnouncement({
-      provider,
-      model: provider.getDefaultModel(),
-      appName,
-      sender: payload.sender,
-      preview: payload.preview || payload.subject,
-      language: lang,
-    });
-    DebugLogger.add('info', TAG, `Announcement: "${announcement}"`);
-    await speakText(announcement, lang);
-  } catch (err) {
-    DebugLogger.add('error', TAG, `Announcement failed (non-fatal): ${err}`);
-  }
-
-  // 7. Set up credential manager (headless unlock – no biometric prompt)
+  // 6. Set up credential manager (headless unlock – no biometric prompt)
   const tokenStore = new TokenStore();
   tokenStore.unlockForHeadless();
   const credentialManager = new CredentialManager(tokenStore);
@@ -282,7 +214,7 @@ export default async function notificationHeadlessTask(
     );
   }
 
-  // 8. Run notification sub-agent
+  // 7. Run notification sub-agent
   try {
     DebugLogger.add('info', TAG, `Running sub-agent for: "${appName} – ${payload.sender}"`);
 
@@ -299,13 +231,13 @@ export default async function notificationHeadlessTask(
     );
 
     if (resultText && !resultText.includes('__NO_MATCH__')) {
-      // 9. Write result to pending queue first, then restore foreground
+      // 8. Write result to pending queue first, then restore foreground.
       //    (appendPending must complete before bringToForeground so drainPending
       //    finds the message when AppState fires 'active')
       await ConversationStore.appendPending('assistant', resultText).catch(() => {});
       DebugLogger.add('info', TAG, `✅ Sub-agent done, result written to pending queue`);
 
-      // 10. Bring app to foreground so user sees the result
+      // 9. Bring app to foreground – drainPending() will display + speak the result
       await bringToForeground();
     } else {
       DebugLogger.add('info', TAG, `No condition matched for "${packageName}" – no bubble shown`);

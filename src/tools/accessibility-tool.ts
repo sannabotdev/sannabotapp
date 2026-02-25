@@ -117,16 +117,13 @@ export class AccessibilityTool implements Tool {
       return errorResult(`Failed to start background automation task: ${msg}`);
     }
 
-    // Return a normal success result.  The main pipeline will make one more
-    // LLM call to formulate a brief confirmation ("Sending...").
-    // This is intentional: the extra LLM call + TTS keeps the JS thread busy,
-    // preventing React Native from throttling it while WhatsApp is in the foreground.
-    // The real result from the headless task arrives later via ConversationStore.
+    // Return a success result. The tool loop makes one more LLM call which –
+    // using the existing system prompt (language, driving mode, persona) –
+    // naturally produces a short, well-formatted confirmation for the user.
+    // The real result arrives later via ConversationStore.appendPending.
     return successResult(
-      `Background UI automation started for "${packageName}". ` +
-      `Goal: "${goal}". ` +
-      'The task is running – the result will appear in the conversation automatically. ' +
-      'Tell the user briefly that you are working on it in the background.',
+      `Background UI automation started for "${packageName}". Goal: "${goal}". ` +
+      `Confirm briefly to the user that you are working on it.`,
     );
   }
 }

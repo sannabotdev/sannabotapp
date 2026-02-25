@@ -19,6 +19,11 @@ Read and send emails via the Gmail API.
 
 All requests require `auth_provider: "google"`.
 
+**⚠️ IMPORTANT FOR SENDING EMAILS:**
+- The Gmail API **requires** the `raw` field in the request body when sending emails
+- You **MUST** use the 2-step workflow: first encode with `device` tool (`encode_base64url`), then use the result as `raw`
+- **NEVER** try to send an email in a single HTTP call without encoding first - it will fail
+
 ### Gmail categories (labels)
 
 Gmail sorts emails into categories. Not all accounts have the same category labels. Common label IDs:
@@ -135,23 +140,15 @@ Use `device` tool with `get_date_timestamp` action to get Unix timestamps in loc
 
 ### Send email
 
-```json
-{
-  "method": "POST",
-  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-  "auth_provider": "google",
-  "body": {
-    "raw": "{BASE64_ENCODED_EMAIL}"
-  }
-}
-```
+**⚠️ CRITICAL: The Gmail API REQUIRES the `raw` field in the request body. You MUST follow this 2-step workflow - sending without encoding will fail!**
 
-**Warning: NEVER base64url-encode the `raw` field yourself!**
-Use the `device` tool with `encode_base64url` - only this ensures correct UTF-8 encoding.
+**NEVER attempt to send an email in a single step. You MUST:**
+1. First encode the email using the `device` tool with `encode_base64url`
+2. Then use the encoded result as the `raw` field value
 
-**Workflow to send an email (2 steps):**
+**Workflow to send an email (REQUIRED 2 steps):**
 
-**Step 1** - Pass the email text as plain text to `device` (each header on its own line, blank line before body):
+**Step 1** - Encode the email text using `device` tool (each header on its own line, blank line before body):
 
 ```json
 {
@@ -160,7 +157,7 @@ Use the `device` tool with `encode_base64url` - only this ensures correct UTF-8 
 }
 ```
 
-**Step 2** - Use the returned string as `raw`:
+**Step 2** - Use the returned encoded string as the `raw` field in the HTTP request:
 
 ```json
 {
@@ -173,7 +170,15 @@ Use the `device` tool with `encode_base64url` - only this ensures correct UTF-8 
 }
 ```
 
+**Important:**
+- The `raw` field is **mandatory** - Gmail will reject requests without it
+- **NEVER** base64url-encode the `raw` field yourself - always use the `device` tool with `encode_base64url`
+- The `device` tool ensures correct UTF-8 encoding and proper base64url format
+- The email format must be: headers (one per line), blank line, then body
+
 ### Reply to an email
+
+**⚠️ CRITICAL: Same 2-step workflow as sending - you MUST encode first using `device` tool with `encode_base64url`!**
 
 When replying to an email you MUST:
 1. `To:` = **sender of the original email** (= value of the `From:` header of the received email). NOT the recipient.
@@ -181,7 +186,7 @@ When replying to an email you MUST:
 3. Set thread headers: `In-Reply-To: {MESSAGE_ID}` and `References: {MESSAGE_ID}` (Message-ID from the header of the original email, including angle brackets, e.g. `<abc123@mail.gmail.com>`).
 4. Include `threadId` in the JSON body.
 
-**Step 1** - Encode reply text:
+**Step 1** - Encode reply text using `device` tool:
 
 ```json
 {
@@ -190,7 +195,7 @@ When replying to an email you MUST:
 }
 ```
 
-**Step 2** - Send with `threadId`:
+**Step 2** - Send with `raw` field (from Step 1) and `threadId`:
 
 ```json
 {

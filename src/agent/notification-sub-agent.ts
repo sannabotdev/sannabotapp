@@ -70,11 +70,11 @@ export async function runNotificationSubAgent(
     ].join('\n'),
   );
 
-  // 1. Create tool registry (with TTS for sub-agent, no scheduler)
+  // 1. Create tool registry (no TTS – result is passed to foreground; no scheduler to prevent recursion)
   DebugLogger.add('info', TAG, 'Creating tool registry…');
   const toolRegistry = createToolRegistry({
     credentialManager,
-    includeTts: true,
+    includeTts: false,
     includeScheduler: false,
   });
 

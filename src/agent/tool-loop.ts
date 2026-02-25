@@ -48,13 +48,13 @@ export async function runToolLoop(
     const toolDefs = config.tools.definitions();
 
     // Call LLM
-    DebugLogger.logLLMRequest(config.model, messages.length, toolDefs.length);
+    DebugLogger.logLLMRequest(config.model, messages.length, toolDefs.length, messages);
     const response = await config.provider.chat(
       messages,
       toolDefs,
       config.model,
     );
-    DebugLogger.logLLMResponse(response.content, response.toolCalls ?? [], response.usage);
+    DebugLogger.logLLMResponse(response.content, response.toolCalls ?? [], response.usage, response);
 
     // No tool calls → we have the final answer
     if (!response.toolCalls || response.toolCalls.length === 0) {

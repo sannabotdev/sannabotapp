@@ -196,39 +196,15 @@ Main Pipeline (user conversation)
 2. `cp local.config.example.ts local.config.ts` and add your API keys
 3. `npm install && npm run android`
 
-See [DEV_SETUP.md](DEV_SETUP.md) for detailed credential setup (API keys, OAuth, etc.).
+See [DEVELOP.md](DEVELOP.md) for detailed credential setup (API keys, OAuth, etc.) and building instructions.
 
-## 📲 Building an APK
+## 🎯 Beta Release
 
-**Debug APK** (for testing):
+There are two ways to get a beta release of Sanna:
 
-```bash
-cd android
-./gradlew assembleDebug
-```
+1. **Build it yourself** – Configure and build the app following the instructions in [DEVELOP.md](DEVELOP.md). Note that this can be time-consuming as you'll need to create many API keys (OpenAI/Claude, Google, Spotify, Picovoice, Slack) for the app to be fully functional.
+2. **Request a Test APK** – Write to [sannabot@proton.me](mailto:sannabot@proton.me) and you'll receive a pre-built test APK for beta testing.
 
-The APK will be at `android/app/build/outputs/apk/debug/app-debug.apk`.
-
-**Release APK** (optimized, minified):
-
-```bash
-cd android
-./gradlew assembleRelease
-```
-
-The APK will be at `android/app/build/outputs/release/app-release.apk`.
-
-> **Note:** The release build currently uses the debug keystore. For production distribution, [generate your own keystore](https://reactnative.dev/docs/signed-apk-android) and update `android/app/build.gradle`.
-
-You can also build and run directly on a connected device:
-
-```bash
-# Debug
-npm run android
-
-# Release
-npm run android:release
-```
 
 ## 🤝 Adding a Skill
 

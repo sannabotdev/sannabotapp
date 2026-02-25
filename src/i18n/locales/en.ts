@@ -97,7 +97,7 @@ const en = {
   'settings.skills.badge.connected': '● Connected',
   'settings.skills.badge.setupNeeded': '○ Setup needed',
   'settings.skills.requires': 'Requires: {package}',
-  'settings.skills.clientIdMissing': 'Client ID missing – see DEV_SETUP.md',
+  'settings.skills.clientIdMissing': 'Client ID missing – see DEVELOP.md',
   'settings.skills.button.connect': 'Connect',
   'settings.skills.button.disconnect': 'Disconnect',
   'settings.skills.button.test': 'Test',
