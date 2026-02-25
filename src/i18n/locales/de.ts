@@ -126,9 +126,10 @@ const de = {
   'evidence.close': 'Schließen',
 
   // Debug Panel
-  'debug.title': '🐛 Debug Log',
+  'debug.title': '🪲 Debug Log',
   'debug.clear': 'Löschen',
   'debug.close': '✕ Schließen',
+  'debug.download': '📥 Download',
   'debug.empty': 'Noch keine Logs. Sende eine Nachricht um zu starten.',
   'debug.truncated': '… (abgeschnitten)',
   'debug.tapForMore': 'Nochmal tippen für vollständigen Inhalt',

@@ -126,9 +126,10 @@ const en = {
   'evidence.close': 'Close',
 
   // Debug Panel
-  'debug.title': '🐛 Debug Log',
+  'debug.title': '🪲 Debug Log',
   'debug.clear': 'Clear',
   'debug.close': '✕ Close',
+  'debug.download': '📥 Download',
   'debug.empty': 'No logs yet. Send a message to get started.',
   'debug.truncated': '… (truncated)',
   'debug.tapForMore': 'Tap again for full content',

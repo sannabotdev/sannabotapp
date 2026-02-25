@@ -79,6 +79,14 @@ export function HomeScreen({
     scrollRef.current?.scrollToEnd({ animated: !historyLoading });
   }, [messages, historyLoading]);
 
+  // Scroll to bottom when switching modes
+  useEffect(() => {
+    // Small delay to ensure the layout has updated
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, [drivingMode]);
+
   // Keep screen on while in driving mode so the user never has to unlock
   useEffect(() => {
     if (drivingMode) {
@@ -134,7 +142,7 @@ export function HomeScreen({
             <Text className="text-xl">{isDark ? '☀️' : '🌙'}</Text>
           </TouchableOpacity>
           <TouchableOpacity className="p-1.5" onPress={() => setDebugVisible(true)}>
-            <Text className="text-xl">🐛</Text>
+            <Text className="text-xl">🪲</Text>
           </TouchableOpacity>
           <TouchableOpacity className="p-1.5" onPress={onSettingsPress}>
             <Text className="text-xl">⚙️</Text>
@@ -350,20 +358,21 @@ function makeDrivingStyles(isDark: boolean) {
   const labelColor = '#FFFFFF'; // button label always white (on coloured button)
   return StyleSheet.create({
     drivingMicSection: {
-      flex: 1,
+      height: 200,
       alignItems: 'center',
       justifyContent: 'center',
-      borderBottomWidth: 1,
+      borderBottomWidth: 2,
       borderBottomColor: border,
       backgroundColor: bg,
+      paddingVertical: 12,
     },
     drivingMicButton: {
-      width: 160,
-      height: 160,
-      borderRadius: 80,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
+      gap: 6,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.4,
@@ -380,7 +389,7 @@ function makeDrivingStyles(isDark: boolean) {
       backgroundColor: isDark ? '#3A3A3C' : '#C7C7CC',
     },
     drivingMicIcon: {
-      fontSize: 52,
+      fontSize: 40,
     },
     drivingMicLabel: {
       color: labelColor,

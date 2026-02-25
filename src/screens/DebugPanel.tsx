@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  Share,
 } from 'react-native';
 import { DebugLogger, type LogEntry, type LogLevel } from '../agent/debug-logger';
 import { t } from '../i18n';
@@ -69,6 +70,57 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
     setEntries([]);
   }, []);
 
+  const handleDownload = useCallback(() => {
+    if (entries.length === 0) {
+      return;
+    }
+
+    // Format all entries as text
+    const lines: string[] = [];
+    lines.push('=== SannaBot Debug Log ===');
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push(`Total entries: ${entries.length}`);
+    lines.push('');
+    lines.push('');
+
+    // Sort entries by timestamp (oldest first for chronological order)
+    const sortedEntries = [...entries].sort((a, b) => 
+      a.timestamp.getTime() - b.timestamp.getTime()
+    );
+
+    sortedEntries.forEach((entry, index) => {
+      const timeStr = entry.timestamp.toLocaleString(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const icon = LEVEL_ICONS[entry.level];
+      
+      lines.push(`[${index + 1}] ${timeStr} ${icon} [${entry.level.toUpperCase()}] [${entry.tag}]`);
+      lines.push(`Summary: ${entry.summary}`);
+      if (entry.detail) {
+        lines.push('Detail:');
+        lines.push(entry.detail);
+      }
+      lines.push('');
+      lines.push('─'.repeat(80));
+      lines.push('');
+    });
+
+    const textContent = lines.join('\n');
+
+    // Use React Native Share API to allow saving/sharing
+    Share.share({
+      message: textContent,
+      title: 'SannaBot Debug Log',
+    }).catch((error) => {
+      console.error('Error sharing debug log:', error);
+    });
+  }, [entries]);
+
   return (
     <>
       {/* Full-screen modal with logs */}
@@ -81,16 +133,23 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
           {/* Header */}
           <View className="flex-row justify-between items-center px-4 pt-12 pb-3 border-b border-surface-elevated">
             <Text className="text-lg font-bold text-label-primary">{t('debug.title')}</Text>
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-2">
+              {entries.length > 0 && (
+                <TouchableOpacity
+                  onPress={handleDownload}
+                  className="w-10 h-10 items-center justify-center bg-surface-elevated rounded-lg">
+                  <Text className="text-lg">📥</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={handleClear}
-                className="px-3 py-1.5 bg-surface-elevated rounded-lg">
-                <Text className="text-accent-orange text-sm font-semibold">{t('debug.clear')}</Text>
+                className="w-10 h-10 items-center justify-center bg-surface-elevated rounded-lg">
+                <Text className="text-lg">🗑️</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={onClose}
-                className="px-3 py-1.5 bg-surface-elevated rounded-lg">
-                <Text className="text-accent-red text-sm font-semibold">{t('debug.close')}</Text>
+                className="w-10 h-10 items-center justify-center bg-surface-elevated rounded-lg">
+                <Text className="text-lg">✕</Text>
               </TouchableOpacity>
             </View>
           </View>
