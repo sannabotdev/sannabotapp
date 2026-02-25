@@ -155,31 +155,33 @@ export function HomeScreen({
         <View className="flex-1">
           {/* Top half: large microphone button */}
           <View style={drivingStyles.drivingMicSection}>
-            <TouchableOpacity
-              style={[
-                drivingStyles.drivingMicButton,
-                pipelineState === 'processing'
-                  ? drivingStyles.drivingMicButtonBusy
-                  : pipelineState === 'listening'
-                  ? drivingStyles.drivingMicButtonListening
-                  : drivingStyles.drivingMicButtonIdle,
-              ]}
-              onPress={onMicPress}
-              disabled={pipelineState === 'processing'}
-              activeOpacity={0.75}>
-              <Text style={drivingStyles.drivingMicIcon}>
-                {pipelineState === 'listening' ? '⏹️' : '🎤'}
-              </Text>
-              <Text style={drivingStyles.drivingMicLabel}>
-                {pipelineState === 'listening'
-                  ? t('home.driving.tapToStop')
-                  : pipelineState === 'processing'
-                  ? t('home.driving.thinking')
-                  : pipelineState === 'speaking'
-                  ? t('home.driving.speaking')
-                  : t('home.driving.micOn')}
-              </Text>
-            </TouchableOpacity>
+            <View style={drivingStyles.drivingMicButtonRing}>
+              <TouchableOpacity
+                style={[
+                  drivingStyles.drivingMicButton,
+                  pipelineState === 'processing'
+                    ? drivingStyles.drivingMicButtonBusy
+                    : pipelineState === 'listening'
+                    ? drivingStyles.drivingMicButtonListening
+                    : drivingStyles.drivingMicButtonIdle,
+                ]}
+                onPress={onMicPress}
+                disabled={pipelineState === 'processing'}
+                activeOpacity={0.75}>
+                <Text style={drivingStyles.drivingMicIcon}>
+                  {pipelineState === 'listening' ? '⏹️' : '🎤'}
+                </Text>
+                <Text style={drivingStyles.drivingMicLabel}>
+                  {pipelineState === 'listening'
+                    ? t('home.driving.tapToStop')
+                    : pipelineState === 'processing'
+                    ? t('home.driving.thinking')
+                    : pipelineState === 'speaking'
+                    ? t('home.driving.speaking')
+                    : t('home.driving.micOn')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Bottom half: message bubbles */}
@@ -217,6 +219,15 @@ export function HomeScreen({
               )}
             </ScrollView>
           </View>
+
+          {/* InputBar without microphone in driving mode */}
+          <InputBar
+            isBusy={isBusy}
+            pipelineState={pipelineState}
+            onMicPress={onMicPress}
+            onSubmit={onTextSubmit}
+            showMic={false}
+          />
         </View>
       ) : (
         /* ── Normal Mode: Bubbles + InputBar ─────────────────────────────── */
@@ -270,7 +281,10 @@ export function HomeScreen({
         </View>
       )}
 
-      <DebugPanel visible={debugVisible} onClose={() => setDebugVisible(false)} />
+      <DebugPanel 
+        visible={debugVisible} 
+        onClose={() => setDebugVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -282,6 +296,7 @@ interface InputBarProps {
   pipelineState: PipelineState;
   onMicPress: () => void;
   onSubmit: (text: string) => void;
+  showMic?: boolean;
 }
 
 const InputBar = React.memo(function InputBar({
@@ -289,6 +304,7 @@ const InputBar = React.memo(function InputBar({
   pipelineState,
   onMicPress,
   onSubmit,
+  showMic = true,
 }: InputBarProps) {
   // Uncontrolled input: text lives in a ref, NOT in React state.
   // This avoids the New Architecture bug where setState() on every
@@ -309,17 +325,19 @@ const InputBar = React.memo(function InputBar({
   return (
     <View>
       <View className="flex-row items-center gap-2 px-3 py-2.5 border-t border-surface-elevated bg-surface">
-        <TouchableOpacity
-          className={`w-11 h-11 rounded-full items-center justify-center ${
-            pipelineState === 'listening' ? 'bg-accent-red' : 'bg-surface-elevated'
-          }`}
-          onPress={onMicPress}
-          disabled={isBusy && pipelineState !== 'listening'}
-          activeOpacity={0.7}>
-          <Text className="text-xl">
-            {pipelineState === 'listening' ? '⏹️' : '🎤'}
-          </Text>
-        </TouchableOpacity>
+        {showMic && (
+          <TouchableOpacity
+            className={`w-11 h-11 rounded-full items-center justify-center ${
+              pipelineState === 'listening' ? 'bg-accent-red' : 'bg-surface-elevated'
+            }`}
+            onPress={onMicPress}
+            disabled={isBusy && pipelineState !== 'listening'}
+            activeOpacity={0.7}>
+            <Text className="text-xl">
+              {pipelineState === 'listening' ? '⏹️' : '🎤'}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <TextInput
           ref={inputRef}
@@ -358,38 +376,57 @@ function makeDrivingStyles(isDark: boolean) {
   const labelColor = '#FFFFFF'; // button label always white (on coloured button)
   return StyleSheet.create({
     drivingMicSection: {
-      height: 200,
+      height: 240,
       alignItems: 'center',
       justifyContent: 'center',
       borderBottomWidth: 2,
       borderBottomColor: border,
       backgroundColor: bg,
-      paddingVertical: 12,
+      paddingVertical: 16,
     },
-    drivingMicButton: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
+    drivingMicButtonRing: {
+      width: 180,
+      height: 180,
+      borderRadius: 90,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 6,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 8,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 12,
+    },
+    drivingMicButton: {
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.5,
+      shadowRadius: 12,
+      elevation: 10,
     },
     drivingMicButtonIdle: {
       backgroundColor: '#007AFF',
+      borderWidth: 3,
+      borderColor: '#5AC8FA',
     },
     drivingMicButtonListening: {
       backgroundColor: '#FF3B30',
+      borderWidth: 3,
+      borderColor: '#FF6B5A',
     },
     drivingMicButtonBusy: {
       backgroundColor: isDark ? '#3A3A3C' : '#C7C7CC',
+      borderWidth: 2,
+      borderColor: isDark ? '#636366' : '#AEAEB2',
     },
     drivingMicIcon: {
-      fontSize: 40,
+      fontSize: 52,
     },
     drivingMicLabel: {
       color: labelColor,

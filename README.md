@@ -13,6 +13,16 @@ There are two ways to get a beta release of Sanna:
 1. **Build it yourself** – Configure and build the app following the instructions in [DEVELOP.md](DEVELOP.md). Note that this can be time-consuming as you'll need to create many API keys (OpenAI/Claude, Google, Spotify, Picovoice, Slack) for the app to be fully functional.
 2. **Request a Test APK** – Write to [sannabot@proton.me](mailto:sannabot@proton.me) and you'll receive a pre-built test APK for beta testing.
 
+## 📸 Screenshots
+
+| Driving Mode | Agent Conversation | Scheduler |
+|:---:|:---:|:---:|
+| ![Driving Mode](media/driving-mode.png) | ![Agent Conversation](media/agent.png) | ![Scheduler](media/scheduler.png) |
+
+| Notification Rules | Skills | Lists |
+|:---:|:---:|:---:|
+| ![Notification Rules](media/notifications.png) | ![Skills](media/skills.png) | ![Lists](media/lists.png) |
+
 ## ✨ Highlights
 
 - **🗣️ Voice-first** – Wake word ("Hey Sanna") → Speech-to-Text → LLM agent → Text-to-Speech, fully hands-free
