@@ -17,11 +17,11 @@ There are two ways to get a beta release of Sanna:
 
 | Driving Mode | Agent Conversation | Scheduler |
 |:---:|:---:|:---:|
-| ![Driving Mode](media/driving-mode.png) | ![Agent Conversation](media/agent.png) | ![Scheduler](media/scheduler.png) |
+| <img src="media/driving-mode.png" width="250"> | <img src="media/agent.png" width="250"> | <img src="media/scheduler.png" width="250"> |
 
 | Notification Rules | Skills | Lists |
 |:---:|:---:|:---:|
-| ![Notification Rules](media/notifications.png) | ![Skills](media/skills.png) | ![Lists](media/lists.png) |
+| <img src="media/notifications.png" width="250"> | <img src="media/skills.png" width="250"> | <img src="media/lists.png" width="250"> |
 
 ## ✨ Highlights
 
