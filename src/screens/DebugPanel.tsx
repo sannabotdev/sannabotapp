@@ -149,7 +149,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
               <TouchableOpacity
                 onPress={onClose}
                 className="w-10 h-10 items-center justify-center bg-surface-elevated rounded-lg">
-                <Text className="text-lg">✕</Text>
+                <Text className="text-lg text-label-primary">✕</Text>
               </TouchableOpacity>
             </View>
           </View>
