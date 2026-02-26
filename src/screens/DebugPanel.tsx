@@ -12,6 +12,8 @@ import {
   TouchableOpacity,
   Modal,
   Share,
+  Alert,
+  Platform,
 } from 'react-native';
 import { DebugLogger, type LogEntry, type LogLevel } from '../agent/debug-logger';
 import { t } from '../i18n';
@@ -70,7 +72,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
     setEntries([]);
   }, []);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (entries.length === 0) {
       return;
     }
@@ -110,15 +112,50 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
       lines.push('');
     });
 
-    const textContent = lines.join('\n');
+    let textContent = lines.join('\n');
 
-    // Use React Native Share API to allow saving/sharing
-    Share.share({
-      message: textContent,
-      title: 'SannaBot Debug Log',
-    }).catch((error) => {
+    // Android has limits on share intent size (~1MB), truncate if needed
+    const MAX_SHARE_SIZE = 900_000; // ~900KB to be safe
+    if (Platform.OS === 'android' && textContent.length > MAX_SHARE_SIZE) {
+      const truncated = textContent.slice(0, MAX_SHARE_SIZE);
+      textContent = truncated + `\n\n... (truncated, original size: ${textContent.length} chars)`;
+    }
+
+    // Small delay to avoid timing issues with modal transitions
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
+
+    try {
+      // Use React Native Share API to allow saving/sharing
+      const result = await Share.share({
+        message: textContent,
+        title: 'SannaBot Debug Log',
+      });
+
+      // On Android, result.action can be 'sharedAction' or 'dismissedAction'
+      // On iOS, result.action can be 'sharedAction' or 'dismissedAction'
+      if (result.action === Share.dismissedAction) {
+        // User dismissed the share dialog - this is not an error
+        return;
+      }
+    } catch (error: unknown) {
       console.error('Error sharing debug log:', error);
-    });
+      
+      // Show user-friendly error message
+      const errorCode = (error as { code?: string })?.code;
+      let errorMessage = t('debug.shareError.message.generic');
+      
+      if (errorCode === 'E_UNABLE_TO_OPEN_DIALOG') {
+        errorMessage = t('debug.shareError.message.noApps');
+      } else if (error instanceof Error) {
+        errorMessage = t('debug.shareError.message.generic');
+      }
+      
+      Alert.alert(
+        t('debug.shareError.title'),
+        errorMessage,
+        [{ text: t('debug.shareError.ok') }]
+      );
+    }
   }, [entries]);
 
   return (

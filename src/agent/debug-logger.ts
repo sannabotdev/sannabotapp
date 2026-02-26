@@ -99,16 +99,25 @@ class DebugLoggerImpl {
     if (name === 'http') {
       const method = (args.method as string) ?? 'GET';
       const url = (args.url as string) ?? '';
-      const headers = (args.headers as Record<string, string>) ?? {};
+      const authProvider = (args.auth_provider as string) ?? '';
+      const authHeader = (args.auth_header as string) ?? '';
+      // headers is an array of {key, value} objects
+      const headersArr = (args.headers as { key: string; value: string }[]) ?? [];
       const body = args.body;
       
       const summary = `${method} ${url}`;
       const detailParts: string[] = [];
       detailParts.push(`Method: ${method}`);
       detailParts.push(`URL: ${url}`);
-      
-      if (Object.keys(headers).length > 0) {
-        detailParts.push(`\nHeaders:\n${JSON.stringify(headers, null, 2)}`);
+      if (authProvider) {
+        detailParts.push(`Auth Provider: ${authProvider}`);
+      }
+      if (authHeader) {
+        detailParts.push(`Auth Header: ${authHeader}`);
+      }
+      if (headersArr.length > 0) {
+        const headersObj = Object.fromEntries(headersArr.map(h => [h.key, h.value]));
+        detailParts.push(`\nHeaders:\n${JSON.stringify(headersObj, null, 2)}`);
       }
       
       if (body !== undefined && body !== null) {

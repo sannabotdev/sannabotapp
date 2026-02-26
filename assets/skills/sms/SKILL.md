@@ -37,9 +37,9 @@ If the user wants to review or edit the SMS before sending, use the intent:
 {
   "action": "android.intent.action.SENDTO",
   "uri": "smsto:{NUMBER}",
-  "extras": {
-    "sms_body": "{MESSAGE_TEXT}"
-  }
+  "extras": [
+    { "key": "sms_body", "value": "{MESSAGE_TEXT}" }
+  ]
 }
 ```
 

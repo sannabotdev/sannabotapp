@@ -36,9 +36,17 @@ export class IntentTool implements Tool {
           description: 'Optional target package (e.g. "com.google.android.apps.maps")',
         },
         extras: {
-          type: 'object',
-          description: 'Optional intent extras as key-value pairs',
-          additionalProperties: { type: 'string' },
+          type: 'array',
+          description: 'Optional intent extras as a list of key/value pairs.',
+          items: {
+            type: 'object',
+            properties: {
+              key: { type: 'string', description: 'Extra name' },
+              value: { type: 'string', description: 'Extra value' },
+            },
+            required: ['key', 'value'],
+            additionalProperties: false,
+          },
         },
       },
       required: ['action'],
@@ -49,7 +57,10 @@ export class IntentTool implements Tool {
     const action = args.action as string;
     const uri = (args.uri as string) ?? null;
     const pkg = (args.package as string) ?? null;
-    const extras = (args.extras as Record<string, string>) ?? null;
+    const extrasArr = (args.extras as { key: string; value: string }[]) ?? [];
+    const extras: Record<string, string> | null = extrasArr.length > 0
+      ? Object.fromEntries(extrasArr.map(e => [e.key, e.value]))
+      : null;
 
     if (!action) {
       return errorResult('action parameter is required');

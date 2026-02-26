@@ -133,6 +133,10 @@ const en = {
   'debug.empty': 'No logs yet. Send a message to get started.',
   'debug.truncated': '… (truncated)',
   'debug.tapForMore': 'Tap again for full content',
+  'debug.shareError.title': 'Unable to Share',
+  'debug.shareError.message.generic': 'Failed to open the share dialog. The log may be too large or no sharing apps are available.',
+  'debug.shareError.message.noApps': 'No apps available to share. Please install a file manager or messaging app.',
+  'debug.shareError.ok': 'OK',
 
   // Skill Test Evidence
   'evidence.iterations': 'Iterations: {count}',
@@ -172,8 +176,6 @@ const en = {
   'settings.services.picovoice.instructions': 'Sign up at console.picovoice.ai and copy your Access Key from the dashboard. Required for the "Hey Sanna" wake-word feature.',
   'settings.services.slack.label': 'Slack Client ID',
   'settings.services.slack.instructions': 'Create a Slack app at api.slack.com/apps, enable OAuth & Permissions, and copy the Client ID from the "Basic Information" page.',
-  'settings.skills.connectApiKey.title': 'Configure API Key',
-  'settings.skills.connectApiKey.message': 'Enter the {keys} in Settings → Services & OAuth.',
   'settings.services.googleMaps.label': 'Google Maps API Key',
   'settings.services.googleMaps.instructions': 'Go to the Google Cloud Console (console.cloud.google.com), create an API key under "APIs & Services → Credentials → Create Credentials → API key".\n\nEnable these APIs under "APIs & Services → Library":\n• Routes API (for route/traffic information)\n• Geocoding API (for address lookup)\n\nOptional: Restrict the key to these APIs for security.',
 } as const;

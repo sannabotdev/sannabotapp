@@ -24,7 +24,7 @@ export class HttpTool implements Tool {
   }
 
   description(): string {
-    return 'Make REST API requests. Supports GET/POST/PUT/DELETE with automatic credential injection via auth_provider.';
+    return 'Make REST API requests. Supports GET/POST/PUT/DELETE with optional headers, body, and automatic credential injection.';
   }
 
   parameters(): Record<string, unknown> {
@@ -42,24 +42,29 @@ export class HttpTool implements Tool {
         },
         auth_provider: {
           type: 'string',
-          description:
-            'Credential ID for automatic auth injection (e.g. "google", "spotify", "google_maps_api_key"). ' +
-            'OAuth tokens are injected as Authorization: Bearer. ' +
-            'API keys are injected into the header specified by auth_header.',
+          description: 'Credential ID for automatic auth injection (e.g. "google", "spotify", "google_maps_api_key").',
         },
         auth_header: {
           type: 'string',
-          description:
-            'Header name for API key injection (required when auth_provider is an API key credential).',
+          description: 'Header name for API key injection (required when auth_provider is an API key credential).',
         },
         headers: {
-          type: 'object',
-          description: 'Optional HTTP headers',
-          additionalProperties: { type: 'string' },
+          type: 'array',
+          description: 'Additional HTTP headers as a list of key/value pairs.',
+          items: {
+            type: 'object',
+            properties: {
+              key: { type: 'string', description: 'Header name, e.g. "X-Goog-FieldMask"' },
+              value: { type: 'string', description: 'Header value' },
+            },
+            required: ['key', 'value'],
+            additionalProperties: false,
+          },
         },
         body: {
           type: 'object',
           description: 'Request body for POST/PUT/PATCH requests',
+          additionalProperties: true,
         },
         response_format: {
           type: 'string',
@@ -76,7 +81,10 @@ export class HttpTool implements Tool {
     const url = args.url as string;
     const authProvider = args.auth_provider as string | undefined;
     const authHeader = args.auth_header as string | undefined;
-    const headers = (args.headers as Record<string, string>) ?? {};
+    const headers: Record<string, string> = {};
+    for (const entry of (args.headers as { key: string; value: string }[]) ?? []) {
+      if (entry.key) headers[entry.key] = entry.value;
+    }
     const body = args.body as Record<string, unknown> | undefined;
     const responseFormat = (args.response_format as string) ?? 'json';
 
@@ -128,7 +136,7 @@ export class HttpTool implements Tool {
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'No error message available');
         return errorResult(
-          `HTTP ${response.status} ${response.statusText}: ${errorText.slice(0, 200)}`,
+          `HTTP ${response.status} ${response.statusText}: ${errorText.slice(0, 300)}`,
         );
       }
 
@@ -157,7 +165,23 @@ export class HttpTool implements Tool {
         ? responseText.slice(0, 5000) + '\n... (truncated, response too long)'
         : responseText;
 
-      return successResult(truncated);
+      // Build request summary for the debug panel (mask sensitive header values)
+      const SENSITIVE_HEADERS = new Set([
+        'authorization', 'x-goog-api-key', 'x-api-key', 'api-key',
+        'x-auth-token', 'cookie', 'set-cookie',
+      ]);
+      const finalHeaders = requestInit.headers as Record<string, string>;
+      const headerLines = Object.entries(finalHeaders)
+        .map(([k, v]) => {
+          const masked = SENSITIVE_HEADERS.has(k.toLowerCase())
+            ? v.slice(0, 8) + '…'
+            : v;
+          return `  ${k}: ${masked}`;
+        })
+        .join('\n');
+      const requestSummary = `→ ${method} ${url}\n${headerLines}\n\n`;
+
+      return successResult(requestSummary + truncated);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return errorResult(`HTTP request failed: ${message}`);

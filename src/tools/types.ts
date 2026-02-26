@@ -35,6 +35,7 @@ export function toolToDefinition(tool: Tool): ToolDefinition {
     function: {
       name: tool.name(),
       description: tool.description(),
+      strict: false,
       parameters: tool.parameters(),
     },
   };

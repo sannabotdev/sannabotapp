@@ -40,6 +40,9 @@ const LOCAL_DEV_CONFIG = {
    * Example: 'https://yourname.github.io/sanna-oauth/slack'
    */
   slackRedirectUrl: '',
+
+  /** Google Maps API Key for local development */
+  googleMapsApiKey: '',
 };
 
 export default LOCAL_DEV_CONFIG;

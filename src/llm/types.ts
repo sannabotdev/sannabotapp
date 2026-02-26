@@ -21,6 +21,7 @@ export interface ToolDefinition {
   function: {
     name: string;
     description: string;
+    strict: false;
     parameters: Record<string, unknown>;
   };
 }

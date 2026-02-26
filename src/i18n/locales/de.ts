@@ -133,6 +133,10 @@ const de = {
   'debug.empty': 'Noch keine Logs. Sende eine Nachricht um zu starten.',
   'debug.truncated': '… (abgeschnitten)',
   'debug.tapForMore': 'Nochmal tippen für vollständigen Inhalt',
+  'debug.shareError.title': 'Teilen nicht möglich',
+  'debug.shareError.message.generic': 'Der Teilen-Dialog konnte nicht geöffnet werden. Das Log ist möglicherweise zu groß oder es sind keine Teilen-Apps verfügbar.',
+  'debug.shareError.message.noApps': 'Keine Apps zum Teilen verfügbar. Bitte installiere einen Dateimanager oder eine Messaging-App.',
+  'debug.shareError.ok': 'OK',
 
   // Skill Test Evidence
   'evidence.iterations': 'Iterationen: {count}',
@@ -172,8 +176,6 @@ const de = {
   'settings.services.picovoice.instructions': 'Registriere dich auf console.picovoice.ai und kopiere deinen Access Key aus dem Dashboard. Wird für das Wake-Word-Feature "Hey Sanna" benötigt.',
   'settings.services.slack.label': 'Slack Client ID',
   'settings.services.slack.instructions': 'Erstelle eine Slack-App unter api.slack.com/apps, aktiviere OAuth & Permissions und kopiere die Client-ID von der Seite "Basic Information".',
-  'settings.skills.connectApiKey.title': 'API Key konfigurieren',
-  'settings.skills.connectApiKey.message': 'Trage den {keys} unter Einstellungen → Dienste & OAuth ein.',
   'settings.services.googleMaps.label': 'Google Maps API Key',
   'settings.services.googleMaps.instructions': 'Öffne die Google Cloud Console (console.cloud.google.com) und erstelle einen API-Schlüssel unter "APIs & Dienste → Anmeldedaten → Anmeldedaten erstellen → API-Schlüssel".\n\nAktiviere diese APIs unter "APIs & Dienste → Bibliothek":\n• Routes API (für Routen- und Verkehrsinformationen)\n• Geocoding API (für Adresssuche)\n\nOptional: Schränke den Schlüssel auf diese APIs ein.',
 } as const;

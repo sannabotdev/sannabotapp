@@ -59,7 +59,7 @@ import { SannaAvatar } from './src/components/SannaAvatar';
 
 // Local dev config (gitignored – never shipped to production)
 // If the file is missing (e.g. in CI/Production), empty defaults are used.
-let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string } = {
+let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string } = {
   openAIApiKey: '',
   claudeApiKey: '',
   selectedProvider: 'openai',
@@ -70,6 +70,7 @@ let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider
   picovoiceAccessKey: '',
   slackClientId: '',
   slackRedirectUrl: '',
+  googleMapsApiKey: '',
 };
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -200,7 +201,7 @@ const SECURE_KEY_IDS = {
   googleWebClientId: 'svc_google_web_client_id',
   spotifyClientId: 'svc_spotify_client_id',
   slackClientId: 'svc_slack_client_id',
-  googleMapsApiKey: 'svc_google_maps_api_key',
+  googleMapsApiKey: 'google_maps_api_key',
 } as const;
 
 /** AsyncStorage key for dark-mode preference – readable without biometric unlock */
@@ -342,6 +343,12 @@ async function seedLocalConfigKeys(store: TokenStore): Promise<void> {
       await store.saveApiKey(SECURE_KEY_IDS.slackClientId, LOCAL_CONFIG.slackClientId);
     }
   }
+  if (LOCAL_CONFIG.googleMapsApiKey) {
+    const existing = await store.getApiKey(SECURE_KEY_IDS.googleMapsApiKey).catch(() => null);
+    if (!existing) {
+      await store.saveApiKey(SECURE_KEY_IDS.googleMapsApiKey, LOCAL_CONFIG.googleMapsApiKey);
+    }
+  }
 }
 
 interface ConversationMessage {
@@ -466,11 +473,6 @@ export default function App(): React.JSX.Element {
     setSettings({ ...prefs, ...secureKeys });
     setSettingsLoaded(true);
     setInitializing(false);
-
-    // Sync Google Maps API key from TokenStore to CredentialManager so HttpTool can access it
-    if (secureKeys.googleMapsApiKey) {
-      credentialManager.current.saveApiKey('google_maps_api_key', secureKeys.googleMapsApiKey).catch(() => {});
-    }
 
     // Mirror dark mode to AsyncStorage so it's available before the next unlock
     AsyncStorage.setItem(DARK_MODE_STORAGE_KEY, prefs.darkMode ? 'true' : 'false').catch(() => {});
@@ -1022,16 +1024,13 @@ export default function App(): React.JSX.Element {
   const handleGoogleMapsApiKeyChange = useCallback(
     async (key: string) => {
       setSettings(s => ({ ...s, googleMapsApiKey: key }));
+      // SECURE_KEY_IDS.googleMapsApiKey === 'google_maps_api_key' – same Keychain entry
+      // that CredentialManager.getApiKey uses, so no separate sync needed.
       await saveSecureKey(tokenStore.current, SECURE_KEY_IDS.googleMapsApiKey, key);
-      // Also store in CredentialManager so the HttpTool can inject it
-      if (key) {
-        await credentialManager.current.saveApiKey('google_maps_api_key', key);
-      } else {
-        await credentialManager.current.revokeCredential('google_maps_api_key');
-      }
     },
     [],
   );
+
 
   const changeServiceClientId = useCallback(
     (

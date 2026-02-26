@@ -117,10 +117,8 @@ The following skills extend your capabilities. Each skill has a summary that ind
 
 **How to use skills:**
 - Review the skill summaries below to identify which skill applies to the user's request.
-- If exactly one skill clearly applies: use the tools and parameters described in that skill's summary.
-- If multiple skills could apply: choose the most specific one, then use \`skill_detail\` to get full details.
-- If you need complete information about a skill (full workflows, examples, detailed instructions), use the \`skill_detail\` tool with the skill name.
-- The summaries provide enough information for most tasks, but use \`skill_detail\` when you need the complete skill definition.
+- **As your very first action, always call \`skill_detail\` with the chosen skill name** to read the full skill definition before doing anything else.
+- Only after reading the full skill definition, proceed with the tools and parameters described in it.
 
 ${skillsSummary}`);
   }
