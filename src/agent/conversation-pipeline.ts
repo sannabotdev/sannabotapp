@@ -81,6 +81,34 @@ export class ConversationPipeline {
   }
 
   /**
+   * Start listening state. Used when STT is starting.
+   * Only sets state if currently idle or speaking.
+   */
+  startListening(): void {
+    if (this.state === 'idle' || this.state === 'speaking') {
+      this.setState('listening');
+    }
+  }
+
+  /**
+   * Stop listening and return to idle.
+   * Used when STT is cancelled or fails.
+   */
+  stopListening(): void {
+    if (this.state === 'listening') {
+      this.setState('idle');
+    }
+  }
+
+  /**
+   * Set state to idle explicitly.
+   * Used for error recovery or manual state reset.
+   */
+  setIdle(): void {
+    this.setState('idle');
+  }
+
+  /**
    * Interrupt ongoing TTS playback and return to idle.
    * Safe to call at any time; no-op if not currently speaking.
    */
@@ -148,7 +176,7 @@ export class ConversationPipeline {
         messages,
       );
 
-      const assistantText = result.content;
+      const assistantText = result.content || 'Task started.';
 
       // Save intermediate tool call messages to history (assistant tool calls + tool results)
       this.history.push(...result.newMessages);
@@ -166,11 +194,34 @@ export class ConversationPipeline {
         this.onTranscript?.('assistant', assistantText);
         if (this.config.drivingMode) {
           this.setState('speaking');
-          await this.config.ttsService.speak(assistantText, this.config.language ?? 'en-US');
+          // Start TTS - wait for completion
+          try {
+            await this.config.ttsService.speak(assistantText, this.config.language ?? 'en-US');
+          } catch (ttsErr) {
+            // TTS error - log but don't fail the whole pipeline
+            DebugLogger.logError('TTS', `TTS error: ${ttsErr instanceof Error ? ttsErr.message : String(ttsErr)}`);
+          }
+          // After speak() completes (or errors), TTS is done, so set idle
+          // The tts_done listener in App.tsx should also set it, but this is a fallback
+          // Don't override 'listening' state - user might have started listening
+          if (this.getState() !== 'listening') {
+            this.setState('idle');
+          }
+        } else {
+          // Normal mode: no TTS, so we can set idle immediately
+          // Don't override 'listening' state - user might have started listening
+          if (this.getState() !== 'listening') {
+            this.setState('idle');
+          }
+        }
+      } else {
+        // No assistant text, set idle immediately
+        // Don't override 'listening' state - user might have started listening
+        if (this.getState() !== 'listening') {
+          this.setState('idle');
         }
       }
 
-      this.setState('idle');
       return assistantText;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

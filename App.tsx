@@ -793,6 +793,62 @@ export default function App(): React.JSX.Element {
     settings.googleWebClientId,
   ]);
 
+  // ─── Handlers (defined early for use in useEffects) ────────────────────────
+
+  const handleMicPress = useCallback(async () => {
+    if (!pipelineRef.current) {
+      Alert.alert(t('alert.noApiKey.title'), t('alert.noApiKey.message'));
+      return;
+    }
+    // If concurrent auto-listening is already active (driving-mode question flow),
+    // cancel it first so we don't have two overlapping STT sessions.
+    if (autoListeningStartedRef.current) {
+      autoListeningStartedRef.current = false;
+      await sttService.current.cancel().catch(() => {});
+    }
+    // Check current state from pipeline
+    const currentState = pipelineRef.current.getState();
+    // If TTS is currently speaking, stop it immediately and start listening
+    if (currentState === 'speaking') {
+      await pipelineRef.current.stopSpeaking();
+    } else if (currentState !== 'idle') {
+      return;
+    }
+
+    const permResult = await permissionManager.current.ensurePermissions([
+      'android.permission.RECORD_AUDIO',
+    ]);
+    if (!permResult.allGranted) {
+      Alert.alert(t('alert.micPermission.title'), t('alert.micPermission.message'));
+      return;
+    }
+
+    try {
+      pipelineRef.current.startListening();
+      // Resolve language: 'system' -> device locale, otherwise use setting
+      const language = settings.sttLanguage === 'system' 
+        ? getSystemLocale() 
+        : settings.sttLanguage;
+      const transcript = await sttService.current.listen(language, settings.sttMode);
+      if (!transcript?.trim()) {
+        pipelineRef.current.stopListening();
+        return;
+      }
+      await pipelineRef.current.processUtterance(transcript);
+    } catch (err) {
+      pipelineRef.current.stopListening();
+      if (err instanceof Error && !err.message.includes('cancel')) {
+        Alert.alert(t('alert.sttError'), err.message);
+      }
+    }
+  }, [settings.sttLanguage, settings.sttMode]);
+
+  const handleWakeWordDetected = useCallback(async (_keyword: string) => {
+    if (!pipelineRef.current || pipelineRef.current.getState() !== 'idle') return;
+    await ttsService.current.speak('Yes?', settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage);
+    handleMicPress();
+  }, [handleMicPress, settings.appLanguage]);
+
   // Wake word management
   useEffect(() => {
     if (!vaultUnlocked) return;
@@ -813,7 +869,7 @@ export default function App(): React.JSX.Element {
     return () => {
       wakeWordService.current.stop();
     };
-  }, [vaultUnlocked, settings.wakeWordEnabled, settings.wakeWordKey]);
+  }, [vaultUnlocked, settings.wakeWordEnabled, settings.wakeWordKey, handleWakeWordDetected]);
 
 
   // ─── Driving-mode: auto-listening after TTS ──────────────────────────────
@@ -832,7 +888,7 @@ export default function App(): React.JSX.Element {
     if (!permResult.allGranted) return;
 
     autoListeningStartedRef.current = true;
-    setPipelineState('listening');
+    pipelineRef.current?.startListening();
     try {
       const language = settings.sttLanguage === 'system'
         ? getSystemLocale()
@@ -841,7 +897,7 @@ export default function App(): React.JSX.Element {
       autoListeningStartedRef.current = false;
 
       if (!transcript?.trim()) {
-        setPipelineState('idle');
+        pipelineRef.current?.stopListening();
         return;
       }
 
@@ -853,7 +909,7 @@ export default function App(): React.JSX.Element {
       await pipelineRef.current?.processUtterance(transcript);
     } catch (err) {
       autoListeningStartedRef.current = false;
-      setPipelineState('idle');
+      pipelineRef.current?.stopListening();
       if (err instanceof Error && !err.message.includes('cancel')) {
         Alert.alert(t('alert.sttError'), err.message);
       }
@@ -895,88 +951,39 @@ export default function App(): React.JSX.Element {
    * pending messages, etc.) and ensures the UI button state is always correct.
    * Only resets if we're currently in 'speaking' state to avoid race conditions
    * with the pipeline's own state management.
+   * 
+   * NOTE: The pipeline itself also handles tts_done in its speak() method,
+   * but this is a fallback for TTS started outside the pipeline.
    */
   useEffect(() => {
     const sub = TTSEvents.addListener('tts_done', () => {
       // Only reset to idle if we're currently in speaking state
       // This prevents race conditions with the pipeline's own state management
-      if (pipelineState === 'speaking') {
-        setPipelineState('idle');
+      if (pipelineRef.current?.getState() === 'speaking') {
+        pipelineRef.current.setIdle();
       }
     });
     return () => sub.remove();
-  }, [pipelineState]);
-
-  // ─── Handlers ───────────────────────────────────────────────────────────
-
-  const handleWakeWordDetected = useCallback(async (_keyword: string) => {
-    if (pipelineState !== 'idle' || !pipelineRef.current) return;
-    await ttsService.current.speak('Yes?', settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage);
-    handleMicPress();
-  }, [pipelineState]);
-
-  const handleMicPress = useCallback(async () => {
-    if (!pipelineRef.current) {
-      Alert.alert(t('alert.noApiKey.title'), t('alert.noApiKey.message'));
-      return;
-    }
-    // If concurrent auto-listening is already active (driving-mode question flow),
-    // cancel it first so we don't have two overlapping STT sessions.
-    if (autoListeningStartedRef.current) {
-      autoListeningStartedRef.current = false;
-      await sttService.current.cancel().catch(() => {});
-    }
-    // If TTS is currently speaking, stop it immediately and start listening
-    if (pipelineState === 'speaking') {
-      await pipelineRef.current.stopSpeaking();
-    } else if (pipelineState !== 'idle') {
-      return;
-    }
-
-    const permResult = await permissionManager.current.ensurePermissions([
-      'android.permission.RECORD_AUDIO',
-    ]);
-    if (!permResult.allGranted) {
-      Alert.alert(t('alert.micPermission.title'), t('alert.micPermission.message'));
-      return;
-    }
-
-    try {
-      setPipelineState('listening');
-      // Resolve language: 'system' -> device locale, otherwise use setting
-      const language = settings.sttLanguage === 'system' 
-        ? getSystemLocale() 
-        : settings.sttLanguage;
-      const transcript = await sttService.current.listen(language, settings.sttMode);
-      if (!transcript?.trim()) {
-        setPipelineState('idle');
-        return;
-      }
-      await pipelineRef.current.processUtterance(transcript);
-    } catch (err) {
-      setPipelineState('idle');
-      if (err instanceof Error && !err.message.includes('cancel')) {
-        Alert.alert(t('alert.sttError'), err.message);
-      }
-    }
-  }, [pipelineState, settings.sttLanguage, settings.sttMode]);
+  }, []);
 
   const handleTextSubmit = useCallback(async (text: string) => {
     if (!pipelineRef.current) {
       Alert.alert(t('alert.noApiKey.title'), t('alert.noApiKey.message'));
       return;
     }
-    if (pipelineState !== 'idle') return;
+    // Check state from pipeline, not from React state
+    if (pipelineRef.current.getState() !== 'idle') return;
 
     try {
       await pipelineRef.current.processUtterance(text);
     } catch (err) {
-      setPipelineState('idle');
+      // Pipeline should handle state on error, but set idle as fallback
+      pipelineRef.current.setIdle();
       if (err instanceof Error) {
         Alert.alert(t('alert.error'), err.message);
       }
     }
-  }, [pipelineState]);
+  }, []);
 
   const handleToggleDrivingMode = useCallback(() => {
     setSettings(s => ({ ...s, drivingMode: !s.drivingMode }));

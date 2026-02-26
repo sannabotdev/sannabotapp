@@ -156,40 +156,62 @@ export default async function accessibilityHeadlessTask(
     return;
   }
 
-  // 5. Open app via Intent (if requested)
-  if (intentAction) {
-    try {
-      await IntentModule.sendIntent(intentAction, intentUri ?? null, packageName, null);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[AccessibilityTask] Intent failed:', msg);
-      await failFormatted(`Could not open the app: ${msg}`, ctx);
-      return;
-    }
+  // 5. Ensure foreground service is running before opening the target app
+  // Give the system a moment to fully initialize the foreground service
+  // This prevents Android from killing the task when SannaBot goes to background
+  // The notification must be visible before we open the target app
+  await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
 
-    // 6. Wait for the app to appear in foreground (up to 10 seconds)
-    let appVisible = false;
-    try {
-      appVisible = await AccessibilityModule.waitForApp(packageName, 10_000);
-    } catch { /* ignore */ }
-
-    if (!appVisible) {
-      await failFormatted(
-        `The app did not appear in the foreground within 10 seconds. ` +
-        'Please make sure it is installed.',
-        ctx,
-      );
-      return;
-    }
-
-    // Give the app time to render its UI
-    await new Promise<void>(resolve => setTimeout(() => resolve(), 2500));
+  // 6. Open app via Intent
+  // If intentAction is provided, use it. Otherwise, default to ACTION_MAIN to launch the app.
+  const actionToUse = (intentAction && intentAction.trim() !== '') 
+    ? intentAction 
+    : 'android.intent.action.MAIN';
+  console.log(`[AccessibilityTask] Opening app ${packageName} with action ${actionToUse}`);
+  try {
+    await IntentModule.sendIntent(actionToUse, intentUri ?? null, packageName, null);
+    console.log(`[AccessibilityTask] Intent sent successfully`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[AccessibilityTask] Intent failed:', msg);
+    await failFormatted(`Could not open the app: ${msg}`, ctx);
+    return;
   }
 
-  // 7. Capture accessibility tree
+  // 7. Wait for the app to appear in foreground (up to 15 seconds)
+  console.log(`[AccessibilityTask] Waiting for app ${packageName} to appear...`);
+  let appVisible = false;
+  try {
+    appVisible = await AccessibilityModule.waitForApp(packageName, 15_000);
+    console.log(`[AccessibilityTask] App visible: ${appVisible}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[AccessibilityTask] waitForApp error:', msg);
+  }
+
+  if (!appVisible) {
+    await failFormatted(
+      `The app did not appear in the foreground within 15 seconds. ` +
+      'Please make sure it is installed and try again.',
+      ctx,
+    );
+    return;
+  }
+
+  // Give the app time to render its UI
+  await new Promise<void>(resolve => setTimeout(() => resolve(), 2500));
+
+  // 8. Capture accessibility tree
   let accessibilityTree: string;
   try {
     accessibilityTree = await AccessibilityModule.getAccessibilityTree();
+    // Log the tree for debugging (truncated if too long)
+    const treePreview = accessibilityTree.length > 2000 
+      ? accessibilityTree.slice(0, 2000) + '\n... (truncated)'
+      : accessibilityTree;
+    console.log('[AccessibilityTask] Captured accessibility tree:');
+    console.log(treePreview);
+    DebugLogger.add('info', 'AccessibilityTask', `Accessibility tree captured (${accessibilityTree.length} chars)`, accessibilityTree);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[AccessibilityTask] Tree capture failed:', msg);
@@ -202,7 +224,7 @@ export default async function accessibilityHeadlessTask(
     return;
   }
 
-  // 8. Run LLM sub-agent
+  // 9. Run LLM sub-agent
   console.log('[AccessibilityTask] Running sub-agent...');
   let subResult: { message: string; status: 'success' | 'failed' | 'timeout' };
   try {
@@ -222,14 +244,14 @@ export default async function accessibilityHeadlessTask(
 
   console.log('[AccessibilityTask] Done:', subResult.status, subResult.message.slice(0, 200));
 
-  // 9. Reformulate result via LLM (language-aware, mode-aware)
+  // 10. Reformulate result via LLM (language-aware, mode-aware)
   const formulated = await formulateResponse({
     ...ctx,
     status: subResult.status,
     rawMessage: subResult.message,
   });
 
-  // 10. Write to pending queue FIRST, then restore foreground.
+  // 11. Write to pending queue FIRST, then restore foreground.
   //     The AppState 'active' event fires the instant SannaBot appears – the
   //     message must already be in AsyncStorage before that happens, otherwise
   //     drainPending() will find nothing and the bubble won't show.

@@ -122,8 +122,7 @@ export class AccessibilityTool implements Tool {
     // naturally produces a short, well-formatted confirmation for the user.
     // The real result arrives later via ConversationStore.appendPending.
     return successResult(
-      `Background UI automation started for "${packageName}". Goal: "${goal}". ` +
-      `Confirm briefly to the user that you are working on it.`,
+      `Background UI automation started for "${packageName}". Task is running in background.`,
     );
   }
 }

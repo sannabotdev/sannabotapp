@@ -24,6 +24,7 @@ import type { LLMProvider, Message } from '../llm/types';
 import AccessibilityModule from '../native/AccessibilityModule';
 import type { Tool, ToolResult } from '../tools/types';
 import { errorResult, successResult } from '../tools/types';
+import { DebugLogger } from './debug-logger';
 
 export interface AccessibilitySubAgentConfig {
   provider: LLMProvider;
@@ -94,6 +95,9 @@ ${accessibilityTree}
 \`\`\`
 
 Please achieve the goal: ${goal}`;
+
+  // Log the tree being sent to LLM for debugging
+  DebugLogger.add('info', 'AccessibilitySubAgent', `Sending accessibility tree to LLM (${accessibilityTree.length} chars)`, accessibilityTree);
 
   const messages: Message[] = [
     { role: 'system', content: systemPrompt },
@@ -322,6 +326,8 @@ class GetAccessibilityTreeTool implements Tool {
       // Small delay so the app UI can settle after previous actions
       await new Promise<void>(resolve => setTimeout(() => resolve(), 800));
       const freshTree = await AccessibilityModule.getAccessibilityTree();
+      // Log the refreshed tree for debugging
+      DebugLogger.add('info', 'GetAccessibilityTree', `Refreshed tree (${freshTree.length} chars)`, freshTree);
       return successResult(freshTree);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
