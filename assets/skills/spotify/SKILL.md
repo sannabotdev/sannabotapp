@@ -124,6 +124,20 @@ Or for individual tracks:
 }
 ```
 
+## Tool: accessibility (ONLY for starting playback when nothing is playing)
+
+**IMPORTANT**: Use accessibility ONLY to start playback when Spotify is not playing. All other actions (pause, next, previous, volume, search, play specific tracks) MUST be done via the Web API.
+
+
+When Spotify is not playing and the Web API play endpoint fails, use accessibility to open the app and click the "Play" button:
+
+```json
+{
+  "package_name": "com.spotify.music",
+  "goal": "Open the Spotify app and click the play button to start playback"
+}
+```
+
 ## Workflow: Play music
 
 1. Search for artist/song using `http`
@@ -131,10 +145,23 @@ Or for individual tracks:
 3. Call play endpoint with the URI
 4. Confirm with `tts`: "Now playing {Artist} - {Track}"
 
+## Workflow: Resume playback when nothing is playing
+
+If Spotify is currently not playing anything:
+
+1. Check current playback status using `GET /me/player/currently-playing`
+2. If the API returns 204 No Content or an empty response (nothing is playing):
+   - Use the `accessibility` tool with `package_name: "com.spotify.music"` and `goal: "Open the Spotify app and click the play button to start playback"`
+3. The accessibility tool will open the app and click the "Play" button automatically
+
+**Note**: Once playback is started, all further control (pause, next, previous, volume) should be done via the Web API, NOT via accessibility.
+
+
 ## Examples
 
-- "Play Rammstein" → Search + artist URI + play
-- "Next song" → POST /me/player/next
-- "Pause" → PUT /me/player/pause
-- "What's playing?" → GET /me/player/currently-playing + TTS
-- "Louder" → Get current volume + increase + set volume
+- "Play Rammstein" → Search + artist URI + play (via API)
+- "Next song" → POST /me/player/next (via API)
+- "Pause" → PUT /me/player/pause (via API)
+- "What's playing?" → GET /me/player/currently-playing + TTS (via API)
+- "Louder" → Get current volume + increase + set volume (via API)
+- "Resume playback" / "Continue playing" → Check currently-playing → If nothing playing: accessibility tool to open app and click play (ONLY use accessibility for starting playback when nothing is playing)

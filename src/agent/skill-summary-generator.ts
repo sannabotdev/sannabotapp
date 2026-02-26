@@ -10,6 +10,7 @@
 import type { LLMProvider } from '../llm/types';
 import { SkillSummaryCache } from './skill-summary-cache';
 import type { SkillInfo } from './skill-loader';
+import { DebugLogger } from './debug-logger';
 
 const SUMMARY_GENERATION_PROMPT = `You are analyzing a skill definition for an AI assistant. Generate a concise summary (max 400 words) that includes:
 
@@ -52,11 +53,15 @@ export class SkillSummaryGenerator {
       return cached;
     }
 
+    DebugLogger.add('info', 'SKILL_SUMMARY', `Cache miss for skill "${skill.name}" - generating summary`);
+
     // Generate new summary
     const summary = await this.generateSummary(skill);
 
     // Store in cache
     await SkillSummaryCache.storeSummary(skill.name, summary, contentHash);
+
+    DebugLogger.add('info', 'SKILL_SUMMARY', `Summary generated and cached for skill "${skill.name}"`, summary);
 
     return summary;
   }
@@ -67,26 +72,47 @@ export class SkillSummaryGenerator {
   private async generateSummary(skill: SkillInfo): Promise<string> {
     const fullContent = `# ${skill.name}\n\n${skill.description}\n\n${skill.content}`;
 
+    const messages = [
+      {
+        role: 'system' as const,
+        content: SUMMARY_GENERATION_PROMPT,
+      },
+      {
+        role: 'user' as const,
+        content: `Generate a concise summary for this skill:\n\n${fullContent}`,
+      },
+    ];
+
     try {
+      // Log LLM request
+      DebugLogger.logLLMRequest(
+        this.config.model,
+        messages.length,
+        0, // no tools
+        messages,
+      );
+
       const response = await this.config.provider.chat(
-        [
-          {
-            role: 'system',
-            content: SUMMARY_GENERATION_PROMPT,
-          },
-          {
-            role: 'user',
-            content: `Generate a concise summary for this skill:\n\n${fullContent}`,
-          },
-        ],
+        messages,
         [],
         this.config.model,
       );
 
       const summary = response.content?.trim() || skill.description;
+
+      // Log LLM response
+      DebugLogger.logLLMResponse(
+        summary,
+        [],
+        response.usage,
+        response,
+      );
+
       return summary;
     } catch (err) {
       // Fallback to description if LLM call fails
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      DebugLogger.logError('SKILL_SUMMARY', `Failed to generate summary for ${skill.name}: ${errorMessage}`);
       console.warn(`[SkillSummaryGenerator] Failed to generate summary for ${skill.name}:`, err);
       return skill.description;
     }
@@ -97,12 +123,18 @@ export class SkillSummaryGenerator {
    * This is async and non-blocking - failures are logged but don't throw.
    */
   async pregenerateSummaries(skills: SkillInfo[]): Promise<void> {
+    DebugLogger.add('info', 'SKILL_SUMMARY', `Pre-generating summaries for ${skills.length} skills`);
+    
     const promises = skills.map(skill =>
       this.getOrGenerateSummary(skill).catch(err => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        DebugLogger.logError('SKILL_SUMMARY', `Failed to pregenerate summary for ${skill.name}: ${errorMessage}`);
         console.warn(`[SkillSummaryGenerator] Failed to pregenerate summary for ${skill.name}:`, err);
       }),
     );
 
     await Promise.allSettled(promises);
+    
+    DebugLogger.add('info', 'SKILL_SUMMARY', `Finished pre-generating summaries for ${skills.length} skills`);
   }
 }
