@@ -113,15 +113,16 @@ ${toolSummaries.join('\n')}`);
   if (skillsSummary) {
     parts.push(`## Available Skills
 
-The following skills extend your capabilities. Each skill explains which tools and parameters to use.
+The following skills extend your capabilities. Each skill has a summary that indicates which tools and parameters to use.
+
+**How to use skills:**
+- Review the skill summaries below to identify which skill applies to the user's request.
+- If exactly one skill clearly applies: use the tools and parameters described in that skill's summary.
+- If multiple skills could apply: choose the most specific one, then use \`skill_detail\` to get full details.
+- If you need complete information about a skill (full workflows, examples, detailed instructions), use the \`skill_detail\` tool with the skill name.
+- The summaries provide enough information for most tasks, but use \`skill_detail\` when you need the complete skill definition.
 
 ${skillsSummary}`);
-  }
-
-  // Skill content (full SKILL.md bodies)
-  const skillsContent = skillLoader.buildSkillsContent(enabledSkillNames);
-  if (skillsContent) {
-    parts.push(`## Skill Definitions\n\n${skillsContent}`);
   }
 
   return parts.join('\n\n---\n\n');

@@ -168,6 +168,7 @@ export default async function schedulerHeadlessTask(
 
     const toolRegistry = createToolRegistry({
       credentialManager,
+      skillLoader,
       includeTts: false, // result is passed to foreground via appendPending; no TTS in background
       includeScheduler: false, // prevent recursive schedule creation
     });

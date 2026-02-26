@@ -72,13 +72,14 @@ export async function runNotificationSubAgent(
 
   // 1. Create tool registry (no TTS – result is passed to foreground; no scheduler to prevent recursion)
   DebugLogger.add('info', TAG, 'Creating tool registry…');
+  const skillLoader = new SkillLoader();
   const toolRegistry = createToolRegistry({
     credentialManager,
+    skillLoader,
     includeTts: false,
     includeScheduler: false,
   });
 
-  const skillLoader = new SkillLoader();
   toolRegistry.removeDisabledSkillTools(skillLoader, enabledSkillNames);
 
   const toolNames = toolRegistry.list();

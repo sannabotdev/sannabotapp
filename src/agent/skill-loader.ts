@@ -40,6 +40,8 @@ export interface SkillInfo {
   exclusiveTool?: string;
   permissions: string[];
   credentials: CredentialRequirement[];
+  /** LLM-generated summary (cached, hash-based invalidation) */
+  summary?: string;
 }
 
 /**
@@ -180,6 +182,7 @@ export function registerSkillContent(name: string, content: string): void {
  */
 export class SkillLoader {
   private skills: Map<string, SkillInfo> = new Map();
+  private skillsSummaryCache: Map<string, string> = new Map();
 
   constructor() {
     this.loadAll();
@@ -243,6 +246,8 @@ export class SkillLoader {
     this.skills.set(skillInfo.name, skillInfo);
     // Also push into SKILL_REGISTRY so headless tasks see it too
     registerSkillContent(key, content);
+    // Invalidate cache - skills changed
+    this.skillsSummaryCache.clear();
   }
 
   /**
@@ -251,6 +256,8 @@ export class SkillLoader {
    */
   unregisterSkill(name: string): void {
     this.skills.delete(name);
+    // Invalidate cache - skills changed
+    this.skillsSummaryCache.clear();
   }
 
   /** Return true if the skill was uploaded dynamically (not bundled). */
@@ -319,15 +326,48 @@ export class SkillLoader {
   }
 
   /**
+   * Set the LLM-generated summary for a skill.
+   * Called by SkillSummaryGenerator after generating or loading from cache.
+   * Invalidates the skills summary cache since summaries changed.
+   */
+  setSkillSummary(skillName: string, summary: string): void {
+    const skill = this.skills.get(skillName);
+    if (skill) {
+      skill.summary = summary;
+      // Invalidate cache - summaries changed
+      this.skillsSummaryCache.clear();
+    }
+  }
+
+  /**
    * Build XML skill summary for system prompt
    * Only includes enabled skills.
+   * Uses LLM-generated summaries if available, otherwise falls back to description.
+   * Results are cached based on enabledSkillNames and skill summaries.
    */
   buildSkillsSummary(enabledSkillNames: string[]): string {
+    // Create cache key from sorted enabled skill names and their summary states
+    const sortedNames = [...enabledSkillNames].sort().join(',');
+    const summaryStates = enabledSkillNames
+      .map(n => {
+        const skill = this.skills.get(n);
+        return skill ? (skill.summary ? '1' : '0') : '0';
+      })
+      .join('');
+    const cacheKey = `${sortedNames}:${summaryStates}`;
+
+    // Check cache
+    const cached = this.skillsSummaryCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+
     const enabled = enabledSkillNames
       .map(n => this.skills.get(n))
       .filter((s): s is SkillInfo => s !== undefined);
 
     if (enabled.length === 0) {
+      this.skillsSummaryCache.set(cacheKey, '');
       return '';
     }
 
@@ -336,10 +376,17 @@ export class SkillLoader {
       lines.push('  <skill>');
       lines.push(`    <name>${escapeXML(skill.name)}</name>`);
       lines.push(`    <description>${escapeXML(skill.description)}</description>`);
+      if (skill.summary) {
+        lines.push(`    <summary>${escapeXML(skill.summary)}</summary>`);
+      }
       lines.push('  </skill>');
     }
     lines.push('</skills>');
-    return lines.join('\n');
+    const result = lines.join('\n');
+    
+    // Store in cache
+    this.skillsSummaryCache.set(cacheKey, result);
+    return result;
   }
 
   /**

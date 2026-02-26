@@ -8,15 +8,20 @@ import { toolToDefinition, errorResult } from '../tools/types';
 
 export class ToolRegistry {
   private tools: Map<string, Tool> = new Map();
+  private summariesCache: string[] | null = null;
 
   /** Register a tool. Overwrites if same name exists. */
   register(tool: Tool): void {
     this.tools.set(tool.name(), tool);
+    // Invalidate cache when tools change
+    this.summariesCache = null;
   }
 
   /** Remove a tool by name. No-op if the tool is not registered. */
   unregister(name: string): void {
     this.tools.delete(name);
+    // Invalidate cache when tools change
+    this.summariesCache = null;
   }
 
   /**
@@ -30,8 +35,13 @@ export class ToolRegistry {
     skillLoader: SkillLoader,
     enabledSkillNames: string[],
   ): void {
-    for (const name of skillLoader.getDisabledExclusiveTools(enabledSkillNames)) {
-      this.tools.delete(name);
+    const removed = skillLoader.getDisabledExclusiveTools(enabledSkillNames);
+    if (removed.length > 0) {
+      for (const name of removed) {
+        this.tools.delete(name);
+      }
+      // Invalidate cache when tools change
+      this.summariesCache = null;
     }
   }
 
@@ -64,10 +74,20 @@ export class ToolRegistry {
     }
   }
 
-  /** Get brief summaries for system prompt */
+  /** Get brief summaries for system prompt (cached) */
   getSummaries(): string[] {
-    return Array.from(this.tools.values()).map(
-      t => `- **${t.name()}**: ${t.description()}`,
-    );
+    // Return cached result if available
+    if (this.summariesCache !== null) {
+      return this.summariesCache;
+    }
+
+    // Generate summaries
+    const summaries = Array.from(this.tools.values())
+      .sort((a, b) => a.name().localeCompare(b.name())) // Sort for consistent output
+      .map(t => `- **${t.name()}**: ${t.description()}`);
+
+    // Cache result
+    this.summariesCache = summaries;
+    return summaries;
   }
 }

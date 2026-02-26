@@ -18,6 +18,7 @@ import { t, setLocale } from './src/i18n';
 // Services
 import { SkillLoader } from './src/agent/skill-loader';
 import { DynamicSkillStore } from './src/agent/dynamic-skill-store';
+import { SkillSummaryGenerator } from './src/agent/skill-summary-generator';
 import { validateSkillContent, extractSkillName } from './src/agent/skill-validator';
 import { ConversationPipeline } from './src/agent/conversation-pipeline';
 import { DebugLogger } from './src/agent/debug-logger';
@@ -658,8 +659,33 @@ export default function App(): React.JSX.Element {
         ? new ClaudeProvider(apiKey, selectedModel)
         : new OpenAIProvider(apiKey, selectedModel);
 
+    // Generate skill summaries in background (non-blocking)
+    const summaryGenerator = new SkillSummaryGenerator({
+      provider,
+      model: provider.getDefaultModel(),
+    });
+    const allSkills = skillLoader.current.getAllSkills();
+    // Pre-generate summaries and update SkillLoader
+    summaryGenerator
+      .pregenerateSummaries(allSkills)
+      .then(async () => {
+        // After summaries are generated, update them in SkillLoader
+        for (const skill of allSkills) {
+          try {
+            const summary = await summaryGenerator.getOrGenerateSummary(skill);
+            skillLoader.current.setSkillSummary(skill.name, summary);
+          } catch {
+            // Non-critical - fallback to description
+          }
+        }
+      })
+      .catch(() => {
+        // Non-critical - summaries will be generated on-demand
+      });
+
     const toolRegistry = createToolRegistry({
       credentialManager: credentialManager.current,
+      skillLoader: skillLoader.current,
     });
     toolRegistry.removeDisabledSkillTools(skillLoader.current, enabledSkillNames);
 
@@ -1140,6 +1166,7 @@ export default function App(): React.JSX.Element {
 
       const toolRegistry = createToolRegistry({
         credentialManager: credentialManager.current,
+        skillLoader: skillLoader.current,
         includeTts: true,
       });
 

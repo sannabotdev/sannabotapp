@@ -7,6 +7,7 @@
  */
 import { ToolRegistry } from './tool-registry';
 import { CredentialManager } from '../permissions/credential-manager';
+import type { SkillLoader } from './skill-loader';
 
 // Tools
 import { IntentTool } from '../tools/intent-tool';
@@ -20,9 +21,11 @@ import { NotificationListenerTool } from '../tools/notification-listener-tool';
 import { AccessibilityTool } from '../tools/accessibility-tool';
 import { FileStorageTool } from '../tools/file-storage-tool';
 import { BeepTool } from '../tools/beep-tool';
+import { SkillDetailTool } from '../tools/skill-detail-tool';
 
 export interface CreateToolRegistryOptions {
   credentialManager: CredentialManager;
+  skillLoader: SkillLoader;
 
   /**
    * Include the TTS tool.
@@ -63,6 +66,7 @@ export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistr
   registry.register(new AccessibilityTool());
   registry.register(new FileStorageTool());
   registry.register(new BeepTool());
+  registry.register(new SkillDetailTool(opts.skillLoader));
 
   return registry;
 }
