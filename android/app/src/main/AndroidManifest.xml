@@ -1,10 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Package visibility: allow isAppInstalled() to check these packages (Android 11+) -->
+    <!-- Package visibility (Android 11+):
+         - Explicit packages for isAppInstalled() checks
+         - Intent filter so queryIntentActivities(ACTION_MAIN + CATEGORY_LAUNCHER)
+           returns all user-launchable apps (used by app_search tool) -->
     <queries>
         <package android:name="com.spotify.music" />
         <package android:name="com.google.android.apps.maps" />
         <package android:name="com.whatsapp" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <!-- Network -->

@@ -21,6 +21,7 @@ import { NotificationListenerTool } from '../tools/notification-listener-tool';
 import { AccessibilityTool } from '../tools/accessibility-tool';
 import { FileStorageTool } from '../tools/file-storage-tool';
 import { BeepTool } from '../tools/beep-tool';
+import { AppSearchTool } from '../tools/app-search-tool';
 import { SkillDetailTool } from '../tools/skill-detail-tool';
 
 export interface CreateToolRegistryOptions {
@@ -64,6 +65,7 @@ export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistr
   }
   registry.register(new NotificationListenerTool());
   registry.register(new AccessibilityTool());
+  registry.register(new AppSearchTool());
   registry.register(new FileStorageTool());
   registry.register(new BeepTool());
   registry.register(new SkillDetailTool(opts.skillLoader));

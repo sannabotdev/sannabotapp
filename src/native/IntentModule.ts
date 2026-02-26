@@ -5,6 +5,11 @@ import { NativeModules } from 'react-native';
 
 const { IntentModule } = NativeModules;
 
+export interface InstalledApp {
+  name: string;
+  package: string;
+}
+
 export interface IntentModuleType {
   sendIntent(
     action: string,
@@ -13,6 +18,7 @@ export interface IntentModuleType {
     extras: Record<string, string | number | boolean> | null,
   ): Promise<string>;
   isAppInstalled(packageName: string): Promise<boolean>;
+  searchInstalledApps(query: string): Promise<InstalledApp[]>;
 }
 
 export default IntentModule as IntentModuleType;

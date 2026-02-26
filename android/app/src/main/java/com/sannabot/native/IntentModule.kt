@@ -89,4 +89,48 @@ class IntentModule(reactContext: ReactApplicationContext) :
             promise.resolve(false)
         }
     }
+
+    /**
+     * Search installed apps by name or package name.
+     *
+     * Only returns apps that have a launcher activity (i.e. user-launchable apps).
+     * Matches against the app's display label and its package name.
+     *
+     * @param query  Search term (partial, case-insensitive)
+     * @param promise Resolves with an array of { name: String, package: String }
+     */
+    @ReactMethod
+    fun searchInstalledApps(query: String, promise: Promise) {
+        try {
+            val pm = reactApplicationContext.packageManager
+            val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            val apps = pm.queryIntentActivities(launcherIntent, 0)
+
+            val results = WritableNativeArray()
+            val queryLower = query.lowercase()
+            var count = 0
+            val maxResults = 20
+
+            apps.forEach { resolveInfo ->
+                if (count >= maxResults) return@forEach
+
+                val label = resolveInfo.loadLabel(pm).toString()
+                val packageName = resolveInfo.activityInfo.packageName
+
+                if (label.lowercase().contains(queryLower) ||
+                    packageName.lowercase().contains(queryLower)) {
+                    val app = WritableNativeMap().apply {
+                        putString("name", label)
+                        putString("package", packageName)
+                    }
+                    results.pushMap(app)
+                    count++
+                }
+            }
+
+            promise.resolve(results)
+        } catch (e: Exception) {
+            promise.reject("APP_SEARCH_ERROR", e.message ?: "Unknown error", e)
+        }
+    }
 }
