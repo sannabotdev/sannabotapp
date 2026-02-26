@@ -160,6 +160,10 @@ const de = {
   // Services / OAuth Client IDs
   'settings.section.services': 'Dienste & OAuth',
   'settings.services.intro': 'Konfiguriere die OAuth-Client-IDs für Google, Spotify und Slack sowie den Picovoice-Key für die Wake-Word-Erkennung.',
+  'settings.services.configured': '● Konfiguriert',
+  'settings.services.notConfigured': '○ Nicht konfiguriert',
+  'settings.services.hideInstructions': 'Anleitung ausblenden',
+  'settings.services.showInstructions': 'Wie bekomme ich diesen Key?',
   'settings.services.google.label': 'Google Web Client ID',
   'settings.services.google.instructions': 'Erstelle im Google Cloud Console → APIs & Dienste → Anmeldedaten einen OAuth-2.0-Client (Typ: Web). Kopiere die Client-ID (endet auf .apps.googleusercontent.com) und füge sie hier ein.\n\nBenötigte APIs (aktivieren unter APIs & Dienste → Bibliothek):\n• Google Calendar API\n• Google People API (für Kontakte)\n• Google Tasks API\n• Gmail API',
   'settings.services.spotify.label': 'Spotify Client ID',
@@ -168,6 +172,10 @@ const de = {
   'settings.services.picovoice.instructions': 'Registriere dich auf console.picovoice.ai und kopiere deinen Access Key aus dem Dashboard. Wird für das Wake-Word-Feature "Hey Sanna" benötigt.',
   'settings.services.slack.label': 'Slack Client ID',
   'settings.services.slack.instructions': 'Erstelle eine Slack-App unter api.slack.com/apps, aktiviere OAuth & Permissions und kopiere die Client-ID von der Seite "Basic Information".',
+  'settings.skills.connectApiKey.title': 'API Key konfigurieren',
+  'settings.skills.connectApiKey.message': 'Trage den {keys} unter Einstellungen → Dienste & OAuth ein.',
+  'settings.services.googleMaps.label': 'Google Maps API Key',
+  'settings.services.googleMaps.instructions': 'Öffne die Google Cloud Console (console.cloud.google.com) und erstelle einen API-Schlüssel unter "APIs & Dienste → Anmeldedaten → Anmeldedaten erstellen → API-Schlüssel".\n\nAktiviere diese APIs unter "APIs & Dienste → Bibliothek":\n• Routes API (für Routen- und Verkehrsinformationen)\n• Geocoding API (für Adresssuche)\n\nOptional: Schränke den Schlüssel auf diese APIs ein.',
 } as const;
 
 export default de;

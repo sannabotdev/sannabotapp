@@ -23,6 +23,7 @@ import { FileStorageTool } from '../tools/file-storage-tool';
 import { BeepTool } from '../tools/beep-tool';
 import { AppSearchTool } from '../tools/app-search-tool';
 import { SkillDetailTool } from '../tools/skill-detail-tool';
+import { CheckCredentialTool } from '../tools/check-credential-tool';
 
 export interface CreateToolRegistryOptions {
   credentialManager: CredentialManager;
@@ -69,6 +70,7 @@ export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistr
   registry.register(new FileStorageTool());
   registry.register(new BeepTool());
   registry.register(new SkillDetailTool(opts.skillLoader));
+  registry.register(new CheckCredentialTool(opts.credentialManager));
 
   return registry;
 }

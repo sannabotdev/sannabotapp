@@ -218,6 +218,17 @@ export class CredentialManager {
     }
   }
 
+  /**
+   * Register a setup handler for API key credentials.
+   * The callback receives the credential ID and should navigate the user
+   * to the appropriate settings section to enter the key.
+   */
+  registerApiKeySetupHandler(navigationCallback: (credId: string) => void): void {
+    this.setupHandlers.set('api_key', async (cred: CredentialRequirement) => {
+      navigationCallback(cred.id);
+    });
+  }
+
   /** Spotify PKCE config getter (for use in SettingsScreen auth flow) */
   getSpotifyAuthConfig(): typeof SPOTIFY_AUTH_CONFIG {
     return SPOTIFY_AUTH_CONFIG;

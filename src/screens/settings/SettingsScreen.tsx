@@ -54,6 +54,8 @@ interface SettingsScreenProps {
   onSpotifyClientIdChange: (id: string) => void;
   slackClientId: string;
   onSlackClientIdChange: (id: string) => void;
+  googleMapsApiKey: string;
+  onGoogleMapsApiKeyChange: (key: string) => void;
   onTestSkill?: (skillName: string) => Promise<{
     success: boolean;
     message: string;
@@ -105,6 +107,8 @@ export function SettingsScreen({
   onSpotifyClientIdChange,
   slackClientId,
   onSlackClientIdChange,
+  googleMapsApiKey,
+  onGoogleMapsApiKeyChange,
   onTestSkill,
   ttsService,
   onAddSkill,
@@ -191,6 +195,8 @@ export function SettingsScreen({
             onWakeWordKeyChange={onWakeWordKeyChange}
             slackClientId={slackClientId}
             onSlackClientIdChange={onSlackClientIdChange}
+            googleMapsApiKey={googleMapsApiKey}
+            onGoogleMapsApiKeyChange={onGoogleMapsApiKeyChange}
           />
         </CollapsibleSection>
 

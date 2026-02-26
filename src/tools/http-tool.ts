@@ -24,7 +24,7 @@ export class HttpTool implements Tool {
   }
 
   description(): string {
-    return 'Make REST API requests. Supports GET/POST/PUT/DELETE with automatic OAuth token management.';
+    return 'Make REST API requests. Supports GET/POST/PUT/DELETE with automatic credential injection via auth_provider.';
   }
 
   parameters(): Record<string, unknown> {
@@ -43,7 +43,14 @@ export class HttpTool implements Tool {
         auth_provider: {
           type: 'string',
           description:
-            'Auth provider for automatic token management (e.g. "google", "spotify"). Leave empty if no auth needed.',
+            'Credential ID for automatic auth injection (e.g. "google", "spotify", "google_maps_api_key"). ' +
+            'OAuth tokens are injected as Authorization: Bearer. ' +
+            'API keys are injected into the header specified by auth_header.',
+        },
+        auth_header: {
+          type: 'string',
+          description:
+            'Header name for API key injection (required when auth_provider is an API key credential).',
         },
         headers: {
           type: 'object',
@@ -68,6 +75,7 @@ export class HttpTool implements Tool {
     const method = (args.method as string) ?? 'GET';
     const url = args.url as string;
     const authProvider = args.auth_provider as string | undefined;
+    const authHeader = args.auth_header as string | undefined;
     const headers = (args.headers as Record<string, string>) ?? {};
     const body = args.body as Record<string, unknown> | undefined;
     const responseFormat = (args.response_format as string) ?? 'json';
@@ -77,15 +85,29 @@ export class HttpTool implements Tool {
     }
 
     try {
-      // Auto-inject auth token if provider specified
+      // Auto-inject auth token or API key if provider specified
       if (authProvider) {
+        // Try OAuth token first
         const token = await this.credentialManager.getToken(authProvider);
-        if (!token) {
-          return errorResult(
-            `No valid token for "${authProvider}". Please sign in via settings.`,
-          );
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        } else {
+          // Fallback to API key – inject into the caller-specified header
+          const apiKey = await this.credentialManager.getApiKey(authProvider);
+          if (apiKey) {
+            if (!authHeader) {
+              return errorResult(
+                `auth_provider "${authProvider}" resolved to an API key but no auth_header was specified. ` +
+                'Provide auth_header (e.g. "X-Goog-Api-Key") to indicate which header to use.',
+              );
+            }
+            headers[authHeader] = apiKey;
+          } else {
+            return errorResult(
+              `No valid token or API key for "${authProvider}". Please configure in settings.`,
+            );
+          }
         }
-        headers['Authorization'] = `Bearer ${token}`;
       }
 
       const requestInit: RequestInit = {

@@ -160,6 +160,10 @@ const en = {
   // Services / OAuth Client IDs
   'settings.section.services': 'Services & OAuth',
   'settings.services.intro': 'Configure the OAuth client IDs required for Google, Spotify and Slack integrations, as well as the Picovoice key for wake-word detection.',
+  'settings.services.configured': '● Configured',
+  'settings.services.notConfigured': '○ Not configured',
+  'settings.services.hideInstructions': 'Hide instructions',
+  'settings.services.showInstructions': 'How to get this key',
   'settings.services.google.label': 'Google Web Client ID',
   'settings.services.google.instructions': 'Create an OAuth 2.0 client (type: Web) in the Google Cloud Console → APIs & Services → Credentials. Copy the Client ID (ends with .apps.googleusercontent.com) and paste it here.\n\nRequired APIs (enable under APIs & Services → Library):\n• Google Calendar API\n• Google People API (for Contacts)\n• Google Tasks API\n• Gmail API',
   'settings.services.spotify.label': 'Spotify Client ID',
@@ -168,6 +172,10 @@ const en = {
   'settings.services.picovoice.instructions': 'Sign up at console.picovoice.ai and copy your Access Key from the dashboard. Required for the "Hey Sanna" wake-word feature.',
   'settings.services.slack.label': 'Slack Client ID',
   'settings.services.slack.instructions': 'Create a Slack app at api.slack.com/apps, enable OAuth & Permissions, and copy the Client ID from the "Basic Information" page.',
+  'settings.skills.connectApiKey.title': 'Configure API Key',
+  'settings.skills.connectApiKey.message': 'Enter the {keys} in Settings → Services & OAuth.',
+  'settings.services.googleMaps.label': 'Google Maps API Key',
+  'settings.services.googleMaps.instructions': 'Go to the Google Cloud Console (console.cloud.google.com), create an API key under "APIs & Services → Credentials → Create Credentials → API key".\n\nEnable these APIs under "APIs & Services → Library":\n• Routes API (for route/traffic information)\n• Geocoding API (for address lookup)\n\nOptional: Restrict the key to these APIs for security.',
 } as const;
 
 export default en;

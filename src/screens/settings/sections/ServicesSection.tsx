@@ -36,7 +36,7 @@ function ServiceItem({
         <View className="flex-1 mr-3">
           <Text className="text-label-primary text-sm font-medium">{label}</Text>
           <Text className="text-xs mt-0.5" style={{ color: hasValue ? '#34C759' : '#FF9500' }}>
-            {hasValue ? '● Configured' : '○ Not configured'}
+            {hasValue ? t('settings.services.configured') : t('settings.services.notConfigured')}
           </Text>
         </View>
         <TouchableOpacity
@@ -44,7 +44,7 @@ function ServiceItem({
           className="bg-surface-tertiary rounded-lg px-3 py-1.5"
           activeOpacity={0.7}>
           <Text className="text-label-secondary text-xs">
-            {showInstructions ? 'Hide instructions' : 'How to get this key'}
+            {showInstructions ? t('settings.services.hideInstructions') : t('settings.services.showInstructions')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -77,6 +77,8 @@ interface ServicesSectionProps {
   onWakeWordKeyChange: (key: string) => void;
   slackClientId: string;
   onSlackClientIdChange: (id: string) => void;
+  googleMapsApiKey: string;
+  onGoogleMapsApiKeyChange: (key: string) => void;
 }
 
 export function ServicesSection({
@@ -88,6 +90,8 @@ export function ServicesSection({
   onWakeWordKeyChange,
   slackClientId,
   onSlackClientIdChange,
+  googleMapsApiKey,
+  onGoogleMapsApiKeyChange,
 }: ServicesSectionProps): React.JSX.Element {
   return (
     <View>
@@ -128,6 +132,14 @@ export function ServicesSection({
         value={slackClientId}
         onChange={onSlackClientIdChange}
         placeholder="Slack Client ID…"
+      />
+
+      <ServiceItem
+        label={t('settings.services.googleMaps.label')}
+        instructions={t('settings.services.googleMaps.instructions')}
+        value={googleMapsApiKey}
+        onChange={onGoogleMapsApiKeyChange}
+        placeholder="AIzaSy…"
       />
     </View>
   );

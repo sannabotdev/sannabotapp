@@ -107,6 +107,18 @@ export function SkillsSection({
   const handleConnectSkill = useCallback(
     async (skill: SkillInfo) => {
       if (!skill.credentials || skill.credentials.length === 0) return;
+
+      // API key credentials can't launch an OAuth flow – guide user to Services section instead
+      const apiKeyCreds = skill.credentials.filter(c => c.type === 'api_key');
+      if (apiKeyCreds.length > 0) {
+        const labels = apiKeyCreds.map(c => c.label ?? c.id).join(', ');
+        Alert.alert(
+          t('settings.skills.connectApiKey.title'),
+          t('settings.skills.connectApiKey.message').replace('{keys}', labels),
+        );
+        return;
+      }
+
       try {
         for (const cred of skill.credentials) {
           await credentialManager.startSetup(cred);

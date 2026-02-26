@@ -162,6 +162,7 @@ interface AppSettings extends AppPreferences {
   googleWebClientId: string;
   spotifyClientId: string;
   slackClientId: string;
+  googleMapsApiKey: string;
 }
 
 const DEFAULT_PREFS: AppPreferences = {
@@ -185,6 +186,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   googleWebClientId: '',
   spotifyClientId: '',
   slackClientId: '',
+  googleMapsApiKey: '',
 };
 
 // Keychain IDs for secure key storage
@@ -198,6 +200,7 @@ const SECURE_KEY_IDS = {
   googleWebClientId: 'svc_google_web_client_id',
   spotifyClientId: 'svc_spotify_client_id',
   slackClientId: 'svc_slack_client_id',
+  googleMapsApiKey: 'svc_google_maps_api_key',
 } as const;
 
 /** AsyncStorage key for dark-mode preference – readable without biometric unlock */
@@ -246,8 +249,9 @@ async function loadSecureKeys(store: TokenStore): Promise<{
   googleWebClientId: string;
   spotifyClientId: string;
   slackClientId: string;
+  googleMapsApiKey: string;
 }> {
-  const [claude, openai, wakeWord, openAIModel, claudeModel, googleWebClientId, spotifyClientId, slackClientId] = await Promise.all([
+  const [claude, openai, wakeWord, openAIModel, claudeModel, googleWebClientId, spotifyClientId, slackClientId, googleMapsApiKey] = await Promise.all([
     store.getApiKey(SECURE_KEY_IDS.claudeApiKey).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.openAIApiKey).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.wakeWordKey).catch(() => null),
@@ -256,6 +260,7 @@ async function loadSecureKeys(store: TokenStore): Promise<{
     store.getApiKey(SECURE_KEY_IDS.googleWebClientId).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.spotifyClientId).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.slackClientId).catch(() => null),
+    store.getApiKey(SECURE_KEY_IDS.googleMapsApiKey).catch(() => null),
   ]);
   return {
     claudeApiKey: claude ?? '',
@@ -266,6 +271,7 @@ async function loadSecureKeys(store: TokenStore): Promise<{
     googleWebClientId: googleWebClientId ?? '',
     spotifyClientId: spotifyClientId ?? '',
     slackClientId: slackClientId ?? '',
+    googleMapsApiKey: googleMapsApiKey ?? '',
   };
 }
 
@@ -461,6 +467,11 @@ export default function App(): React.JSX.Element {
     setSettingsLoaded(true);
     setInitializing(false);
 
+    // Sync Google Maps API key from TokenStore to CredentialManager so HttpTool can access it
+    if (secureKeys.googleMapsApiKey) {
+      credentialManager.current.saveApiKey('google_maps_api_key', secureKeys.googleMapsApiKey).catch(() => {});
+    }
+
     // Mirror dark mode to AsyncStorage so it's available before the next unlock
     AsyncStorage.setItem(DARK_MODE_STORAGE_KEY, prefs.darkMode ? 'true' : 'false').catch(() => {});
 
@@ -591,6 +602,11 @@ export default function App(): React.JSX.Element {
     spotifyAuth.current.registerSetupHandler();
     googleAuth.current.registerSetupHandler();
     slackAuth.current.registerSetupHandler();
+
+    // Register API key setup handler – navigates user to Services section
+    credentialManager.current.registerApiKeySetupHandler((_credId: string) => {
+      setScreen('settings');
+    });
 
     // Check which required Android apps are installed (static, once on mount)
     skillLoader.current.checkAppAvailability().then(availability => {
@@ -985,7 +1001,7 @@ export default function App(): React.JSX.Element {
 
   /** Save a secure key to Keychain AND update local state */
   const updateSecureKey = useCallback(
-    async (field: 'claudeApiKey' | 'openAIApiKey' | 'wakeWordKey' | 'selectedOpenAIModel' | 'selectedClaudeModel' | 'googleWebClientId' | 'spotifyClientId' | 'slackClientId', value: string) => {
+    async (field: 'claudeApiKey' | 'openAIApiKey' | 'wakeWordKey' | 'selectedOpenAIModel' | 'selectedClaudeModel' | 'googleWebClientId' | 'spotifyClientId' | 'slackClientId' | 'googleMapsApiKey', value: string) => {
       setSettings(s => ({ ...s, [field]: value }));
       const keychainId = field === 'selectedOpenAIModel' ? SECURE_KEY_IDS.openAIModel
         : field === 'selectedClaudeModel' ? SECURE_KEY_IDS.claudeModel
@@ -1002,6 +1018,21 @@ export default function App(): React.JSX.Element {
    * before the new ID is saved. This prevents stale tokens (issued for the
    * old Client ID) from being used with the new one.
    */
+  /** Handle Google Maps API Key changes – persist to TokenStore and CredentialManager */
+  const handleGoogleMapsApiKeyChange = useCallback(
+    async (key: string) => {
+      setSettings(s => ({ ...s, googleMapsApiKey: key }));
+      await saveSecureKey(tokenStore.current, SECURE_KEY_IDS.googleMapsApiKey, key);
+      // Also store in CredentialManager so the HttpTool can inject it
+      if (key) {
+        await credentialManager.current.saveApiKey('google_maps_api_key', key);
+      } else {
+        await credentialManager.current.revokeCredential('google_maps_api_key');
+      }
+    },
+    [],
+  );
+
   const changeServiceClientId = useCallback(
     (
       field: 'googleWebClientId' | 'spotifyClientId' | 'slackClientId',
@@ -1247,6 +1278,8 @@ export default function App(): React.JSX.Element {
             onSpotifyClientIdChange={id => changeServiceClientId('spotifyClientId', 'spotify', id)}
             slackClientId={settings.slackClientId}
             onSlackClientIdChange={id => changeServiceClientId('slackClientId', 'slack', id)}
+            googleMapsApiKey={settings.googleMapsApiKey}
+            onGoogleMapsApiKeyChange={handleGoogleMapsApiKeyChange}
             onTestSkill={handleTestSkill}
             ttsService={ttsService.current}
             onAddSkill={handleAddSkill}
