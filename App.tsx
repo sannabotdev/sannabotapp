@@ -3,7 +3,7 @@
  * Main App entry point: wires all services together
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, LogBox, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, LogBox, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { vars } from 'nativewind';
 
 
@@ -536,6 +536,21 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     attemptUnlock();
   }, [attemptUnlock]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // If we're on a screen other than home, navigate back to home
+      if (screen !== 'home') {
+        setScreen('home');
+        return true; // Prevent default behavior (exit app)
+      }
+      // On home screen, allow default behavior (exit app)
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [screen]);
 
   // Lock when app goes to background for more than LOCK_GRACE_MS.
   // Short background trips (e.g. OAuth browser redirect, permission dialogs)
