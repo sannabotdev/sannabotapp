@@ -12,6 +12,7 @@ import { EvidenceModal } from './components/EvidenceModal';
 import { useSkillCredentials } from './hooks/useSkillCredentials';
 import { useSkillTesting } from './hooks/useSkillTesting';
 import { AboutSection } from './sections/AboutSection';
+import { AgentSection } from './sections/AgentSection';
 import { ProviderSection } from './sections/ProviderSection';
 import { ServicesSection } from './sections/ServicesSection';
 import { SkillsSection } from './sections/SkillsSection';
@@ -19,7 +20,7 @@ import { SpeechSection } from './sections/SpeechSection';
 import { WakeWordSection } from './sections/WakeWordSection';
 import { t } from '../../i18n';
 
-type SectionId = 'provider' | 'wakeWord' | 'services' | 'speech' | 'skills' | 'about';
+type SectionId = 'provider' | 'wakeWord' | 'services' | 'speech' | 'skills' | 'agent' | 'about';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -72,6 +73,12 @@ interface SettingsScreenProps {
   onDeleteSkill?: (skillName: string) => Promise<void>;
   dynamicSkillNames?: string[];
   onClearHistory?: () => void;
+  maxIterations: number;
+  onMaxIterationsChange: (value: number) => void;
+  maxSubAgentIterations: number;
+  onMaxSubAgentIterationsChange: (value: number) => void;
+  maxAccessibilityIterations: number;
+  onMaxAccessibilityIterationsChange: (value: number) => void;
 }
 
 export function SettingsScreen({
@@ -115,6 +122,12 @@ export function SettingsScreen({
   onDeleteSkill,
   dynamicSkillNames,
   onClearHistory,
+  maxIterations,
+  onMaxIterationsChange,
+  maxSubAgentIterations,
+  onMaxSubAgentIterationsChange,
+  maxAccessibilityIterations,
+  onMaxAccessibilityIterationsChange,
 }: SettingsScreenProps): React.JSX.Element {
   const { skillCredentialStatus, checkSkillCredentials } = useSkillCredentials(
     allSkills,
@@ -236,6 +249,21 @@ export function SettingsScreen({
             onAddSkill={onAddSkill}
             onDeleteSkill={onDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
+          />
+        </CollapsibleSection>
+
+        {/* Agent Iterations */}
+        <CollapsibleSection
+          title="Agent-Iterationen"
+          expanded={openSection === 'agent'}
+          onToggle={() => handleSectionToggle('agent')}>
+          <AgentSection
+            maxIterations={maxIterations}
+            onMaxIterationsChange={onMaxIterationsChange}
+            maxSubAgentIterations={maxSubAgentIterations}
+            onMaxSubAgentIterationsChange={onMaxSubAgentIterationsChange}
+            maxAccessibilityIterations={maxAccessibilityIterations}
+            onMaxAccessibilityIterationsChange={onMaxAccessibilityIterationsChange}
           />
         </CollapsibleSection>
 

@@ -18,6 +18,7 @@ import Markdown from 'react-native-markdown-display';
 import type { PipelineState } from '../agent/conversation-pipeline';
 import { DebugPanel } from './DebugPanel';
 import { SannaAvatar } from '../components/SannaAvatar';
+import { AvatarMenu } from '../components/AvatarMenu';
 import KeepAwakeModule from '../native/KeepAwakeModule';
 import { t } from '../i18n';
 
@@ -74,6 +75,7 @@ export function HomeScreen({
   const scrollRef = useRef<ScrollView>(null);
   const isBusy = pipelineState !== 'idle';
   const [debugVisible, setDebugVisible] = useState(false);
+  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: !historyLoading });
@@ -122,33 +124,37 @@ export function HomeScreen({
 
       {/* Header */}
       <View className="flex-row justify-between items-center px-4 py-3 border-b border-surface-elevated">
+        {/* Left: Avatar (opens menu) + name + status */}
         <View className="flex-row items-center gap-2">
-          <SannaAvatar size={32} />
+          <TouchableOpacity onPress={() => setAvatarMenuVisible(true)} activeOpacity={0.7}>
+            <SannaAvatar size={32} />
+          </TouchableOpacity>
           <Text className="text-lg font-bold text-label-primary">Sanna</Text>
           <View className={`w-2 h-2 rounded-full ${STATE_COLORS[pipelineState]}`} />
           <Text className={`text-xs font-medium ${STATE_TEXT_COLORS[pipelineState]}`}>
             {stateLabel[pipelineState]}
           </Text>
         </View>
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            className={`px-3 py-1.5 rounded-2xl ${drivingMode ? 'bg-accent-orange' : 'bg-surface-elevated'}`}
-            onPress={onToggleDrivingMode}>
-            <Text className="text-label-primary text-xs font-semibold">
-              {drivingMode ? t('home.mode.driving') : t('home.mode.normal')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="p-1.5" onPress={onToggleDarkMode}>
-            <Text className="text-xl">{isDark ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="p-1.5" onPress={() => setDebugVisible(true)}>
-            <Text className="text-xl">🪲</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="p-1.5" onPress={onSettingsPress}>
-            <Text className="text-xl">⚙️</Text>
-          </TouchableOpacity>
-        </View>
+
+        {/* Right: Driving mode toggle only */}
+        <TouchableOpacity
+          className={`px-3 py-1.5 rounded-2xl ${drivingMode ? 'bg-accent-orange' : 'bg-surface-elevated'}`}
+          onPress={onToggleDrivingMode}>
+          <Text className="text-label-primary text-xs font-semibold">
+            {drivingMode ? t('home.mode.driving') : t('home.mode.normal')}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Avatar side-menu */}
+      <AvatarMenu
+        visible={avatarMenuVisible}
+        onClose={() => setAvatarMenuVisible(false)}
+        isDark={isDark}
+        onToggleDarkMode={onToggleDarkMode}
+        onSettingsPress={onSettingsPress}
+        onDebugPress={() => setDebugVisible(true)}
+      />
 
       {drivingMode ? (
         /* ── Driving Mode: Split layout ──────────────────────────────────── */

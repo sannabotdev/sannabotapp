@@ -35,6 +35,8 @@ export interface AccessibilitySubAgentConfig {
   goal: string;
   /** Pre-captured accessibility tree text (passed as first user message, NOT system prompt) */
   accessibilityTree: string;
+  /** Maximum number of tool loop iterations (default: 12) */
+  maxIterations?: number;
 }
 
 export interface AccessibilitySubAgentResult {
@@ -51,7 +53,7 @@ export interface AccessibilitySubAgentResult {
 export async function runAccessibilitySubAgent(
   config: AccessibilitySubAgentConfig,
 ): Promise<AccessibilitySubAgentResult> {
-  const { provider, model, packageName, goal, accessibilityTree } = config;
+  const { provider, model, packageName, goal, accessibilityTree, maxIterations } = config;
 
   // ── Termination state ────────────────────────────────────────────────────
   // Shared mutable ref used by FinishTaskTool to signal early loop exit.
@@ -110,7 +112,7 @@ Please achieve the goal: ${goal}`;
       provider,
       model,
       tools: toolRegistry,
-      maxIterations: 12,
+      maxIterations: maxIterations ?? 12,
       shouldExit: () => termination.done,
       earlyExitContent: () => termination.message,
     },

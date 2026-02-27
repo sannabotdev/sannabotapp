@@ -72,6 +72,8 @@ interface AgentConfig {
   drivingMode?: boolean;
   /** BCP-47 language tag, e.g. 'de-AT', 'en-US'. Falls back to 'en-US'. */
   language?: string;
+  /** Max iterations for scheduler sub-agents (default: 8) */
+  maxSubAgentIterations?: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -211,7 +213,7 @@ export default async function schedulerHeadlessTask(
         provider,
         model: provider.getDefaultModel(),
         tools: toolRegistry,
-        maxIterations: 8,
+        maxIterations: config.maxSubAgentIterations ?? 8,
       },
       messages,
     );

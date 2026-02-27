@@ -80,6 +80,8 @@ interface AgentConfig {
   drivingMode?: boolean;
   /** BCP-47 language tag, e.g. 'de-AT', 'en-US'. Falls back to 'en-US'. */
   language?: string;
+  /** Max iterations for notification sub-agents (default: 8) */
+  maxSubAgentIterations?: number;
 }
 
 /** Maps Android package names to human-readable app names. */
@@ -225,6 +227,7 @@ export default async function notificationHeadlessTask(
         enabledSkillNames: config.enabledSkillNames,
         drivingMode,
         language: lang,
+        maxIterations: config.maxSubAgentIterations,
       },
       payload,
       rules,

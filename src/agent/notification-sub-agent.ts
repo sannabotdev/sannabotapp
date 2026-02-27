@@ -28,6 +28,8 @@ export interface NotificationSubAgentConfig {
   enabledSkillNames: string[];
   drivingMode: boolean;
   language: string;
+  /** Maximum number of tool loop iterations (default: 8) */
+  maxIterations?: number;
 }
 
 export interface NotificationPayload {
@@ -54,7 +56,7 @@ export async function runNotificationSubAgent(
   notification: NotificationPayload,
   rules: NotificationRule[],
 ): Promise<string> {
-  const { provider, credentialManager, enabledSkillNames, drivingMode, language } = config;
+  const { provider, credentialManager, enabledSkillNames, drivingMode, language, maxIterations } = config;
 
   DebugLogger.add(
     'info',
@@ -162,14 +164,15 @@ export async function runNotificationSubAgent(
   ];
 
   try {
-    DebugLogger.add('info', TAG, `Starting tool loop (max 8 iterations)…`);
+    const resolvedMaxIterations = maxIterations ?? 8;
+    DebugLogger.add('info', TAG, `Starting tool loop (max ${resolvedMaxIterations} iterations)…`);
 
     const result = await runToolLoop(
       {
         provider,
         model: provider.getDefaultModel(),
         tools: toolRegistry,
-        maxIterations: 8,
+        maxIterations: resolvedMaxIterations,
       },
       messages,
     );

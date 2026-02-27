@@ -52,6 +52,8 @@ interface AgentConfig {
   model?: string;
   drivingMode?: boolean;
   language?: string;
+  /** Max iterations for the accessibility sub-agent (default: 12) */
+  maxAccessibilityIterations?: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -234,6 +236,7 @@ export default async function accessibilityHeadlessTask(
       packageName,
       goal,
       accessibilityTree,
+      maxIterations: config.maxAccessibilityIterations,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

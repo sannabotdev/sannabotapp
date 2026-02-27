@@ -151,6 +151,12 @@ interface AppPreferences {
   sttMode: 'auto' | 'offline' | 'online';
   /** App UI language. 'system' = detect from device locale. Falls back to 'en'. */
   appLanguage: 'system' | string;
+  /** Max iterations for the main ConversationPipeline agent loop (default: 10) */
+  maxIterations?: number;
+  /** Max iterations for notification and scheduler sub-agents (default: 8) */
+  maxSubAgentIterations?: number;
+  /** Max iterations for the accessibility sub-agent (default: 12) */
+  maxAccessibilityIterations?: number;
 }
 
 /** Full app settings (preferences + secure keys loaded from Keychain) */
@@ -175,6 +181,9 @@ const DEFAULT_PREFS: AppPreferences = {
   sttLanguage: 'system',
   sttMode: 'auto',
   appLanguage: 'system',
+  maxIterations: 10,
+  maxSubAgentIterations: 8,
+  maxAccessibilityIterations: 12,
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -233,6 +242,9 @@ async function savePreferences(store: TokenStore, s: AppPreferences): Promise<vo
       sttLanguage: s.sttLanguage,
       sttMode: s.sttMode,
       appLanguage: s.appLanguage,
+      maxIterations: s.maxIterations,
+      maxSubAgentIterations: s.maxSubAgentIterations,
+      maxAccessibilityIterations: s.maxAccessibilityIterations,
     };
     await store.saveApiKey(SECURE_KEY_IDS.preferences, JSON.stringify(toSave));
   } catch {
@@ -719,7 +731,7 @@ export default function App(): React.JSX.Element {
       skillLoader: skillLoader.current,
       ttsService: ttsService.current,
       drivingMode: settings.drivingMode,
-      maxIterations: 10,
+      maxIterations: settings.maxIterations ?? 10,
       maxHistoryMessages: 20,
       language: resolvedLanguage,
     });
@@ -775,6 +787,8 @@ export default function App(): React.JSX.Element {
       googleWebClientId: settings.googleWebClientId || '',
       drivingMode: settings.drivingMode,
       language: resolvedLanguage,
+      maxSubAgentIterations: settings.maxSubAgentIterations ?? 8,
+      maxAccessibilityIterations: settings.maxAccessibilityIterations ?? 12,
     };
     const agentConfigJson = JSON.stringify(agentConfig);
     SchedulerModule.saveAgentConfig(agentConfigJson).catch(() => {});
@@ -791,6 +805,9 @@ export default function App(): React.JSX.Element {
     settings.drivingMode,
     settings.appLanguage,
     settings.googleWebClientId,
+    settings.maxIterations,
+    settings.maxSubAgentIterations,
+    settings.maxAccessibilityIterations,
   ]);
 
   // ─── Handlers (defined early for use in useEffects) ────────────────────────
@@ -1292,6 +1309,12 @@ export default function App(): React.JSX.Element {
             onDeleteSkill={handleDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
             onClearHistory={handleClearHistory}
+            maxIterations={settings.maxIterations ?? 10}
+            onMaxIterationsChange={v => setSettings(s => ({ ...s, maxIterations: v }))}
+            maxSubAgentIterations={settings.maxSubAgentIterations ?? 8}
+            onMaxSubAgentIterationsChange={v => setSettings(s => ({ ...s, maxSubAgentIterations: v }))}
+            maxAccessibilityIterations={settings.maxAccessibilityIterations ?? 12}
+            onMaxAccessibilityIterationsChange={v => setSettings(s => ({ ...s, maxAccessibilityIterations: v }))}
           />
         </SafeAreaProvider>
       </View>
