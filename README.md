@@ -32,6 +32,7 @@ There are two ways to get a beta release of Sanna:
 - **⏰ Sub-agent scheduler** – Schedule natural-language tasks ("Every Monday at 9am, brief me on today's calendar via SMS"). A real LLM executes them – not a dumb cron job.
 - **🔔 Notification rules** – Define what happens when a notification arrives: read it aloud, auto-reply, play an alarm – each rule spawns its own LLM sub-agent with full tool access.
 - **🤖 UI Automation** – Controls other apps via Android Accessibility Services. An LLM sub-agent reads the UI tree, clicks buttons, types text – e.g. sends WhatsApp messages without any API.
+- **🧠 Learning Accessibility** – The system learns from every UI interaction: After each run, successful and failed flows are condensed into natural language and stored per app. On the next task for the same app, these hints are automatically injected into the system prompt, enabling the agent to learn from past experiences and improve over time.
 - **🚗 Driving mode** – Short spoken responses, auto-reads incoming notifications, optimized for hands-free use.
 - **🔒 No backend needed** – OAuth flows use PKCE. All data stays on your device.
 
@@ -151,6 +152,33 @@ Lists are stored locally on-device – no internet, no cloud, no account needed.
 | "Will it rain tomorrow?" | Weather forecast for current GPS location |
 | "What's the weather in Vienna?" | Weather for a specific city |
 
+### 🤖 UI Automation (Learning Accessibility)
+
+Sanna can control other Android apps via Accessibility Services – no API access needed. An LLM sub-agent reads the UI tree, clicks buttons, types text, and navigates through apps.
+
+**What makes it special: The system learns from every interaction.**
+
+| You say | What happens |
+|---------|-------------|
+| "Send a WhatsApp message to John: I'll be there in 10 minutes" | Opens WhatsApp, finds contact, types message, sends |
+| "Post 'Hello world' on Twitter" | Opens Twitter/X, navigates to post editor, types text, sends |
+| "Open Instagram and like the first post" | Opens Instagram, finds first post, clicks like button |
+
+**How the learning works:**
+
+1. **After each run** (successful or failed), an LLM analyzes the complete interaction history
+2. **Condensation**: The full history (accessibility trees + actions) is compressed into 3–4 concise paragraphs of natural language
+3. **Storage**: These hints are stored per app package (e.g., `com.whatsapp`, `com.twitter.android`)
+4. **Reuse**: On the next task for the same app, the stored hints are automatically injected into the system prompt
+5. **Continuous improvement**: The agent learns from past successes and failures – "✅ To achieve X: navigate to home, then click 'Y'..." or "❌ Attempting X via Y did NOT work because..."
+
+**Example:**
+- **First WhatsApp message**: The agent must explore WhatsApp's UI structure
+- **Second WhatsApp message**: The agent has already learned how to navigate WhatsApp and send messages → faster and more reliable
+- **After multiple runs**: The agent knows successful flows and avoids known pitfalls
+
+> The hints contain **no node IDs** (those are ephemeral), but describe flows in natural language using button labels and UI text. This makes them robust against UI changes.
+
 ### 🔗 Multi-Step Chains
 
 The agent loop means you can chain actions naturally:
@@ -200,7 +228,10 @@ Main Pipeline (user conversation)
     ├── Scheduler Sub-Agent (time-triggered, background)
     ├── Notification Sub-Agent (event-triggered, per notification)
     └── Accessibility Sub-Agent (UI automation, per task)
+        └── AccessibilityHintStore (learned hints per app, persisted in AsyncStorage)
 ```
+
+**Learning mechanism:** After each accessibility automation run, the full interaction history (accessibility trees + actions) is condensed by an LLM into natural-language hints. These hints are stored per app package and automatically injected into future runs for the same app, enabling the agent to learn from past experiences and improve over time.
 
 - **React Native** + native **Kotlin** modules for Android-specific features
 - **LLM providers**: OpenAI (`gpt-4o`) or Anthropic Claude – swap with one config line
