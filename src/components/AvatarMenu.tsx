@@ -25,6 +25,9 @@ export interface AvatarMenuProps {
   onToggleDarkMode: () => void;
   onSettingsPress: () => void;
   onDebugPress: () => void;
+  onListsPress: () => void;
+  onSchedulesPress: () => void;
+  onNotificationListenersPress: () => void;
 }
 
 export function AvatarMenu({
@@ -34,6 +37,9 @@ export function AvatarMenu({
   onToggleDarkMode,
   onSettingsPress,
   onDebugPress,
+  onListsPress,
+  onSchedulesPress,
+  onNotificationListenersPress,
 }: AvatarMenuProps): React.JSX.Element {
   const handleSettings = () => {
     onClose();
@@ -44,6 +50,21 @@ export function AvatarMenu({
   const handleDebug = () => {
     onClose();
     setTimeout(onDebugPress, 150);
+  };
+
+  const handleLists = () => {
+    onClose();
+    setTimeout(onListsPress, 150);
+  };
+
+  const handleSchedules = () => {
+    onClose();
+    setTimeout(onSchedulesPress, 150);
+  };
+
+  const handleNotificationListeners = () => {
+    onClose();
+    setTimeout(onNotificationListenersPress, 150);
   };
 
   return (
@@ -77,6 +98,33 @@ export function AvatarMenu({
               {/* Menu Items */}
               <View className="flex-1 py-2">
 
+                {/* Listen */}
+                <TouchableOpacity
+                  onPress={handleLists}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
+                  <Text className="text-2xl">📋</Text>
+                  <Text className="text-label-primary text-base font-medium">{t('menu.lists')}</Text>
+                </TouchableOpacity>
+
+                {/* Zeitpläne */}
+                <TouchableOpacity
+                  onPress={handleSchedules}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
+                  <Text className="text-2xl">⏰</Text>
+                  <Text className="text-label-primary text-base font-medium">{t('menu.scheduler')}</Text>
+                </TouchableOpacity>
+
+                {/* Benachrichtigungs-Regeln */}
+                <TouchableOpacity
+                  onPress={handleNotificationListeners}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
+                  <Text className="text-2xl">🔔</Text>
+                  <Text className="text-label-primary text-base font-medium">{t('menu.notificationListeners')}</Text>
+                </TouchableOpacity>
+
                 {/* Settings */}
                 <TouchableOpacity
                   onPress={handleSettings}
@@ -84,15 +132,6 @@ export function AvatarMenu({
                   className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
                   <Text className="text-2xl">⚙️</Text>
                   <Text className="text-label-primary text-base font-medium">{t('menu.settings')}</Text>
-                </TouchableOpacity>
-
-                {/* Debug */}
-                <TouchableOpacity
-                  onPress={handleDebug}
-                  activeOpacity={0.7}
-                  className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
-                  <Text className="text-2xl">🪲</Text>
-                  <Text className="text-label-primary text-base font-medium">{t('menu.debug')}</Text>
                 </TouchableOpacity>
 
                 {/* Dark Mode Toggle */}
@@ -108,6 +147,16 @@ export function AvatarMenu({
                     thumbColor="#FFFFFF"
                   />
                 </View>
+
+                {/* Debug */}
+                <TouchableOpacity
+                  onPress={handleDebug}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
+                  <Text className="text-2xl">🪲</Text>
+                  <Text className="text-label-primary text-base font-medium">{t('menu.debug')}</Text>
+                </TouchableOpacity>
+
               </View>
             </View>
           </TouchableWithoutFeedback>

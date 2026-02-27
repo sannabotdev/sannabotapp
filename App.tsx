@@ -54,6 +54,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ListsScreen } from './src/screens/ListsScreen';
+import { SchedulesScreen } from './src/screens/SchedulesScreen';
+import { NotificationListenersScreen } from './src/screens/NotificationListenersScreen';
 import type { SkillInfo } from './src/agent/skill-loader';
 import { SannaAvatar } from './src/components/SannaAvatar';
 
@@ -414,7 +417,7 @@ export default function App(): React.JSX.Element {
   const [vaultError, setVaultError] = useState<string | undefined>();
   const [initializing, setInitializing] = useState(true);
 
-  const [screen, setScreen] = useState<'home' | 'settings'>('home');
+  const [screen, setScreen] = useState<'home' | 'settings' | 'lists' | 'schedules' | 'notificationListeners'>('home');
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pipelineState, setPipelineState] = useState<PipelineState>('idle');
@@ -1264,6 +1267,36 @@ export default function App(): React.JSX.Element {
     );
   }
 
+  if (screen === 'lists') {
+    return (
+      <View style={[{ flex: 1 }, themeVars]}>
+        <SafeAreaProvider>
+          <ListsScreen onBack={() => setScreen('home')} />
+        </SafeAreaProvider>
+      </View>
+    );
+  }
+
+  if (screen === 'schedules') {
+    return (
+      <View style={[{ flex: 1 }, themeVars]}>
+        <SafeAreaProvider>
+          <SchedulesScreen onBack={() => setScreen('home')} />
+        </SafeAreaProvider>
+      </View>
+    );
+  }
+
+  if (screen === 'notificationListeners') {
+    return (
+      <View style={[{ flex: 1 }, themeVars]}>
+        <SafeAreaProvider>
+          <NotificationListenersScreen onBack={() => setScreen('home')} />
+        </SafeAreaProvider>
+      </View>
+    );
+  }
+
   if (screen === 'settings') {
     return (
       <View style={[{ flex: 1 }, themeVars]}>
@@ -1335,6 +1368,9 @@ export default function App(): React.JSX.Element {
           drivingMode={settings.drivingMode}
           onToggleDrivingMode={handleToggleDrivingMode}
           onSettingsPress={() => setScreen('settings')}
+          onListsPress={() => setScreen('lists')}
+          onSchedulesPress={() => setScreen('schedules')}
+          onNotificationListenersPress={() => setScreen('notificationListeners')}
           messages={messages}
           isDark={isDark}
           onToggleDarkMode={handleToggleDarkMode}

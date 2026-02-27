@@ -35,6 +35,9 @@ interface HomeScreenProps {
   drivingMode: boolean;
   onToggleDrivingMode: () => void;
   onSettingsPress: () => void;
+  onListsPress: () => void;
+  onSchedulesPress: () => void;
+  onNotificationListenersPress: () => void;
   messages: Message[];
   isDark: boolean;
   onToggleDarkMode: () => void;
@@ -66,6 +69,9 @@ export function HomeScreen({
   drivingMode,
   onToggleDrivingMode,
   onSettingsPress,
+  onListsPress,
+  onSchedulesPress,
+  onNotificationListenersPress,
   messages,
   isDark,
   onToggleDarkMode,
@@ -154,6 +160,9 @@ export function HomeScreen({
         onToggleDarkMode={onToggleDarkMode}
         onSettingsPress={onSettingsPress}
         onDebugPress={() => setDebugVisible(true)}
+        onListsPress={onListsPress}
+        onSchedulesPress={onSchedulesPress}
+        onNotificationListenersPress={onNotificationListenersPress}
       />
 
       {drivingMode ? (
