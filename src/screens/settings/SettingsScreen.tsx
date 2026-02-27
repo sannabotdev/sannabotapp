@@ -254,7 +254,7 @@ export function SettingsScreen({
 
         {/* Agent Iterations */}
         <CollapsibleSection
-          title="Agent-Iterationen"
+          title={t('settings.section.agent')}
           expanded={openSection === 'agent'}
           onToggle={() => handleSectionToggle('agent')}>
           <AgentSection

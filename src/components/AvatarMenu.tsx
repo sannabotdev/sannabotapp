@@ -15,6 +15,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { t } from '../i18n';
 import { SannaAvatar } from './SannaAvatar';
 
 export interface AvatarMenuProps {
@@ -82,7 +83,7 @@ export function AvatarMenu({
                   activeOpacity={0.7}
                   className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
                   <Text className="text-2xl">⚙️</Text>
-                  <Text className="text-label-primary text-base font-medium">Einstellungen</Text>
+                  <Text className="text-label-primary text-base font-medium">{t('menu.settings')}</Text>
                 </TouchableOpacity>
 
                 {/* Debug */}
@@ -91,14 +92,14 @@ export function AvatarMenu({
                   activeOpacity={0.7}
                   className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
                   <Text className="text-2xl">🪲</Text>
-                  <Text className="text-label-primary text-base font-medium">Debug-Log</Text>
+                  <Text className="text-label-primary text-base font-medium">{t('menu.debug')}</Text>
                 </TouchableOpacity>
 
                 {/* Dark Mode Toggle */}
                 <View className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
                   <Text className="text-2xl">{isDark ? '☀️' : '🌙'}</Text>
                   <Text className="text-label-primary text-base font-medium flex-1">
-                    {isDark ? 'Helles Design' : 'Dunkles Design'}
+                    {isDark ? t('menu.darkMode.dark') : t('menu.darkMode.light')}
                   </Text>
                   <Switch
                     value={isDark}

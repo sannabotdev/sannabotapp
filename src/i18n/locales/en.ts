@@ -161,6 +161,23 @@ const en = {
   'alert.serviceClientIdChanged.cancel': 'Cancel',
   'alert.serviceClientIdChanged.confirm': 'Change & disconnect',
 
+  // Agent Iterations
+  'settings.section.agent': 'Agent Iterations',
+  'settings.agent.description': 'Sets how many rounds the LLM may run per request before stopping.',
+  'settings.agent.mainLabel': 'Main Agent',
+  'settings.agent.mainDesc': 'Conversation Pipeline (Normal & Driving Mode)',
+  'settings.agent.subLabel': 'Sub-Agent (Notification & Scheduler)',
+  'settings.agent.subDesc': 'Notification and Scheduler Sub-Agents',
+  'settings.agent.accessibilityLabel': 'Accessibility Sub-Agent',
+  'settings.agent.accessibilityDesc': 'UI Automation (controlling apps)',
+  'settings.agent.validationError': 'Please enter a value between 6 and 50',
+
+  // Avatar Menu
+  'menu.settings': 'Settings',
+  'menu.debug': 'Debug Log',
+  'menu.darkMode.dark': 'Light Mode',
+  'menu.darkMode.light': 'Dark Mode',
+
   // Services / OAuth Client IDs
   'settings.section.services': 'Services & OAuth',
   'settings.services.intro': 'Configure the OAuth client IDs required for Google, Spotify and Slack integrations, as well as the Picovoice key for wake-word detection.',

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { t } from '../../../i18n';
 
 interface AgentSectionProps {
   maxIterations: number;
@@ -10,65 +11,65 @@ interface AgentSectionProps {
   onMaxAccessibilityIterationsChange: (value: number) => void;
 }
 
-function IterationInput({
+function IterationStepper({
   label,
   description,
   value,
   onChange,
+  min = 1,
+  max = 50,
 }: {
   label: string;
   description: string;
   value: number;
   onChange: (v: number) => void;
+  min?: number;
+  max?: number;
 }): React.JSX.Element {
-  const [text, setText] = useState(String(value));
-
-  const handleChange = (raw: string) => {
-    setText(raw);
-    const parsed = parseInt(raw, 10);
-    if (!isNaN(parsed) && parsed >= 1 && parsed <= 50) {
-      onChange(parsed);
-    }
-  };
-
-  const handleBlur = () => {
-    // Reset display to last valid value if input is invalid
-    const parsed = parseInt(text, 10);
-    if (isNaN(parsed) || parsed < 1 || parsed > 50) {
-      setText(String(value));
-    }
-  };
-
   return (
     <View
       className="px-4 py-3 border-b border-surface-tertiary"
       style={{ borderBottomWidth: StyleSheet.hairlineWidth }}>
       <View className="flex-row items-center justify-between">
-        <View className="flex-1 pr-4">
+        {/* Label + description */}
+        <View style={{ flex: 1, paddingRight: 12 }}>
           <Text className="text-label-primary text-[15px] font-medium">{label}</Text>
           <Text className="text-label-secondary text-[12px] mt-0.5">{description}</Text>
         </View>
-        <TextInput
-          className="w-16 h-9 bg-surface-elevated rounded-lg px-2 text-center text-label-primary text-base font-semibold"
-          value={text}
-          onChangeText={handleChange}
-          onBlur={handleBlur}
-          keyboardType="number-pad"
-          maxLength={2}
-          selectTextOnFocus
-        />
-      </View>
-      {(() => {
-        const parsed = parseInt(text, 10);
-        if (isNaN(parsed) || parsed < 1 || parsed > 50) {
-          return (
-            <Text className="text-red-500 text-[11px] mt-1">
-              Bitte einen Wert zwischen 1 und 50 eingeben
+
+        {/* Stepper: − value + */}
+        <View className="flex-row items-center gap-1">
+          <TouchableOpacity
+            onPress={() => onChange(Math.max(min, value - 1))}
+            disabled={value <= min}
+            className="w-8 h-8 rounded-full bg-surface-tertiary items-center justify-center"
+            activeOpacity={0.7}>
+            <Text
+              className="text-label-primary text-lg font-bold"
+              style={{ lineHeight: 22 }}>
+              −
             </Text>
-          );
-        }
-        return null;
-      })()}
+          </TouchableOpacity>
+
+          <Text
+            className="text-label-primary text-base font-semibold text-center"
+            style={{ width: 32 }}>
+            {value}
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => onChange(Math.min(max, value + 1))}
+            disabled={value >= max}
+            className="w-8 h-8 rounded-full bg-surface-tertiary items-center justify-center"
+            activeOpacity={0.7}>
+            <Text
+              className="text-label-primary text-lg font-bold"
+              style={{ lineHeight: 22 }}>
+              +
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
@@ -87,29 +88,32 @@ export function AgentSection({
         className="px-4 py-2 border-b border-surface-tertiary"
         style={{ borderBottomWidth: StyleSheet.hairlineWidth }}>
         <Text className="text-label-secondary text-[12px]">
-          Legt fest, wie viele Runden das LLM maximal pro Anfrage durchlaufen darf, bevor es abbricht.
+          {t('settings.agent.description')}
         </Text>
       </View>
 
-      <IterationInput
-        label="Haupt-Agent"
-        description="Conversation Pipeline (Normal- & Fahrmodus)"
+      <IterationStepper
+        label={t('settings.agent.mainLabel')}
+        description={t('settings.agent.mainDesc')}
         value={maxIterations}
         onChange={onMaxIterationsChange}
+        min={6}
       />
 
-      <IterationInput
-        label="Sub-Agent (Benachrichtigung & Zeitplan)"
-        description="Notification- und Scheduler-Sub-Agents"
+      <IterationStepper
+        label={t('settings.agent.subLabel')}
+        description={t('settings.agent.subDesc')}
         value={maxSubAgentIterations}
         onChange={onMaxSubAgentIterationsChange}
+        min={6}
       />
 
-      <IterationInput
-        label="Accessibility Sub-Agent"
-        description="UI-Automatisierung (Apps steuern)"
+      <IterationStepper
+        label={t('settings.agent.accessibilityLabel')}
+        description={t('settings.agent.accessibilityDesc')}
         value={maxAccessibilityIterations}
         onChange={onMaxAccessibilityIterationsChange}
+        min={6}
       />
     </>
   );
