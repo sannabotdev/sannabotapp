@@ -137,6 +137,12 @@ const en = {
   'debug.shareError.message.generic': 'Failed to open the share dialog. The log may be too large or no sharing apps are available.',
   'debug.shareError.message.noApps': 'No apps available to share. Please install a file manager or messaging app.',
   'debug.shareError.ok': 'OK',
+  'debug.fileSaved.title': 'File Saved',
+  'debug.fileSaved.message': 'The debug log was saved as a file because it is too large to share.\n\nFilename: {filename}\nLocation: {path}\nSize: {size} MB',
+  'debug.fileSaved.ok': 'OK',
+  'debug.fileSaveError.title': 'Save Error',
+  'debug.fileSaveError.message': 'The file could not be saved. Please check permissions.',
+  'debug.fileSaveError.ok': 'OK',
 
   // Skill Test Evidence
   'evidence.iterations': 'Iterations: {count}',

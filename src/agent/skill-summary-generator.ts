@@ -43,13 +43,19 @@ export class SkillSummaryGenerator {
   /**
    * Get or generate a skill summary.
    * Uses cache if available and content hash matches.
+   * Returns the summary and whether it was newly generated (not from cache).
    */
-  async getOrGenerateSummary(skill: SkillInfo): Promise<string> {
+  async getOrGenerateSummary(skill: SkillInfo): Promise<string>;
+  async getOrGenerateSummary(skill: SkillInfo, returnGenerated: true): Promise<{ summary: string; wasGenerated: boolean }>;
+  async getOrGenerateSummary(skill: SkillInfo, returnGenerated?: boolean): Promise<string | { summary: string; wasGenerated: boolean }> {
     const contentHash = SkillSummaryCache.computeHash(skill.content);
 
     // Check cache first
     const cached = await SkillSummaryCache.getCachedSummary(skill.name, contentHash);
     if (cached) {
+      if (returnGenerated) {
+        return { summary: cached, wasGenerated: false };
+      }
       return cached;
     }
 
@@ -63,6 +69,9 @@ export class SkillSummaryGenerator {
 
     DebugLogger.add('info', 'SKILL_SUMMARY', `Summary generated and cached for skill "${skill.name}"`, summary);
 
+    if (returnGenerated) {
+      return { summary, wasGenerated: true };
+    }
     return summary;
   }
 
@@ -123,10 +132,15 @@ export class SkillSummaryGenerator {
    * This is async and non-blocking - failures are logged but don't throw.
    */
   async pregenerateSummaries(skills: SkillInfo[]): Promise<void> {
-    DebugLogger.add('info', 'SKILL_SUMMARY', `Pre-generating summaries for ${skills.length} skills`);
+    let generatedCount = 0;
     
     const promises = skills.map(skill =>
-      this.getOrGenerateSummary(skill).catch(err => {
+      this.getOrGenerateSummary(skill, true).then(result => {
+        if (result.wasGenerated) {
+          generatedCount++;
+        }
+        return result.summary;
+      }).catch(err => {
         const errorMessage = err instanceof Error ? err.message : String(err);
         DebugLogger.logError('SKILL_SUMMARY', `Failed to pregenerate summary for ${skill.name}: ${errorMessage}`);
         console.warn(`[SkillSummaryGenerator] Failed to pregenerate summary for ${skill.name}:`, err);
@@ -135,6 +149,9 @@ export class SkillSummaryGenerator {
 
     await Promise.allSettled(promises);
     
-    DebugLogger.add('info', 'SKILL_SUMMARY', `Finished pre-generating summaries for ${skills.length} skills`);
+    // Only log "Finished" if we actually generated at least one summary
+    if (generatedCount > 0) {
+      DebugLogger.add('info', 'SKILL_SUMMARY', `Finished generating ${generatedCount} skill summary${generatedCount > 1 ? 'ies' : ''}`);
+    }
   }
 }

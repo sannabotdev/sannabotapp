@@ -22,6 +22,7 @@
     "react-native": "0.84.0",
     "react-native-app-auth": "^8.1.0",
     "react-native-css-interop": "^0.2.2",
+    "react-native-fs": "^2.20.0",
     "react-native-keychain": "^10.0.0",
     "react-native-markdown-display": "^7.0.2",
     "react-native-permissions": "^5.4.4",

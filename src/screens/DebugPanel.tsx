@@ -15,6 +15,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 import { DebugLogger, type LogEntry, type LogLevel } from '../agent/debug-logger';
 import { t } from '../i18n';
 
@@ -140,18 +141,57 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
       lines.push('');
     });
 
-    let textContent = lines.join('\n');
+    const textContent = lines.join('\n');
 
-    // Android has limits on share intent size (~1MB), truncate if needed
+    // Threshold for when to save to file instead of sharing directly
+    // Android has limits on share intent size (~1MB), so we use 900KB as threshold
     const MAX_SHARE_SIZE = 900_000; // ~900KB to be safe
-    if (Platform.OS === 'android' && textContent.length > MAX_SHARE_SIZE) {
-      const truncated = textContent.slice(0, MAX_SHARE_SIZE);
-      textContent = truncated + `\n\n... (truncated, original size: ${textContent.length} chars)`;
-    }
 
     // Small delay to avoid timing issues with modal transitions
     await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
 
+    // If content is too large, save to file instead of sharing
+    if (textContent.length > MAX_SHARE_SIZE) {
+      try {
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const filename = `sannabot-debug-${timestamp}.txt`;
+        
+        // Determine file path based on platform
+        let filePath: string;
+        if (Platform.OS === 'android') {
+          // Use Downloads directory on Android
+          filePath = `${RNFS.DownloadDirectoryPath}/${filename}`;
+        } else {
+          // iOS: use DocumentDirectoryPath
+          filePath = `${RNFS.DocumentDirectoryPath}/${filename}`;
+        }
+
+        // Write file
+        await RNFS.writeFile(filePath, textContent, 'utf8');
+
+        // Show success message with file path
+        const fileSizeMB = (textContent.length / (1024 * 1024)).toFixed(2);
+        Alert.alert(
+          t('debug.fileSaved.title'),
+          t('debug.fileSaved.message')
+            .replace('{filename}', filename)
+            .replace('{path}', filePath)
+            .replace('{size}', fileSizeMB),
+          [{ text: t('debug.fileSaved.ok') }]
+        );
+      } catch (error: unknown) {
+        console.error('Error saving debug log to file:', error);
+        Alert.alert(
+          t('debug.fileSaveError.title'),
+          t('debug.fileSaveError.message'),
+          [{ text: t('debug.fileSaveError.ok') }]
+        );
+      }
+      return;
+    }
+
+    // For smaller files, use the Share API as before
     try {
       // Use React Native Share API to allow saving/sharing
       const result = await Share.share({

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PipelineState } from '../agent/conversation-pipeline';
 import { DebugPanel } from './DebugPanel';
 import { SannaAvatar } from '../components/SannaAvatar';
@@ -350,6 +351,8 @@ interface InputBarProps {
   showMic?: boolean;
 }
 
+const INPUT_DRAFT_KEY = 'sanna_input_draft';
+
 const InputBar = React.memo(function InputBar({
   isBusy,
   pipelineState,
@@ -362,9 +365,47 @@ const InputBar = React.memo(function InputBar({
   // keystroke causes the native TextInput to lose focus on Android.
   const textRef = useRef('');
   const inputRef = useRef<TextInput>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitializedRef = useRef(false);
   
   // Animation for microphone button when listening
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Load saved draft text on mount
+  useEffect(() => {
+    AsyncStorage.getItem(INPUT_DRAFT_KEY).then(savedText => {
+      if (savedText && savedText.trim() && inputRef.current) {
+        textRef.current = savedText;
+        // Use setNativeProps to set the text without triggering re-renders
+        inputRef.current.setNativeProps({ text: savedText });
+        isInitializedRef.current = true;
+      }
+    }).catch(() => {
+      // Ignore errors
+    });
+  }, []);
+
+  // Save text to AsyncStorage with debounce (500ms delay)
+  const saveDraft = (text: string) => {
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Set new timeout to save after user stops typing
+    saveTimeoutRef.current = setTimeout(() => {
+      if (text.trim()) {
+        AsyncStorage.setItem(INPUT_DRAFT_KEY, text).catch(() => {
+          // Ignore errors
+        });
+      } else {
+        // Clear draft if text is empty
+        AsyncStorage.removeItem(INPUT_DRAFT_KEY).catch(() => {
+          // Ignore errors
+        });
+      }
+    }, 500);
+  };
 
   useEffect(() => {
     if (pipelineState === 'listening') {
@@ -398,12 +439,38 @@ const InputBar = React.memo(function InputBar({
   const handleSend = () => {
     const trimmed = textRef.current.trim();
     if (!trimmed || pipelineState === 'processing') return;
+    
+    // Clear saved draft when sending
+    AsyncStorage.removeItem(INPUT_DRAFT_KEY).catch(() => {
+      // Ignore errors
+    });
+    
+    // Clear any pending save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    
     inputRef.current?.clear();
     textRef.current = '';
     onSubmit(trimmed);
     // Re-focus so keyboard stays open after sending
     setTimeout(() => inputRef.current?.focus(), 50);
   };
+
+  const handleTextChange = (text: string) => {
+    textRef.current = text;
+    saveDraft(text);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <View>
@@ -428,7 +495,7 @@ const InputBar = React.memo(function InputBar({
           ref={inputRef}
           className="flex-1 h-11 bg-surface-elevated rounded-full px-4 py-0 text-base text-label-primary"
           // No 'value' prop → uncontrolled → no re-render on each keystroke
-          onChangeText={(text) => { textRef.current = text; }}
+          onChangeText={handleTextChange}
           onSubmitEditing={handleSend}
           placeholder={t('home.input.placeholder')}
           placeholderTextColor="#636366"

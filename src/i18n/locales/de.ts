@@ -137,6 +137,12 @@ const de = {
   'debug.shareError.message.generic': 'Der Teilen-Dialog konnte nicht geöffnet werden. Das Log ist möglicherweise zu groß oder es sind keine Teilen-Apps verfügbar.',
   'debug.shareError.message.noApps': 'Keine Apps zum Teilen verfügbar. Bitte installiere einen Dateimanager oder eine Messaging-App.',
   'debug.shareError.ok': 'OK',
+  'debug.fileSaved.title': 'Datei gespeichert',
+  'debug.fileSaved.message': 'Das Debug-Log wurde als Datei gespeichert, da es zu groß zum Teilen ist.\n\nDateiname: {filename}\nSpeicherort: {path}\nGröße: {size} MB',
+  'debug.fileSaved.ok': 'OK',
+  'debug.fileSaveError.title': 'Fehler beim Speichern',
+  'debug.fileSaveError.message': 'Die Datei konnte nicht gespeichert werden. Bitte überprüfe die Berechtigungen.',
+  'debug.fileSaveError.ok': 'OK',
 
   // Skill Test Evidence
   'evidence.iterations': 'Iterationen: {count}',
