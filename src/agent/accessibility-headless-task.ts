@@ -177,7 +177,7 @@ async function extractAndCondenseHints(
       (existingHints ? `Existing hints:\n${existingHints}\n\n` : '') +
       `New experience from this run:\n` +
       `- Goal: ${goal}\n` +
-      `- Status: ${status}\n` +
+      `- Status: ${status === 'success' ? '✅ SUCCESS – goal was achieved' : '❌ FAILED – goal was NOT achieved'}\n` +
       `- Full interaction history:\n${fullMessageHistory}\n\n` +
       `Analyze the complete interaction. The accessibility trees contain the full UI structure ` +
       `with labels (text attributes, contentDesc attributes).\n\n` +
@@ -187,8 +187,9 @@ async function extractAndCondenseHints(
       `- Use the accessibility trees to identify which buttons/elements were interacted with ` +
       `(by their text, contentDesc, or other visible labels)\n` +
       `- DO NOT use node IDs (like "node_5") in your description\n` +
-      `- Describe the flow in natural language: "To achieve X, navigate to home screen, then ` +
-      `click the button labeled 'Y', then type 'Z' into the field labeled 'W'..."\n` +
+      `- Clearly mark SUCCESSFUL flows: "✅ To achieve X: navigate to home screen, then click 'Y'..."\n` +
+      `- Clearly mark FAILED flows: "❌ Attempting X via Y did NOT work because..."\n` +
+      `- Describe the flow in natural language using button labels and visible UI text\n` +
       `- Condense together with existing hints into 3-4 concise paragraphs\n` +
       `- Keep only the most important successful and failed flows\n` +
       `- Remove redundant or outdated information\n\n` +
