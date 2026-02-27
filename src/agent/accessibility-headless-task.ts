@@ -22,13 +22,14 @@
  *   6.  Wait until the app is in foreground
  *   7.  Capture the accessibility tree
  *   8.  Run the LLM sub-agent loop
- *   9.  Reformulate the result via LLM (language-aware, mode-aware)
- *   10. Bring SannaBot back to foreground
- *   11. Append result to ConversationStore pending queue
+ *   9.  Condense hints from the interaction (best-effort, non-fatal)
+ *   10. Reformulate the result via LLM (language-aware, mode-aware)
+ *   11. Bring SannaBot back to foreground
+ *   12. Append result to ConversationStore pending queue
  */
 import { ClaudeProvider } from '../llm/claude-provider';
 import { OpenAIProvider } from '../llm/openai-provider';
-import type { LLMProvider } from '../llm/types';
+import type { LLMProvider, Message } from '../llm/types';
 import IntentModule from '../native/IntentModule';
 import AccessibilityModule from '../native/AccessibilityModule';
 import { runAccessibilitySubAgent } from './accessibility-sub-agent';
@@ -36,6 +37,7 @@ import SchedulerModule from '../native/SchedulerModule';
 import { ConversationStore } from './conversation-store';
 import { DebugLogger } from './debug-logger';
 import { formulateResponse } from './system-prompt';
+import { AccessibilityHintStore } from './accessibility-hint-store';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,6 +95,127 @@ async function failFormatted(
   // as the app appears, so the message must already be in the queue by then.
   await ConversationStore.appendPending('assistant', formulated).catch(() => {});
   await restoreSannaBot();
+}
+
+// ── Hint condensing ───────────────────────────────────────────────────────────
+
+/**
+ * Format the interaction message history into a readable string for the LLM condenser.
+ *
+ * Produces a chronological narrative:
+ *   === Accessibility Tree ===
+ *   === Action: click on node_5 ===
+ *   === Result ===  (action result)
+ *   === Accessibility Tree (Updated) ===
+ *   ...
+ */
+function formatMessagesForCondensing(messages: Message[]): string {
+  const parts: string[] = [];
+  let treeIndex = 0;
+
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      const label = treeIndex === 0 ? 'Accessibility Tree (Initial)' : 'Accessibility Tree (Updated)';
+      treeIndex++;
+      parts.push(`=== ${label} ===\n${msg.content}`);
+    } else if (msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0) {
+      for (const tc of msg.toolCalls) {
+        if (tc.name === 'accessibility_action') {
+          const action = tc.arguments.action as string;
+          const nodeId = tc.arguments.node_id as string | undefined;
+          const text = tc.arguments.text as string | undefined;
+          let actionDesc = `=== Action: ${action}`;
+          if (nodeId) { actionDesc += ` on ${nodeId}`; }
+          if (text) { actionDesc += ` with text "${text}"`; }
+          actionDesc += ' ===';
+          parts.push(actionDesc);
+        } else if (tc.name === 'get_accessibility_tree') {
+          parts.push('=== Refreshing Accessibility Tree ===');
+        } else if (tc.name === 'finish_task') {
+          const tcStatus = tc.arguments.status as string;
+          const tcMsg = tc.arguments.message as string | undefined;
+          parts.push(`=== Finish Task: ${tcStatus}${tcMsg ? ` – ${tcMsg}` : ''} ===`);
+        }
+      }
+    } else if (msg.role === 'tool') {
+      parts.push(`=== Result ===\n${msg.content}`);
+    }
+  }
+
+  return parts.join('\n\n');
+}
+
+/**
+ * Condense the full interaction history into human-readable, app-specific hints.
+ *
+ * Uses the LLM to:
+ * - Read the accessibility trees (which contain text/contentDesc labels)
+ * - Describe the interaction flow in natural language (no node IDs)
+ * - Merge with existing hints into 3–4 concise paragraphs
+ *
+ * Best-effort: failures are logged but do NOT abort the task.
+ */
+async function extractAndCondenseHints(
+  messages: Message[],
+  packageName: string,
+  goal: string,
+  status: 'success' | 'failed',
+  provider: LLMProvider,
+  model: string,
+): Promise<void> {
+  try {
+    const fullMessageHistory = formatMessagesForCondensing(messages);
+
+    // Load existing hints (empty string if none)
+    const existingHints = await AccessibilityHintStore.getHints(packageName);
+
+    const systemPrompt =
+      `You are condensing accessibility interaction hints for the Android app "${packageName}". ` +
+      `Your goal is to create compact, reusable hints that help future automation runs of the same app.`;
+
+    const userPrompt =
+      (existingHints ? `Existing hints:\n${existingHints}\n\n` : '') +
+      `New experience from this run:\n` +
+      `- Goal: ${goal}\n` +
+      `- Status: ${status}\n` +
+      `- Full interaction history:\n${fullMessageHistory}\n\n` +
+      `Analyze the complete interaction. The accessibility trees contain the full UI structure ` +
+      `with labels (text attributes, contentDesc attributes).\n\n` +
+      `Create a natural language description of the steps using button labels and UI element ` +
+      `descriptions found in the accessibility trees.\n\n` +
+      `IMPORTANT:\n` +
+      `- Use the accessibility trees to identify which buttons/elements were interacted with ` +
+      `(by their text, contentDesc, or other visible labels)\n` +
+      `- DO NOT use node IDs (like "node_5") in your description\n` +
+      `- Describe the flow in natural language: "To achieve X, navigate to home screen, then ` +
+      `click the button labeled 'Y', then type 'Z' into the field labeled 'W'..."\n` +
+      `- Condense together with existing hints into 3-4 concise paragraphs\n` +
+      `- Keep only the most important successful and failed flows\n` +
+      `- Remove redundant or outdated information\n\n` +
+      `Condensed hints:`;
+
+    const condenseMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: userPrompt },
+    ];
+    DebugLogger.logLLMRequest(model, condenseMessages.length, 0, condenseMessages);
+
+    const response = await provider.chat(condenseMessages, [], model);
+
+    DebugLogger.logLLMResponse(response.content, [], response.usage, response);
+
+    const condensedHints = response.content?.trim();
+    if (condensedHints) {
+      await AccessibilityHintStore.saveHints(packageName, condensedHints);
+      DebugLogger.add('info', 'AccessibilityHints', `Condensed hints saved for ${packageName} (${condensedHints.length} chars)`, condensedHints);
+      console.log(`[AccessibilityTask] Hints condensed and saved for ${packageName} (${condensedHints.length} chars)`);
+    }
+  } catch (err) {
+    // Non-fatal – hint condensing is best-effort and must not abort the task
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[AccessibilityTask] Failed to condense hints:', msg);
+    DebugLogger.add('error', 'AccessibilityHints', `Failed to condense hints for ${packageName}: ${msg}`);
+  }
 }
 
 // ── Main headless task ────────────────────────────────────────────────────────
@@ -166,8 +289,8 @@ export default async function accessibilityHeadlessTask(
 
   // 6. Open app via Intent
   // If intentAction is provided, use it. Otherwise, default to ACTION_MAIN to launch the app.
-  const actionToUse = (intentAction && intentAction.trim() !== '') 
-    ? intentAction 
+  const actionToUse = (intentAction && intentAction.trim() !== '')
+    ? intentAction
     : 'android.intent.action.MAIN';
   console.log(`[AccessibilityTask] Opening app ${packageName} with action ${actionToUse}`);
   try {
@@ -208,7 +331,7 @@ export default async function accessibilityHeadlessTask(
   try {
     accessibilityTree = await AccessibilityModule.getAccessibilityTree();
     // Log the tree for debugging (truncated if too long)
-    const treePreview = accessibilityTree.length > 2000 
+    const treePreview = accessibilityTree.length > 2000
       ? accessibilityTree.slice(0, 2000) + '\n... (truncated)'
       : accessibilityTree;
     console.log('[AccessibilityTask] Captured accessibility tree:');
@@ -228,7 +351,7 @@ export default async function accessibilityHeadlessTask(
 
   // 9. Run LLM sub-agent
   console.log('[AccessibilityTask] Running sub-agent...');
-  let subResult: { message: string; status: 'success' | 'failed' | 'timeout' };
+  let subResult: { message: string; status: 'success' | 'failed' | 'timeout'; messages: Message[] };
   try {
     subResult = await runAccessibilitySubAgent({
       provider,
@@ -247,14 +370,26 @@ export default async function accessibilityHeadlessTask(
 
   console.log('[AccessibilityTask] Done:', subResult.status, subResult.message.slice(0, 200));
 
-  // 10. Reformulate result via LLM (language-aware, mode-aware)
+  // 10. Condense interaction into reusable hints (best-effort, skip on timeout)
+  if (subResult.status !== 'timeout') {
+    await extractAndCondenseHints(
+      subResult.messages,
+      packageName,
+      goal,
+      subResult.status,
+      provider,
+      model,
+    );
+  }
+
+  // 11. Reformulate result via LLM (language-aware, mode-aware)
   const formulated = await formulateResponse({
     ...ctx,
     status: subResult.status,
     rawMessage: subResult.message,
   });
 
-  // 11. Write to pending queue FIRST, then restore foreground.
+  // 12. Write to pending queue FIRST, then restore foreground.
   //     The AppState 'active' event fires the instant SannaBot appears – the
   //     message must already be in AsyncStorage before that happens, otherwise
   //     drainPending() will find nothing and the bubble won't show.

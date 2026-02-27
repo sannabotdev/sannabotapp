@@ -17,6 +17,9 @@
  *   When finish_task is called, the loop is hard-stopped via shouldExit callback.
  * – Error handling: finish_task(status:"failed") gives the agent a safe exit when
  *   it is stuck, preventing blind continuation past maxIterations.
+ * – Learned hints: after each run, the headless task condenses the interaction into
+ *   human-readable hints (no node IDs) and persists them. On the next run those
+ *   hints are loaded here and injected into the system prompt before "Your Goal".
  */
 import { ToolRegistry } from './tool-registry';
 import { runToolLoop } from './tool-loop';
@@ -25,6 +28,7 @@ import AccessibilityModule from '../native/AccessibilityModule';
 import type { Tool, ToolResult } from '../tools/types';
 import { errorResult, successResult } from '../tools/types';
 import { DebugLogger } from './debug-logger';
+import { AccessibilityHintStore } from './accessibility-hint-store';
 
 export interface AccessibilitySubAgentConfig {
   provider: LLMProvider;
@@ -44,16 +48,26 @@ export interface AccessibilitySubAgentResult {
   message: string;
   /** 'success' | 'failed' from finish_task, or 'timeout' if max iterations hit */
   status: 'success' | 'failed' | 'timeout';
+  /**
+   * Full interaction history (initial tree message + all loop messages).
+   * Used by the headless task to condense hints after each run.
+   * Excludes the system prompt (which is instructions, not state).
+   */
+  messages: Message[];
 }
 
 /**
  * Run the accessibility sub-agent.
- * Returns the finish_task message + status (or a 'timeout' result if max iterations hit).
+ * Returns the finish_task message + status (or a 'timeout' result if max iterations hit),
+ * plus the full message history for hint condensing.
  */
 export async function runAccessibilitySubAgent(
   config: AccessibilitySubAgentConfig,
 ): Promise<AccessibilitySubAgentResult> {
   const { provider, model, packageName, goal, accessibilityTree, maxIterations } = config;
+
+  // ── Load learned hints for this app ─────────────────────────────────────
+  const existingHints = await AccessibilityHintStore.getHints(packageName);
 
   // ── Termination state ────────────────────────────────────────────────────
   // Shared mutable ref used by FinishTaskTool to signal early loop exit.
@@ -65,25 +79,36 @@ export async function runAccessibilitySubAgent(
   toolRegistry.register(new GetAccessibilityTreeTool());
   toolRegistry.register(new FinishTaskTool(termination));
 
+  // ── Learned hints section (only included if hints exist) ─────────────────
+  const hintsSection = existingHints
+    ? `## Learned Hints (from previous tasks)\n${existingHints}\n\n`
+    : '';
+
   // ── System prompt (instructions ONLY – no UI state) ───────────────────────
   const systemPrompt = `You are an Accessibility Sub-Agent for the Sanna AI assistant.
 Your job is to control the Android UI of the app "${packageName}" to achieve a specific goal.
 
-## Your Goal
+${hintsSection}## Your Goal
 ${goal}
+
+## Initial Navigation
+- After the app opens, check if you are on the app's main/home screen.
+- If you are not on the home screen, use the \`home\` action (no node_id needed) to navigate back to the home screen of the app, then call \`get_accessibility_tree\` to see the updated state.
+- Start your task from the app's home screen for consistency.
 
 ## Rules of Engagement (CRITICAL)
 1. **Understand State:** Analyze the Accessibility Tree provided in the user messages. Identify clickable, editable, or scrollable nodes necessary for your goal.
 2. **Take Action:** Use the \`accessibility_action\` tool to interact with the UI.
 3. **Refresh State:** After any action that changes the screen (typing, clicking a link, submitting), you MUST use \`get_accessibility_tree\` to see the new UI state.
 4. **Node ID Volatility:** Node IDs (e.g. "node_5") are EPHEMERAL. NEVER reuse a node ID from an older tree. Always use the IDs from the most recently fetched Accessibility Tree.
-5. **App Boundary:** NEVER press Home, Back, or navigate away from "${packageName}" unless explicitly requested.
+5. **App Boundary:** Stay within "${packageName}". Only use the \`home\` action to navigate to the app's home screen when stuck or to reset state – do not use it for any other purpose.
 6. **Confirmation:** Buttons containing "Send", "Senden", "OK", or "Submit" are typically your final action triggers.
 
 ## Termination & Failure (YOU MUST FOLLOW THIS)
 - **Success:** As soon as you confirm the goal is achieved (based on the UI state), you MUST immediately call the \`finish_task\` tool with \`status: "success"\`. Do NOT take any further actions after that.
 - **Loading/Delay:** If the screen appears to be loading, use \`get_accessibility_tree\` to poll the state again.
-- **Failure/Stuck:** You have a strict limit of 3 state refreshes without making meaningful progress. If you cannot find the required elements or are stuck in a loop, you MUST call \`finish_task\` with \`status: "failed"\` and explain why. This is the correct way to give up – do NOT keep retrying blindly.`;
+- **Dead End Recovery:** If you are stuck after 2 state refreshes without meaningful progress, use the \`home\` action to navigate back to the app's home screen, refresh the tree with \`get_accessibility_tree\`, and try a different approach from there.
+- **Failure/Stuck:** If after Dead End Recovery you still cannot make progress, you MUST call \`finish_task\` with \`status: "failed"\` and explain why. This is the correct way to give up – do NOT keep retrying blindly.`;
 
   // ── First user message carries the initial UI tree ────────────────────────
   // The tree is state, not instruction → it belongs in the conversation, not
@@ -101,9 +126,11 @@ Please achieve the goal: ${goal}`;
   // Log the tree being sent to LLM for debugging
   DebugLogger.add('info', 'AccessibilitySubAgent', `Sending accessibility tree to LLM (${accessibilityTree.length} chars)`, accessibilityTree);
 
+  const initialUserMsg: Message = { role: 'user', content: firstUserMessage };
+
   const messages: Message[] = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: firstUserMessage },
+    initialUserMsg,
   ];
 
   // ── Run the tool loop ────────────────────────────────────────────────────
@@ -119,17 +146,23 @@ Please achieve the goal: ${goal}`;
     messages,
   );
 
+  // ── Collect full interaction history for hint condensing ─────────────────
+  // Exclude system prompt (instructions only), include initial tree + all loop messages.
+  const interactionMessages: Message[] = [initialUserMsg, ...result.newMessages];
+
   // If the LLM exhausted iterations without calling finish_task, surface that.
   if (!termination.done) {
     return {
       message: 'The automation reached the iteration limit without completing the task.',
       status: 'timeout',
+      messages: interactionMessages,
     };
   }
 
   return {
     message: termination.message || 'Task completed (no message returned).',
     status: termination.status,
+    messages: interactionMessages,
   };
 }
 
@@ -137,7 +170,7 @@ Please achieve the goal: ${goal}`;
 
 /**
  * Executes a single UI action on a node identified in the accessibility tree.
- * Covers click, long-click, type, clear, focus, and scroll.
+ * Covers click, long-click, type, clear, focus, scroll, and home (reset to app root).
  */
 class AccessibilityActionTool implements Tool {
   name(): string {
@@ -147,8 +180,8 @@ class AccessibilityActionTool implements Tool {
   description(): string {
     return (
       'Execute a UI action in the currently open app (click, type text, scroll, etc.). ' +
-      'Use node IDs from the accessibility tree. ' +
-      'NEVER navigate away from the target app (no home/back buttons).'
+      'Use node IDs from the accessibility tree for most actions. ' +
+      'Use "home" (without node_id) to navigate back to the app\'s home/main screen when stuck.'
     );
   }
 
@@ -166,8 +199,8 @@ class AccessibilityActionTool implements Tool {
             '"clear" – clear text in a field, ' +
             '"focus" – give accessibility focus to a node, ' +
             '"scroll_forward" – scroll forward/down on a scrollable node, ' +
-            '"scroll_backward" – scroll backward/up on a scrollable node. ' +
-            'IMPORTANT: Do NOT use home or back – they would leave the target app.',
+            '"scroll_backward" – scroll backward/up on a scrollable node, ' +
+            '"home" – navigate to the app\'s home/main screen (no node_id needed, use only when stuck or to reset).',
           enum: [
             'click',
             'long_click',
@@ -176,20 +209,21 @@ class AccessibilityActionTool implements Tool {
             'focus',
             'scroll_forward',
             'scroll_backward',
+            'home',
           ],
         },
         node_id: {
           type: 'string',
           description:
             'Node ID from the accessibility tree (e.g. "node_5"). ' +
-            'Required for all actions.',
+            'Required for all actions except "home".',
         },
         text: {
           type: 'string',
           description: 'Text to type. Required when action is "type".',
         },
       },
-      required: ['action', 'node_id'],
+      required: ['action'],
     };
   }
 
@@ -201,7 +235,8 @@ class AccessibilityActionTool implements Tool {
     if (!action) {
       return errorResult('action parameter is required');
     }
-    if (!nodeId) {
+    // 'home' is a global action – no node_id needed
+    if (action !== 'home' && !nodeId) {
       return errorResult('"node_id" parameter is required – pick a node from the accessibility tree');
     }
     if (action === 'type' && !text) {
