@@ -83,21 +83,26 @@ export class ConversationPipeline {
   /**
    * Start listening state. Used when STT is starting.
    * Only sets state if currently idle or speaking.
+   * If already listening, this is a no-op (prevents duplicate calls).
    */
   startListening(): void {
     if (this.state === 'idle' || this.state === 'speaking') {
       this.setState('listening');
     }
+    // If already listening, ignore (no-op)
+    // If in processing/error, don't override (let current operation finish)
   }
 
   /**
    * Stop listening and return to idle.
    * Used when STT is cancelled or fails.
+   * Also handles cleanup if called from unexpected states.
    */
   stopListening(): void {
     if (this.state === 'listening') {
       this.setState('idle');
     }
+    // If not listening, this is a no-op (safe to call multiple times)
   }
 
   /**

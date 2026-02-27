@@ -12,6 +12,7 @@ import {
   TextInput,
   Platform,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
@@ -82,6 +83,9 @@ export function HomeScreen({
   const isBusy = pipelineState !== 'idle';
   const [debugVisible, setDebugVisible] = useState(false);
   const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
+  
+  // Animation for large microphone button when listening
+  const drivingMicScaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: !historyLoading });
@@ -106,6 +110,36 @@ export function HomeScreen({
       KeepAwakeModule.deactivate();
     };
   }, [drivingMode]);
+
+  // Animation for large microphone button when listening
+  useEffect(() => {
+    if (pipelineState === 'listening') {
+      // Start pulsing animation
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(drivingMicScaleAnim, {
+            toValue: 1.08,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(drivingMicScaleAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      animation.start();
+      return () => animation.stop();
+    } else {
+      // Reset to normal size when not listening
+      Animated.timing(drivingMicScaleAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [pipelineState, drivingMicScaleAnim]);
 
   // Dynamic styles that depend on the current theme
   const drivingStyles = useMemo(() => makeDrivingStyles(isDark), [isDark]);
@@ -171,31 +205,33 @@ export function HomeScreen({
           {/* Top half: large microphone button */}
           <View style={drivingStyles.drivingMicSection}>
             <View style={drivingStyles.drivingMicButtonRing}>
-              <TouchableOpacity
-                style={[
-                  drivingStyles.drivingMicButton,
-                  pipelineState === 'processing'
-                    ? drivingStyles.drivingMicButtonBusy
-                    : pipelineState === 'listening'
-                    ? drivingStyles.drivingMicButtonListening
-                    : drivingStyles.drivingMicButtonIdle,
-                ]}
-                onPress={onMicPress}
-                disabled={pipelineState === 'processing'}
-                activeOpacity={0.75}>
-                <Text style={drivingStyles.drivingMicIcon}>
-                  {pipelineState === 'listening' ? '⏹️' : '🎤'}
-                </Text>
-                <Text style={drivingStyles.drivingMicLabel}>
-                  {pipelineState === 'listening'
-                    ? t('home.driving.tapToStop')
-                    : pipelineState === 'processing'
-                    ? t('home.driving.thinking')
-                    : pipelineState === 'speaking'
-                    ? t('home.driving.speaking')
-                    : t('home.driving.micOn')}
-                </Text>
-              </TouchableOpacity>
+              <Animated.View style={{ transform: [{ scale: drivingMicScaleAnim }] }}>
+                <TouchableOpacity
+                  style={[
+                    drivingStyles.drivingMicButton,
+                    pipelineState === 'processing'
+                      ? drivingStyles.drivingMicButtonBusy
+                      : pipelineState === 'listening'
+                      ? drivingStyles.drivingMicButtonListening
+                      : drivingStyles.drivingMicButtonIdle,
+                  ]}
+                  onPress={onMicPress}
+                  disabled={pipelineState === 'processing'}
+                  activeOpacity={0.75}>
+                  <Text style={drivingStyles.drivingMicIcon}>
+                    {pipelineState === 'listening' ? '⏹️' : '🎤'}
+                  </Text>
+                  <Text style={drivingStyles.drivingMicLabel}>
+                    {pipelineState === 'listening'
+                      ? t('home.driving.tapToStop')
+                      : pipelineState === 'processing'
+                      ? t('home.driving.thinking')
+                      : pipelineState === 'speaking'
+                      ? t('home.driving.speaking')
+                      : t('home.driving.micOn')}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           </View>
 
@@ -326,6 +362,38 @@ const InputBar = React.memo(function InputBar({
   // keystroke causes the native TextInput to lose focus on Android.
   const textRef = useRef('');
   const inputRef = useRef<TextInput>(null);
+  
+  // Animation for microphone button when listening
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (pipelineState === 'listening') {
+      // Start pulsing animation
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.15,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      animation.start();
+      return () => animation.stop();
+    } else {
+      // Reset to normal size when not listening
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [pipelineState, scaleAnim]);
 
   const handleSend = () => {
     const trimmed = textRef.current.trim();
@@ -341,17 +409,19 @@ const InputBar = React.memo(function InputBar({
     <View>
       <View className="flex-row items-center gap-2 px-3 py-2.5 border-t border-surface-elevated bg-surface">
         {showMic && (
-          <TouchableOpacity
-            className={`w-11 h-11 rounded-full items-center justify-center ${
-              pipelineState === 'listening' ? 'bg-accent-red' : 'bg-surface-elevated'
-            }`}
-            onPress={onMicPress}
-            disabled={isBusy && pipelineState !== 'listening'}
-            activeOpacity={0.7}>
-            <Text className="text-xl">
-              {pipelineState === 'listening' ? '⏹️' : '🎤'}
-            </Text>
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <TouchableOpacity
+              className={`w-11 h-11 rounded-full items-center justify-center ${
+                pipelineState === 'listening' ? 'bg-accent-red' : 'bg-surface-elevated'
+              }`}
+              onPress={onMicPress}
+              disabled={pipelineState === 'processing'}
+              activeOpacity={0.7}>
+              <Text className="text-xl">
+                {pipelineState === 'listening' ? '⏹️' : '🎤'}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
         )}
 
         <TextInput

@@ -33,7 +33,7 @@ const de = {
   'home.empty.title': 'Sanna KI-Assistent',
   'home.empty.subtitle': 'Tippe eine Nachricht oder drücke das Mikrofon',
 
-  'home.driving.tapToStop': 'Tippen zum Stoppen',
+  'home.driving.tapToStop': 'Stoppen',
   'home.driving.thinking': 'Denke…',
   'home.driving.speaking': 'Spreche…',
   'home.driving.micOn': 'Mikrofon an',

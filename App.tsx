@@ -820,14 +820,27 @@ export default function App(): React.JSX.Element {
       Alert.alert(t('alert.noApiKey.title'), t('alert.noApiKey.message'));
       return;
     }
+    // Check current state from pipeline
+    const currentState = pipelineRef.current.getState();
+    
+    // If currently listening, stop it (allow user to cancel recording)
+    if (currentState === 'listening') {
+      // Cancel any auto-listening that might be active
+      if (autoListeningStartedRef.current) {
+        autoListeningStartedRef.current = false;
+      }
+      await sttService.current.cancel().catch(() => {});
+      pipelineRef.current.stopListening();
+      return;
+    }
+    
     // If concurrent auto-listening is already active (driving-mode question flow),
     // cancel it first so we don't have two overlapping STT sessions.
     if (autoListeningStartedRef.current) {
       autoListeningStartedRef.current = false;
       await sttService.current.cancel().catch(() => {});
     }
-    // Check current state from pipeline
-    const currentState = pipelineRef.current.getState();
+    
     // If TTS is currently speaking, stop it immediately and start listening
     if (currentState === 'speaking') {
       await pipelineRef.current.stopSpeaking();
@@ -900,7 +913,9 @@ export default function App(): React.JSX.Element {
    * in the assistant's response and driving mode is active.
    */
   const startAutoListening = useCallback(async () => {
-    if (autoListeningStartedRef.current) return; // already listening
+    // Prevent starting if already listening (either manually or auto)
+    if (autoListeningStartedRef.current) return;
+    if (pipelineRef.current?.getState() === 'listening') return;
 
     const permResult = await permissionManager.current.ensurePermissions([
       'android.permission.RECORD_AUDIO',
@@ -938,8 +953,10 @@ export default function App(): React.JSX.Element {
 
   /**
    * Subscribe to tts_done:
-   * If driving mode is active and the assistant's response contains a question,
-   * start listening automatically once TTS has fully finished.
+   * Consolidated handler for TTS completion that:
+   * 1. Resets pipeline state to 'idle' when TTS finishes (for TTS started outside pipeline)
+   * 2. Starts auto-listening in driving mode if a question was detected
+   * 
    * We deliberately wait for tts_done (not tts_started) to avoid the echo
    * problem: if we open the microphone while the phone speaker is still playing,
    * the mic picks up the TTS audio and submits it as user input.
@@ -949,9 +966,19 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     let delayTimer: ReturnType<typeof setTimeout> | null = null;
     const sub = TTSEvents.addListener('tts_done', () => {
+      const currentState = pipelineRef.current?.getState();
+      
+      // 1. Reset to idle if currently speaking (handles TTS started outside pipeline)
+      // This prevents race conditions with the pipeline's own state management
+      if (currentState === 'speaking' && pipelineRef.current) {
+        pipelineRef.current.setIdle();
+      }
+      
+      // 2. Auto-start listening in driving mode if question detected
       if (settings.drivingMode && containsQuestion(currentResponseTextRef.current)) {
         delayTimer = setTimeout(() => {
           // Only start if pipeline is idle (not already processing a new utterance)
+          // Double-check state after delay to avoid race conditions
           if (pipelineRef.current?.getState() === 'idle') {
             startAutoListening();
           }
@@ -963,28 +990,6 @@ export default function App(): React.JSX.Element {
       sub.remove();
     };
   }, [settings.drivingMode, startAutoListening]);
-
-  /**
-   * Subscribe to tts_done:
-   * Reset pipeline state to 'idle' when TTS finishes, regardless of who started it.
-   * This handles cases where TTS is started outside the pipeline (notifications,
-   * pending messages, etc.) and ensures the UI button state is always correct.
-   * Only resets if we're currently in 'speaking' state to avoid race conditions
-   * with the pipeline's own state management.
-   * 
-   * NOTE: The pipeline itself also handles tts_done in its speak() method,
-   * but this is a fallback for TTS started outside the pipeline.
-   */
-  useEffect(() => {
-    const sub = TTSEvents.addListener('tts_done', () => {
-      // Only reset to idle if we're currently in speaking state
-      // This prevents race conditions with the pipeline's own state management
-      if (pipelineRef.current?.getState() === 'speaking') {
-        pipelineRef.current.setIdle();
-      }
-    });
-    return () => sub.remove();
-  }, []);
 
   const handleTextSubmit = useCallback(async (text: string) => {
     if (!pipelineRef.current) {

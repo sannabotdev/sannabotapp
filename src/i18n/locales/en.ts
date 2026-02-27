@@ -33,7 +33,7 @@ const en = {
   'home.empty.title': 'Sanna AI Assistant',
   'home.empty.subtitle': 'Type a message or press the microphone',
 
-  'home.driving.tapToStop': 'Tap to stop',
+  'home.driving.tapToStop': 'Stop',
   'home.driving.thinking': 'Thinking…',
   'home.driving.speaking': 'Speaking…',
   'home.driving.micOn': 'Microphone on',
