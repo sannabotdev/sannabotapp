@@ -235,6 +235,18 @@ const de = {
   'notifListeners.delete.cancel': 'Abbrechen',
   'notifListeners.delete.confirm': 'L\u00F6schen',
 
+  // Accessibility-Hints Modal
+  'accessibilityHints.button': 'Accessibility-Hints verwalten',
+  'accessibilityHints.buttonDesc': 'Gespeicherte Lern-Daten f\u00FCr App-Automatisierungen',
+  'accessibilityHints.title': 'Accessibility-Hints',
+  'accessibilityHints.empty': 'Keine Hints gespeichert.\nHints werden automatisch nach App-Automatisierungen angelegt.',
+  'accessibilityHints.close': 'Schlie\u00DFen',
+  'accessibilityHints.deleteButton': 'Hints l\u00F6schen',
+  'accessibilityHints.delete.title': 'Hints l\u00F6schen?',
+  'accessibilityHints.delete.message': 'Die gespeicherten Hints f\u00FCr diese App wirklich l\u00F6schen?',
+  'accessibilityHints.delete.cancel': 'Abbrechen',
+  'accessibilityHints.delete.confirm': 'L\u00F6schen',
+
   // Services / OAuth Client IDs
   'settings.section.services': 'Dienste & OAuth',
   'settings.services.intro': 'Konfiguriere die OAuth-Client-IDs für Google, Spotify und Slack sowie den Picovoice-Key für die Wake-Word-Erkennung.',

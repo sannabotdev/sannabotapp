@@ -16,6 +16,7 @@ import { SettingRow } from '../components/SettingRow';
 import { useNotificationAccess } from '../hooks/useNotificationAccess';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n';
+import { AccessibilityHintsModal } from '../components/AccessibilityHintsModal';
 
 const CATEGORY_ORDER = ['communication', 'productivity', 'information', 'media', 'other'] as const;
 type SkillCategory = (typeof CATEGORY_ORDER)[number];
@@ -101,6 +102,7 @@ export function SkillsSection({
 }: SkillsSectionProps): React.JSX.Element {
   const [showOnlyInstalled, setShowOnlyInstalled] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showHintsModal, setShowHintsModal] = useState(false);
   const { notificationAccessGranted, handleOpenNotificationSettings } =
     useNotificationAccess(enabledSkillNames);
 
@@ -466,6 +468,24 @@ export function SkillsSection({
           </View>
         );
       })}
+
+      {/* Accessibility Hints management */}
+      <SettingRow
+        label={t('accessibilityHints.button')}
+        description={t('accessibilityHints.buttonDesc')}>
+        <TouchableOpacity
+          onPress={() => setShowHintsModal(true)}
+          className="px-3 py-1.5 rounded-lg bg-surface-elevated">
+          <Text className="text-accent text-xs font-semibold">
+            {t('accessibilityHints.title')} →
+          </Text>
+        </TouchableOpacity>
+      </SettingRow>
+
+      <AccessibilityHintsModal
+        visible={showHintsModal}
+        onClose={() => setShowHintsModal(false)}
+      />
     </>
   );
 }

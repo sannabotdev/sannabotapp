@@ -235,6 +235,18 @@ const en = {
   'notifListeners.delete.cancel': 'Cancel',
   'notifListeners.delete.confirm': 'Delete',
 
+  // Accessibility Hints Modal
+  'accessibilityHints.button': 'Manage Accessibility Hints',
+  'accessibilityHints.buttonDesc': 'Stored learning data for app automations',
+  'accessibilityHints.title': 'Accessibility Hints',
+  'accessibilityHints.empty': 'No hints stored yet.\nHints are created automatically after app automations.',
+  'accessibilityHints.close': 'Close',
+  'accessibilityHints.deleteButton': 'Delete hints',
+  'accessibilityHints.delete.title': 'Delete hints?',
+  'accessibilityHints.delete.message': 'Really delete the stored hints for this app?',
+  'accessibilityHints.delete.cancel': 'Cancel',
+  'accessibilityHints.delete.confirm': 'Delete',
+
   // Services / OAuth Client IDs
   'settings.section.services': 'Services & OAuth',
   'settings.services.intro': 'Configure the OAuth client IDs required for Google, Spotify and Slack integrations, as well as the Picovoice key for wake-word detection.',
