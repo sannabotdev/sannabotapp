@@ -132,8 +132,24 @@ export class ClaudeProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Claude API error ${response.status}: ${error}`);
+      const errorBody = await response.text();
+      // Try to extract a concise error message from the JSON payload
+      let detail = errorBody;
+      try {
+        const parsed = JSON.parse(errorBody) as {
+          error?: { message?: string; type?: string };
+          type?: string;
+          message?: string;
+        };
+        const msg = parsed.error?.message ?? parsed.message;
+        const type = parsed.error?.type ?? parsed.type;
+        if (msg) {
+          detail = type ? `${type}: ${msg}` : msg;
+        }
+      } catch {
+        // Not JSON – use raw body
+      }
+      throw new Error(`Claude API error ${response.status}: ${detail}`);
     }
 
     const data = await response.json() as {

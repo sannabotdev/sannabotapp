@@ -99,8 +99,22 @@ export class OpenAIProvider implements LLMProvider {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API error ${response.status}: ${error}`);
+      const errorBody = await response.text();
+      // Try to extract a concise error message from the JSON payload
+      let detail = errorBody;
+      try {
+        const parsed = JSON.parse(errorBody) as {
+          error?: { message?: string; code?: string; type?: string };
+        };
+        if (parsed.error?.message) {
+          detail = parsed.error.code
+            ? `${parsed.error.code}: ${parsed.error.message}`
+            : parsed.error.message;
+        }
+      } catch {
+        // Not JSON – use raw body
+      }
+      throw new Error(`OpenAI API error ${response.status}: ${detail}`);
     }
 
     const data = await response.json() as {
