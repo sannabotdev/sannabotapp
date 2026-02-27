@@ -18,21 +18,45 @@ export interface AccessibilityModuleType {
   /**
    * Captures the accessibility tree of the current foreground window.
    * Returns a human-readable text representation with node IDs.
+   * Automatically retries with increasing delays for apps that are slow to render.
    */
   getAccessibilityTree(): Promise<string>;
 
   /**
-   * Perform an action on a UI node identified by nodeId.
+   * Perform an action on a UI node or a global/context action.
    *
-   * @param action  One of: click, long_click, type, clear, focus,
-   *                scroll_forward, scroll_backward, back, home, recents
+   * Node actions (require nodeId):
+   *   click, long_click, type, clear, focus, scroll_forward, scroll_backward
+   *
+   * Global actions (pass null for nodeId):
+   *   back, home, recents, screenshot, clipboard_set, clipboard_get, paste
+   *
+   * @param action  Action name (see above).
    * @param nodeId  Node ID from the tree (e.g. "node_5"). Pass null for global actions.
-   * @param text    Text to set for the "type" action; null otherwise.
+   * @param text    Text to set for the "type" or "clipboard_set" action; null otherwise.
    */
   performAction(
     action: string,
     nodeId: string | null,
     text: string | null,
+  ): Promise<string>;
+
+  /**
+   * Dispatch a swipe gesture from (x1, y1) to (x2, y2) over the given duration.
+   * Useful for scrolling, dismissing notifications, or interacting with drag targets.
+   *
+   * @param x1        Start X in screen pixels
+   * @param y1        Start Y in screen pixels
+   * @param x2        End X in screen pixels
+   * @param y2        End Y in screen pixels
+   * @param durationMs  Gesture duration in milliseconds (e.g. 300)
+   */
+  performSwipe(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    durationMs: number,
   ): Promise<string>;
 
   /**

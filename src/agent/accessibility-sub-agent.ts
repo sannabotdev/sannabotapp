@@ -169,8 +169,27 @@ Please achieve the goal: ${goal}`;
 // ── AccessibilityActionTool ───────────────────────────────────────────────────
 
 /**
- * Executes a single UI action on a node identified in the accessibility tree.
- * Covers click, long-click, type, clear, focus, scroll, and home (reset to app root).
+ * Actions that operate on a specific node from the accessibility tree.
+ * All of these require node_id.
+ */
+const NODE_REQUIRED_ACTIONS = [
+  'click',
+  'long_click',
+  'type',
+  'clear',
+  'focus',
+  'scroll_forward',
+  'scroll_backward',
+] as const;
+
+/**
+ * Executes a single UI action in the currently open app.
+ *
+ * Node actions (require node_id): click, long_click, type, clear, focus,
+ *   scroll_forward, scroll_backward.
+ * Global actions (no node_id): home, back, recents, screenshot,
+ *   clipboard_set, clipboard_get, paste.
+ * Gesture actions (require coordinates): swipe.
  */
 class AccessibilityActionTool implements Tool {
   name(): string {
@@ -179,9 +198,11 @@ class AccessibilityActionTool implements Tool {
 
   description(): string {
     return (
-      'Execute a UI action in the currently open app (click, type text, scroll, etc.). ' +
-      'Use node IDs from the accessibility tree for most actions. ' +
-      'Use "home" (without node_id) to navigate back to the app\'s home/main screen when stuck.'
+      'Execute a UI action in the currently open app. ' +
+      'Use node IDs from the accessibility tree for node-based actions (click, type, scroll, etc.). ' +
+      'Use global actions (home, back, screenshot, clipboard_*) without a node_id. ' +
+      'Use "swipe" with x1/y1/x2/y2 coordinates for swipe gestures. ' +
+      'Use "home" (no node_id) to navigate to the app\'s home screen when stuck.'
     );
   }
 
@@ -192,15 +213,24 @@ class AccessibilityActionTool implements Tool {
         action: {
           type: 'string',
           description:
-            'Action to perform: ' +
-            '"click" – tap a node, ' +
-            '"long_click" – long-press a node, ' +
-            '"type" – set text in an editable field (requires text param), ' +
-            '"clear" – clear text in a field, ' +
-            '"focus" – give accessibility focus to a node, ' +
-            '"scroll_forward" – scroll forward/down on a scrollable node, ' +
-            '"scroll_backward" – scroll backward/up on a scrollable node, ' +
-            '"home" – navigate to the app\'s home/main screen (no node_id needed, use only when stuck or to reset).',
+            'Action to perform. ' +
+            'Node actions (require node_id): ' +
+            '"click" – tap a node; ' +
+            '"long_click" – long-press a node; ' +
+            '"type" – set text in an editable field (requires text param); ' +
+            '"clear" – clear text in a field; ' +
+            '"focus" – give accessibility focus to a node; ' +
+            '"scroll_forward" – scroll forward/down on a scrollable node; ' +
+            '"scroll_backward" – scroll backward/up on a scrollable node. ' +
+            'Global actions (no node_id needed): ' +
+            '"home" – navigate to the app\'s home/main screen (use when stuck); ' +
+            '"back" – press the system back button; ' +
+            '"screenshot" – take a screenshot (Android 9+); ' +
+            '"clipboard_set" – copy text to clipboard (requires text param); ' +
+            '"clipboard_get" – read current clipboard content; ' +
+            '"paste" – paste clipboard into the currently focused field. ' +
+            'Gesture action: ' +
+            '"swipe" – swipe from (x1,y1) to (x2,y2), requires x1/y1/x2/y2 params.',
           enum: [
             'click',
             'long_click',
@@ -210,17 +240,46 @@ class AccessibilityActionTool implements Tool {
             'scroll_forward',
             'scroll_backward',
             'home',
+            'back',
+            'screenshot',
+            'clipboard_set',
+            'clipboard_get',
+            'paste',
+            'swipe',
           ],
         },
         node_id: {
           type: 'string',
           description:
             'Node ID from the accessibility tree (e.g. "node_5"). ' +
-            'Required for all actions except "home".',
+            'Required for: click, long_click, type, clear, focus, scroll_forward, scroll_backward. ' +
+            'Not needed for global or gesture actions.',
         },
         text: {
           type: 'string',
-          description: 'Text to type. Required when action is "type".',
+          description:
+            'Text to use. Required when action is "type" or "clipboard_set".',
+        },
+        x1: {
+          type: 'number',
+          description: 'Start X coordinate in screen pixels. Required for "swipe".',
+        },
+        y1: {
+          type: 'number',
+          description: 'Start Y coordinate in screen pixels. Required for "swipe".',
+        },
+        x2: {
+          type: 'number',
+          description: 'End X coordinate in screen pixels. Required for "swipe".',
+        },
+        y2: {
+          type: 'number',
+          description: 'End Y coordinate in screen pixels. Required for "swipe".',
+        },
+        duration: {
+          type: 'number',
+          description:
+            'Swipe gesture duration in milliseconds. Optional for "swipe" (default: 300).',
         },
       },
       required: ['action'],
@@ -235,14 +294,44 @@ class AccessibilityActionTool implements Tool {
     if (!action) {
       return errorResult('action parameter is required');
     }
-    // 'home' is a global action – no node_id needed
-    if (action !== 'home' && !nodeId) {
-      return errorResult('"node_id" parameter is required – pick a node from the accessibility tree');
+
+    // ── Swipe: coordinate-based gesture ──────────────────────────────────────
+    if (action === 'swipe') {
+      const x1 = args.x1 as number | undefined;
+      const y1 = args.y1 as number | undefined;
+      const x2 = args.x2 as number | undefined;
+      const y2 = args.y2 as number | undefined;
+      const duration = (args.duration as number | undefined) ?? 300;
+
+      if (x1 === undefined || y1 === undefined || x2 === undefined || y2 === undefined) {
+        return errorResult('"x1", "y1", "x2", "y2" are required for the "swipe" action');
+      }
+
+      try {
+        const result = await AccessibilityModule.performSwipe(x1, y1, x2, y2, duration);
+        return successResult(result);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        return errorResult(`Swipe gesture failed: ${errMsg}`);
+      }
     }
+
+    // ── Node actions: require node_id ─────────────────────────────────────────
+    if ((NODE_REQUIRED_ACTIONS as readonly string[]).includes(action) && !nodeId) {
+      return errorResult(
+        `"node_id" parameter is required for action "${action}" – pick a node from the accessibility tree`,
+      );
+    }
+
+    // ── Validation for text-requiring actions ─────────────────────────────────
     if (action === 'type' && !text) {
       return errorResult('"text" parameter is required when action is "type"');
     }
+    if (action === 'clipboard_set' && !text) {
+      return errorResult('"text" parameter is required when action is "clipboard_set"');
+    }
 
+    // ── Dispatch to native ────────────────────────────────────────────────────
     try {
       const result = await AccessibilityModule.performAction(action, nodeId, text);
       return successResult(result);

@@ -12,7 +12,11 @@ import com.facebook.react.bridge.*
  * - openAccessibilitySettings()      – navigate to Android accessibility settings
  * - getAccessibilityTree()           – capture the current UI tree as text
  * - performAction(action, nodeId, text) – execute an action on a UI node
- * - waitForApp(packageName, timeoutMs)  – wait until an app is in the foreground
+ *   Node actions: click, long_click, type, clear, focus, scroll_forward, scroll_backward
+ *   Global actions (nodeId = null): back, home, recents, screenshot,
+ *                                   clipboard_set, clipboard_get, paste
+ * - performSwipe(x1, y1, x2, y2, durationMs) – swipe gesture between two coordinates
+ * - waitForApp(packageName, timeoutMs) – wait until an app is in the foreground
  */
 class AccessibilityModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -67,12 +71,14 @@ class AccessibilityModule(reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Perform an action on a UI element.
+     * Perform an action on a UI element or a global action.
      *
-     * @param action  Action name: click | long_click | type | clear | focus |
-     *                scroll_forward | scroll_backward | back | home | recents
+     * @param action  Node actions: click | long_click | type | clear | focus |
+     *                scroll_forward | scroll_backward
+     *                Global actions (pass null for nodeId): back | home | recents |
+     *                screenshot | clipboard_set | clipboard_get | paste
      * @param nodeId  Node ID from the tree (e.g. "node_5"). Null for global actions.
-     * @param text    Text value for "type" action, null otherwise.
+     * @param text    Text value for "type" or "clipboard_set" actions, null otherwise.
      */
     @ReactMethod
     fun performAction(action: String, nodeId: String?, text: String?, promise: Promise) {
@@ -85,6 +91,37 @@ class AccessibilityModule(reactContext: ReactApplicationContext) :
             promise.resolve(service.performNodeAction(action, nodeId, text))
         } catch (e: Exception) {
             promise.reject("ACTION_ERROR", e.message ?: "Failed to perform action", e)
+        }
+    }
+
+    /**
+     * Dispatch a swipe gesture from (x1, y1) to (x2, y2) over the given duration.
+     * Runs on a background thread to avoid blocking the React Native bridge.
+     *
+     * @param x1         Start X in screen pixels
+     * @param y1         Start Y in screen pixels
+     * @param x2         End X in screen pixels
+     * @param y2         End Y in screen pixels
+     * @param durationMs Gesture duration in milliseconds (min 1)
+     */
+    @ReactMethod
+    fun performSwipe(x1: Int, y1: Int, x2: Int, y2: Int, durationMs: Int, promise: Promise) {
+        try {
+            val service = SannaAccessibilityService.instance
+                ?: return promise.reject(
+                    "SERVICE_NOT_RUNNING",
+                    "Accessibility service is not enabled."
+                )
+            // Run on background thread – performSwipe blocks via CountDownLatch
+            Thread {
+                try {
+                    promise.resolve(service.performSwipe(x1, y1, x2, y2, durationMs))
+                } catch (e: Exception) {
+                    promise.reject("SWIPE_ERROR", e.message ?: "Failed to perform swipe", e)
+                }
+            }.start()
+        } catch (e: Exception) {
+            promise.reject("SWIPE_ERROR", e.message ?: "Failed to perform swipe", e)
         }
     }
 
