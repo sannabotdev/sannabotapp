@@ -39,9 +39,12 @@ interface DebugPanelProps {
   onClose: () => void;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Element {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [expandState, setExpandState] = useState<Record<number, 'preview' | 'full'>>({});
+  const [currentPage, setCurrentPage] = useState(1);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -54,6 +57,31 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
     });
     return unsub;
   }, []);
+
+  // Reset to first page when entries change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [entries.length]);
+
+  // Calculate pagination
+  const totalPages = Math.max(1, Math.ceil(entries.length / ITEMS_PER_PAGE));
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentEntries = entries.slice(startIndex, endIndex);
+
+  const goToPage = useCallback((page: number) => {
+    const validPage = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(validPage);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [totalPages]);
+
+  const goToPreviousPage = useCallback(() => {
+    goToPage(currentPage - 1);
+  }, [currentPage, goToPage]);
+
+  const goToNextPage = useCallback(() => {
+    goToPage(currentPage + 1);
+  }, [currentPage, goToPage]);
 
   // Cycle: collapsed → preview → full → collapsed
   const toggleEntry = useCallback((id: number) => {
@@ -201,7 +229,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
                 {t('debug.empty')}
               </Text>
             ) : (
-              entries.map(entry => (
+              currentEntries.map(entry => (
                 <LogEntryRow
                   key={entry.id}
                   entry={entry}
@@ -211,6 +239,51 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
               ))
             )}
           </ScrollView>
+
+          {/* Pagination controls */}
+          {entries.length > ITEMS_PER_PAGE && (
+            <View className="flex-row justify-between items-center px-4 py-3 border-t border-surface-elevated">
+              <TouchableOpacity
+                onPress={goToPreviousPage}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded-lg ${
+                  currentPage === 1
+                    ? 'bg-surface-tertiary opacity-50'
+                    : 'bg-surface-elevated'
+                }`}>
+                <Text
+                  className={`text-sm font-semibold ${
+                    currentPage === 1
+                      ? 'text-label-tertiary'
+                      : 'text-label-primary'
+                  }`}>
+                  ← Zurück
+                </Text>
+              </TouchableOpacity>
+
+              <Text className="text-sm text-label-secondary">
+                Seite {currentPage} von {totalPages} ({entries.length} Einträge)
+              </Text>
+
+              <TouchableOpacity
+                onPress={goToNextPage}
+                disabled={currentPage === totalPages}
+                className={`px-4 py-2 rounded-lg ${
+                  currentPage === totalPages
+                    ? 'bg-surface-tertiary opacity-50'
+                    : 'bg-surface-elevated'
+                }`}>
+                <Text
+                  className={`text-sm font-semibold ${
+                    currentPage === totalPages
+                      ? 'text-label-tertiary'
+                      : 'text-label-primary'
+                  }`}>
+                  Weiter →
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Legend */}
           <View className="flex-row justify-center gap-4 py-2 border-t border-surface-elevated pb-6">

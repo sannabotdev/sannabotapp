@@ -397,7 +397,7 @@ const InputBar = React.memo(function InputBar({
 
   const handleSend = () => {
     const trimmed = textRef.current.trim();
-    if (!trimmed || isBusy) return;
+    if (!trimmed || pipelineState === 'processing') return;
     inputRef.current?.clear();
     textRef.current = '';
     onSubmit(trimmed);
@@ -433,7 +433,7 @@ const InputBar = React.memo(function InputBar({
           placeholder={t('home.input.placeholder')}
           placeholderTextColor="#636366"
           returnKeyType="send"
-          editable={!isBusy}
+          editable={pipelineState !== 'processing'}
           blurOnSubmit={false}
           autoCorrect={false}
           autoCapitalize="none"

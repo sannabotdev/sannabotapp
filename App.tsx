@@ -997,7 +997,18 @@ export default function App(): React.JSX.Element {
       return;
     }
     // Check state from pipeline, not from React state
-    if (pipelineRef.current.getState() !== 'idle') return;
+    const currentState = pipelineRef.current.getState();
+    
+    // If TTS is currently speaking, stop it immediately
+    if (currentState === 'speaking') {
+      await pipelineRef.current.stopSpeaking();
+    }
+    
+    // Allow submission if idle, speaking (now stopped), or listening
+    // processUtterance will handle the listening state transition
+    if (currentState !== 'idle' && currentState !== 'speaking' && currentState !== 'listening') {
+      return;
+    }
 
     try {
       await pipelineRef.current.processUtterance(text);

@@ -136,12 +136,17 @@ export class ConversationPipeline {
     userText: string,
     options?: { silent?: boolean },
   ): Promise<string> {
-    if (this.state !== 'idle') {
+    // Allow processing if idle or listening (listening means STT just finished)
+    // If currently listening, stop listening first and proceed
+    if (this.state === 'listening') {
+      this.setState('processing');
+    } else if (this.state !== 'idle') {
       return '';
+    } else {
+      this.setState('processing');
     }
 
     try {
-      this.setState('processing');
       if (!options?.silent) {
         this.onTranscript?.('user', userText);
       }
