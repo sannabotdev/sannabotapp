@@ -184,8 +184,8 @@ const de = {
   'settings.agent.description': 'Legt fest, wie viele Runden das LLM maximal pro Anfrage durchlaufen darf, bevor es abbricht.',
   'settings.agent.mainLabel': 'Haupt-Agent',
   'settings.agent.mainDesc': 'Conversation Pipeline (Normal- & Fahrmodus)',
-  'settings.agent.subLabel': 'Sub-Agent (Benachrichtigung & Zeitplan)',
-  'settings.agent.subDesc': 'Benachrichtigungs- und Zeitplan-Sub-Agents',
+  'settings.agent.subLabel': 'Sub-Agent (App-Regeln & Zeitplan)',
+  'settings.agent.subDesc': 'App-Regel- und Zeitplan-Sub-Agents',
   'settings.agent.accessibilityLabel': 'Accessibility Sub-Agent',
   'settings.agent.accessibilityDesc': 'UI-Automatisierung (Apps steuern)',
   'settings.agent.validationError': 'Bitte einen Wert zwischen 6 und 50 eingeben',
@@ -205,7 +205,7 @@ const de = {
   'menu.darkMode.light': 'Dunkles Design',
   'menu.lists': 'Listen',
   'menu.scheduler': 'Zeitpläne',
-  'menu.notificationListeners': 'Benachrichtigungen',
+  'menu.notificationListeners': 'App-Regeln',
 
   // Listen-Screen
   'lists.title': 'Listen',
@@ -244,9 +244,9 @@ const de = {
   'schedules.recurrence.daily': 'T\u00E4glich um {time}',
   'schedules.recurrence.weekly': 'W\u00F6chentlich {days} um {time}',
 
-  // Notification-Listener-Screen
-  'notifListeners.title': 'Benachrichtigungs-Regeln',
-  'notifListeners.empty': 'Keine Benachrichtigungs-Regeln vorhanden.\nErstelle eine Regel indem du Sanna z.\u00A0B. sagst: \u201ELies mir WhatsApp-Nachrichten vor\u201C',
+  // App-Regeln-Screen (ehemals Notification-Listener)
+  'notifListeners.title': 'App-Regeln',
+  'notifListeners.empty': 'Keine App-Regeln vorhanden.\nErstelle eine Regel indem du Sanna z.\u00A0B. sagst: \u201ELies mir WhatsApp-Nachrichten vor\u201C',
   'notifListeners.detail.app': 'App',
   'notifListeners.detail.instruction': 'Anweisung',
   'notifListeners.detail.condition': 'Bedingung',
@@ -255,9 +255,9 @@ const de = {
   'notifListeners.detail.createdAt': 'Erstellt',
   'notifListeners.status.active': '\u2705 Aktiv',
   'notifListeners.status.disabled': '\u23F8\uFE0F Deaktiviert',
-  'notifListeners.deleteButton': 'Listener l\u00F6schen',
-  'notifListeners.delete.title': 'Listener l\u00F6schen?',
-  'notifListeners.delete.message': 'Diese Benachrichtigungs-Regel wirklich l\u00F6schen?',
+  'notifListeners.deleteButton': 'Regel l\u00F6schen',
+  'notifListeners.delete.title': 'Regel l\u00F6schen?',
+  'notifListeners.delete.message': 'Diese App-Regel wirklich l\u00F6schen?',
   'notifListeners.delete.cancel': 'Abbrechen',
   'notifListeners.delete.confirm': 'L\u00F6schen',
 

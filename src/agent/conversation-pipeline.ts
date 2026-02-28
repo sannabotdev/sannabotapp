@@ -16,6 +16,7 @@ import { runToolLoop } from './tool-loop';
 import { buildSystemPrompt } from './system-prompt';
 import type { TTSService } from '../audio/tts-service';
 import { DebugLogger } from './debug-logger';
+import { PersonalMemoryStore } from './personal-memory-store';
 
 export type PipelineState =
   | 'idle'
@@ -170,6 +171,11 @@ export class ConversationPipeline {
       }
       DebugLogger.logUserMessage(userText);
 
+      // Always read personal memory fresh from storage so the system prompt
+      // reflects any facts written by memory_personal_upsert during this
+      // session without requiring an external state-relay mechanism.
+      const freshPersonalMemory = await PersonalMemoryStore.getMemory();
+
       // Build system prompt
       const systemPrompt = buildSystemPrompt({
         skillLoader: this.config.skillLoader,
@@ -178,7 +184,7 @@ export class ConversationPipeline {
         drivingMode: this.config.drivingMode,
         language: this.config.language,
         soul: this.config.soul,
-        personalMemory: this.config.personalMemory,
+        personalMemory: freshPersonalMemory,
       });
       DebugLogger.logSystemPrompt(systemPrompt);
 

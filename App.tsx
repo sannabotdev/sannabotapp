@@ -804,19 +804,12 @@ export default function App(): React.JSX.Element {
     });
 
     pipeline.setEnabledSkills(enabledSkillNames);
-    pipeline.setCallbacks({
-      onStateChange: setPipelineState,
-      onError: (err: string) => {
-        Alert.alert(t('alert.error'), err);
-      },
-      onToolExecuted: (name: string) => {
-        if (name === 'memory_personal_upsert') {
-          PersonalMemoryStore.getMemory()
-            .then(setPersonalMemoryText)
-            .catch(() => {});
-        }
-      },
-      onTranscript: (role: 'user' | 'assistant', text: string) => {
+      pipeline.setCallbacks({
+        onStateChange: setPipelineState,
+        onError: (err: string) => {
+          Alert.alert(t('alert.error'), err);
+        },
+        onTranscript: (role: 'user' | 'assistant', text: string) => {
         // Capture the latest assistant response for driving-mode question detection.
         // This ref is read by the tts_started handler to decide whether to start
         // concurrent listening.
@@ -896,12 +889,9 @@ export default function App(): React.JSX.Element {
   }, [soulText]);
 
   useEffect(() => {
-    pipelineRef.current?.setPersonalMemory(personalMemoryText);
-  }, [personalMemoryText]);
-
-  useEffect(() => {
     if (!vaultUnlocked || screen !== 'settings') return;
     PersonalMemoryStore.getMemory().then(setPersonalMemoryText).catch(() => {});
+    SoulStore.getSoul().then(setSoulText).catch(() => {});
   }, [vaultUnlocked, screen]);
 
   // ─── Handlers (defined early for use in useEffects) ────────────────────────

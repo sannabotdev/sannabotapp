@@ -184,8 +184,8 @@ const en = {
   'settings.agent.description': 'Sets how many rounds the LLM may run per request before stopping.',
   'settings.agent.mainLabel': 'Main Agent',
   'settings.agent.mainDesc': 'Conversation Pipeline (Normal & Driving Mode)',
-  'settings.agent.subLabel': 'Sub-Agent (Notification & Scheduler)',
-  'settings.agent.subDesc': 'Notification and Scheduler Sub-Agents',
+  'settings.agent.subLabel': 'Sub-Agent (App Rules & Scheduler)',
+  'settings.agent.subDesc': 'App Rules and Scheduler Sub-Agents',
   'settings.agent.accessibilityLabel': 'Accessibility Sub-Agent',
   'settings.agent.accessibilityDesc': 'UI Automation (controlling apps)',
   'settings.agent.validationError': 'Please enter a value between 6 and 50',
@@ -205,7 +205,7 @@ const en = {
   'menu.darkMode.light': 'Dark Mode',
   'menu.lists': 'Lists',
   'menu.scheduler': 'Schedules',
-  'menu.notificationListeners': 'Notification Rules',
+  'menu.notificationListeners': 'App Rules',
 
   // Lists Screen
   'lists.title': 'Lists',
@@ -244,9 +244,9 @@ const en = {
   'schedules.recurrence.daily': 'Daily at {time}',
   'schedules.recurrence.weekly': 'Weekly {days} at {time}',
 
-  // Notification Listeners Screen
-  'notifListeners.title': 'Notification Rules',
-  'notifListeners.empty': 'No notification rules found.\nCreate one by telling Sanna e.g. "Read me WhatsApp messages aloud"',
+  // App Rules Screen (formerly Notification Listeners)
+  'notifListeners.title': 'App Rules',
+  'notifListeners.empty': 'No app rules found.\nCreate one by telling Sanna e.g. "Read me WhatsApp messages aloud"',
   'notifListeners.detail.app': 'App',
   'notifListeners.detail.instruction': 'Instruction',
   'notifListeners.detail.condition': 'Condition',
@@ -255,9 +255,9 @@ const en = {
   'notifListeners.detail.createdAt': 'Created',
   'notifListeners.status.active': '✅ Active',
   'notifListeners.status.disabled': '⏸️ Disabled',
-  'notifListeners.deleteButton': 'Delete listener',
-  'notifListeners.delete.title': 'Delete listener?',
-  'notifListeners.delete.message': 'Really delete this notification rule?',
+  'notifListeners.deleteButton': 'Delete rule',
+  'notifListeners.delete.title': 'Delete rule?',
+  'notifListeners.delete.message': 'Really delete this app rule?',
   'notifListeners.delete.cancel': 'Cancel',
   'notifListeners.delete.confirm': 'Delete',
 
