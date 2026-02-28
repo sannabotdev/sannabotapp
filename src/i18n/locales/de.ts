@@ -143,6 +143,7 @@ const de = {
   'debug.close': '✕ Schließen',
   'debug.download': '📥 Download',
   'debug.empty': 'Noch keine Logs. Sende eine Nachricht um zu starten.',
+  'debug.filter.empty': 'Keine Einträge für „{level}"',
   'debug.truncated': '… (abgeschnitten)',
   'debug.tapForMore': 'Nochmal tippen für vollständigen Inhalt',
   'debug.shareError.title': 'Teilen nicht möglich',

@@ -46,6 +46,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [expandState, setExpandState] = useState<Record<number, 'preview' | 'full'>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeFilter, setActiveFilter] = useState<LogLevel | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -59,16 +60,24 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
     return unsub;
   }, []);
 
-  // Reset to first page when entries change
+  // Reset to first page when entries or filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [entries.length]);
+  }, [entries.length, activeFilter]);
+
+  const filteredEntries = activeFilter
+    ? entries.filter(e => e.level === activeFilter)
+    : entries;
+
+  const handleFilterToggle = useCallback((level: LogLevel) => {
+    setActiveFilter(prev => (prev === level ? null : level));
+  }, []);
 
   // Calculate pagination
-  const totalPages = Math.max(1, Math.ceil(entries.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentEntries = entries.slice(startIndex, endIndex);
+  const currentEntries = filteredEntries.slice(startIndex, endIndex);
 
   const goToPage = useCallback((page: number) => {
     const validPage = Math.max(1, Math.min(page, totalPages));
@@ -264,9 +273,11 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
             ref={scrollRef}
             className="flex-1"
             contentContainerStyle={{ padding: 8, gap: 4 }}>
-            {entries.length === 0 ? (
+            {filteredEntries.length === 0 ? (
               <Text className="text-label-secondary text-sm text-center pt-16">
-                {t('debug.empty')}
+                {entries.length === 0
+                  ? t('debug.empty')
+                  : t('debug.filter.empty').replace('{level}', activeFilter ?? '')}
               </Text>
             ) : (
               currentEntries.map(entry => (
@@ -281,7 +292,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
           </ScrollView>
 
           {/* Pagination controls */}
-          {entries.length > ITEMS_PER_PAGE && (
+          {filteredEntries.length > ITEMS_PER_PAGE && (
             <View className="flex-row justify-between items-center px-4 py-3 border-t border-surface-elevated">
               <TouchableOpacity
                 onPress={goToPreviousPage}
@@ -302,7 +313,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
               </TouchableOpacity>
 
               <Text className="text-sm text-label-secondary">
-                Seite {currentPage} von {totalPages} ({entries.length} Einträge)
+                Seite {currentPage} von {totalPages} ({filteredEntries.length} Einträge)
               </Text>
 
               <TouchableOpacity
@@ -325,14 +336,26 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
             </View>
           )}
 
-          {/* Legend */}
-          <View className="flex-row justify-center gap-4 py-2 border-t border-surface-elevated pb-6">
-            {(['prompt', 'llm', 'tool', 'info', 'error'] as LogLevel[]).map(level => (
-              <View key={level} className="flex-row items-center gap-1">
-                <Text className="text-xs">{LEVEL_ICONS[level]}</Text>
-                <Text className={`text-[11px] font-semibold ${LEVEL_COLORS[level]}`}>{level}</Text>
-              </View>
-            ))}
+          {/* Legend / Filter */}
+          <View className="flex-row justify-center items-center gap-3 py-2 border-t border-surface-elevated pb-6">
+            {(['prompt', 'llm', 'tool', 'info', 'error'] as LogLevel[]).map(level => {
+              const isActive = activeFilter === level;
+              return (
+                <TouchableOpacity
+                  key={level}
+                  onPress={() => handleFilterToggle(level)}
+                  className={`flex-row items-center gap-1 px-2 py-1 rounded-full ${
+                    isActive ? 'bg-surface-elevated' : 'opacity-60'
+                  }`}
+                  activeOpacity={0.7}>
+                  <Text className="text-xs">{LEVEL_ICONS[level]}</Text>
+                  <Text className={`text-[11px] font-semibold ${LEVEL_COLORS[level]}`}>{level}</Text>
+                  {isActive && (
+                    <Text className="text-[10px] text-label-tertiary ml-0.5">✕</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </Modal>

@@ -143,6 +143,7 @@ const en = {
   'debug.close': '✕ Close',
   'debug.download': '📥 Download',
   'debug.empty': 'No logs yet. Send a message to get started.',
+  'debug.filter.empty': 'No entries for "{level}"',
   'debug.truncated': '… (truncated)',
   'debug.tapForMore': 'Tap again for full content',
   'debug.shareError.title': 'Unable to Share',
