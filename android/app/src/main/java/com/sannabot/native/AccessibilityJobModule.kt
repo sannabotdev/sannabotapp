@@ -1,6 +1,7 @@
 package com.sannabot.native
 
 import android.content.Intent
+import com.facebook.react.HeadlessJsTaskService
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -28,6 +29,9 @@ class AccessibilityJobModule(reactContext: ReactApplicationContext) :
             val intent = Intent(reactApplicationContext, AccessibilityHeadlessService::class.java)
             intent.putExtra("jobJson", jobJson)
             reactApplicationContext.startForegroundService(intent)
+            // Acquire WakeLock to prevent JS thread from being paused when app is in background
+            // This is critical - without it, the JS execution will hang when WhatsApp is in foreground
+            HeadlessJsTaskService.acquireWakeLockNow(reactApplicationContext)
             promise.resolve(null)
         } catch (e: Exception) {
             promise.reject("JOB_START_ERROR", e.message ?: "Failed to start accessibility job", e)

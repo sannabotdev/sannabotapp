@@ -15,8 +15,10 @@ import com.facebook.react.jstasks.HeadlessJsTaskConfig
  * Promotes itself to a foreground service so Android does not kill the process
  * while another app (e.g. WhatsApp) is in the foreground.
  *
- * NOTE: The JS thread stays responsive because the main pipeline's LLM call +
- * TTS keep it busy while the sub-agent runs. No WakeLock needed.
+ * NOTE: A WakeLock is acquired by AccessibilityJobModule.startJob() to ensure
+ * the JS thread stays active even when SannaBot is in the background. Without
+ * this, React Native would pause/throttle the JS thread and the automation
+ * would hang until the app returns to foreground.
  *
  * Intent extra: "jobJson" – JSON with { packageName, goal, intentAction?, intentUri? }
  */

@@ -100,6 +100,12 @@ export async function runToolLoop(
   }
 
   // Max iterations reached
-  DebugLogger.logError('LOOP', `Max iterations (${config.maxIterations}) erreicht`);
-  return { content: finalContent, iterations: config.maxIterations, newMessages };
+  DebugLogger.logError('LOOP', `Max iterations (${config.maxIterations}) reached`);
+  
+  // Ensure we always return some content, even if empty
+  // This guarantees that background tasks always show something in chat
+  const timeoutMessage = finalContent || 
+    `Maximum iterations (${config.maxIterations}) reached. The task could not be completed.`;
+  
+  return { content: timeoutMessage, iterations: config.maxIterations, newMessages };
 }

@@ -233,7 +233,7 @@ export default async function accessibilityHeadlessTask(
     job = JSON.parse(taskData.jobJson) as AccessibilityJob;
   } catch {
     console.error('[AccessibilityTask] Failed to parse jobJson:', taskData.jobJson);
-    await ConversationStore.appendPending('assistant', '❌ UI automation failed: Invalid job data.').catch(() => {}); // write before foreground restore
+    await ConversationStore.appendPending('assistant', 'UI automation failed: Invalid job data.').catch(() => {}); // write before foreground restore
     await restoreSannaBot();
     return;
   }
@@ -251,7 +251,7 @@ export default async function accessibilityHeadlessTask(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[AccessibilityTask] Config error:', msg);
-    await ConversationStore.appendPending('assistant', `❌ UI automation failed: ${msg}`).catch(() => {}); // write before foreground restore
+    await ConversationStore.appendPending('assistant', `UI automation failed: ${msg}`).catch(() => {}); // write before foreground restore
     await restoreSannaBot();
     return;
   }

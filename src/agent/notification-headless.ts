@@ -28,6 +28,7 @@ import { PersonalMemoryStore } from './personal-memory-store';
 import { loadRules, getRulesForApp } from './notification-rules-store';
 import type { NotificationRule } from './notification-rules-store';
 import IntentModule from '../native/IntentModule';
+import { formulateError } from './system-prompt';
 
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
@@ -168,7 +169,8 @@ export default async function notificationHeadlessTask(
     ? new ClaudeProvider(config.apiKey, config.model)
     : new OpenAIProvider(config.apiKey, config.model);
 
-  DebugLogger.add('info', TAG, `Provider: ${config.provider} (${provider.getDefaultModel()})`);
+  const model = provider.getDefaultModel();
+  DebugLogger.add('info', TAG, `Provider: ${config.provider} (${model})`);
 
   // 4. Load rules from AsyncStorage and filter for this app
   let rules: NotificationRule[] = [];
@@ -248,13 +250,36 @@ export default async function notificationHeadlessTask(
 
       // 9. Bring app to foreground – drainPending() will display + speak the result
       await bringToForeground();
-    } else {
+    } else if (resultText && resultText.includes('__NO_MATCH__')) {
+      // No condition matched - don't show anything (this is expected behavior)
       DebugLogger.add('info', TAG, `No condition matched for "${packageName}" – no bubble shown`);
+    } else {
+      // resultText is empty (shouldn't happen with tool-loop fix, but safety fallback)
+      DebugLogger.add('info', TAG, `Sub-agent returned empty result for "${packageName}"`);
+      const rawError = `Notification processing for "${packageName}" completed, but no output was generated.`;
+      const formattedError = await formulateError({
+        provider,
+        model,
+        instruction: `Process notification from ${packageName}`,
+        rawError,
+        drivingMode,
+        language: lang,
+      });
+      await ConversationStore.appendPending('assistant', formattedError).catch(() => {});
+      await bringToForeground();
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     DebugLogger.add('error', TAG, `Sub-agent failed: ${errMsg}`);
-    await ConversationStore.appendPending('assistant', `❌ Notification verarbeitung fehlgeschlagen: ${errMsg}`).catch(() => {});
+    const formattedError = await formulateError({
+      provider,
+      model,
+      instruction: `Process notification from ${packageName}`,
+      rawError: errMsg,
+      drivingMode,
+      language: lang,
+    });
+    await ConversationStore.appendPending('assistant', formattedError).catch(() => {});
     await bringToForeground();
   }
 }

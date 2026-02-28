@@ -101,6 +101,7 @@ export default async function schedulerHeadlessTask(
 
   // These are set progressively – used in the catch block for LLM error formatting
   let provider: LLMProvider | null = null;
+  let model = '';
   let lang = 'en-US';
   let drivingMode = false;
   let instruction = '';
@@ -126,7 +127,7 @@ export default async function schedulerHeadlessTask(
     const configJson = await SchedulerModule.getAgentConfig();
     if (!configJson) {
       DebugLogger.add('error', TAG, 'No agent config found – cannot run sub-agent');
-      await ConversationStore.appendPending('assistant', '❌ Scheduled task could not run: No API key configured.').catch(() => {});
+      await ConversationStore.appendPending('assistant', 'Scheduled task could not run: No API key configured.').catch(() => {});
       return;
     }
     const config: AgentConfig = JSON.parse(configJson);
@@ -136,7 +137,7 @@ export default async function schedulerHeadlessTask(
 
     if (!config.apiKey) {
       DebugLogger.add('error', TAG, 'No API key in agent config');
-      await ConversationStore.appendPending('assistant', '❌ Scheduled task could not run: No API key.').catch(() => {});
+      await ConversationStore.appendPending('assistant', 'Scheduled task could not run: No API key.').catch(() => {});
       return;
     }
 
@@ -145,7 +146,8 @@ export default async function schedulerHeadlessTask(
       ? new ClaudeProvider(config.apiKey, config.model)
       : new OpenAIProvider(config.apiKey, config.model);
 
-    DebugLogger.add('info', TAG, `Provider: ${config.provider} (${provider.getDefaultModel()})`);
+    model = provider.getDefaultModel();
+    DebugLogger.add('info', TAG, `Provider: ${config.provider} (${model})`);
 
     // 4. Create tool registry (same tools as main app, minus scheduler to prevent recursion)
     const tokenStore = new TokenStore();
@@ -216,7 +218,7 @@ export default async function schedulerHeadlessTask(
     const result = await runToolLoop(
       {
         provider,
-        model: provider.getDefaultModel(),
+        model,
         tools: toolRegistry,
         maxIterations: config.maxSubAgentIterations ?? 8,
       },
@@ -227,10 +229,24 @@ export default async function schedulerHeadlessTask(
 
     // Write the assistant result to the pending queue so it appears as a bubble,
     // then bring the app to the foreground so the user sees it immediately.
-    if (result.content) {
-      await ConversationStore.appendPending('assistant', result.content).catch(() => {});
-      await bringToForeground();
+    // ALWAYS write something, even if content is empty (e.g., max iterations reached)
+    let messageToShow = result.content;
+    
+    // If content is empty (max iterations reached), format it via LLM for consistency
+    if (!messageToShow) {
+      const rawError = `Scheduled task reached iteration limit (${result.iterations} iterations) and could not be completed.`;
+      messageToShow = await formulateError({
+        provider,
+        model,
+        instruction: instruction,
+        rawError,
+        drivingMode,
+        language: lang,
+      });
     }
+    
+    await ConversationStore.appendPending('assistant', messageToShow).catch(() => {});
+    await bringToForeground();
 
     // 8. Mark as executed
     await SchedulerModule.markExecuted(scheduleId);
@@ -255,7 +271,7 @@ export default async function schedulerHeadlessTask(
     if (provider) {
       const userMessage = await formulateError({
         provider,
-        model: provider.getDefaultModel(),
+        model: model || provider.getDefaultModel(), // Use model if available, otherwise get from provider
         instruction: instruction || scheduleId,
         rawError: errMsg,
         drivingMode,
@@ -264,7 +280,7 @@ export default async function schedulerHeadlessTask(
       await ConversationStore.appendPending('assistant', userMessage).catch(() => {});
     } else {
       // No provider available (config/key error) – write raw error to pending
-      await ConversationStore.appendPending('assistant', `❌ ${errMsg}`).catch(() => {});
+      await ConversationStore.appendPending('assistant', `Scheduled task failed: ${errMsg}`).catch(() => {});
     }
     // Bring app to foreground so user sees the error result
     await bringToForeground();

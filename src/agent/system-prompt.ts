@@ -13,6 +13,8 @@ import type { SkillLoader } from './skill-loader';
 import type { ToolRegistry } from './tool-registry';
 import type { LLMProvider } from '../llm/types';
 import { DebugLogger } from './debug-logger';
+import { SoulStore } from './soul-store';
+import { PersonalMemoryStore } from './personal-memory-store';
 
 export interface SystemPromptConfig {
   skillLoader: SkillLoader;
@@ -194,17 +196,42 @@ export async function formulateError(opts: {
 }): Promise<string> {
   const { provider, model, instruction, rawError, drivingMode, language } = opts;
 
+  // Load soul and personal memory directly from stores
+  const soul = await SoulStore.getSoul();
+  const personalMemory = await PersonalMemoryStore.getMemory();
+
   const langName = resolveLanguageName(language);
   const outputStyle = getOutputStyleDescription(drivingMode);
 
-  const systemPrompt =
-    `You are Sanna, a friendly AI assistant reporting the outcome of a scheduled background task. ` +
-    `\n\n## Operating Mode\n${outputStyle}\n\n` +
-    `## Important Rules\n` +
-    `1. **Language** – You MUST respond in **${langName}**. Always use this language for every reply. ` +
-    `2. Base your reply on the user's original instruction, not on technical internals. ` +
-    `3. Explain what did NOT work in plain language. Do NOT include stack traces or error codes. ` +
-    `4. If possible, hint at what the user could do to fix it.`;
+  const parts: string[] = [];
+  parts.push(`You are Sanna, a friendly AI assistant reporting the outcome of a scheduled background task.`);
+  parts.push(`## Operating Mode\n${outputStyle}`);
+  parts.push(`## Important Rules
+1. **Language** – You MUST respond in **${langName}**. Always use this language for every reply.
+2. Base your reply on the user's original instruction, not on technical internals.
+3. Explain what did NOT work in plain language. Do NOT include stack traces or error codes.
+4. If possible, hint at what the user could do to fix it.`);
+
+  const trimmedSoul = soul?.trim();
+  if (trimmedSoul) {
+    parts.push(`## SOUL (Persona)
+
+Follow this persona/tone unless it conflicts with higher-priority rules (tool execution, safety, language policy).
+
+${trimmedSoul}`);
+  }
+
+  const trimmedMemory = personalMemory?.trim();
+  if (trimmedMemory) {
+    parts.push(`## Personal Memory (Read-only)
+
+Use this as durable user context (name, family, work, location, hobbies, favorite places/preferences).
+Also includes important personal dates/events (birthdays, namedays, all anniversaries, major life events).
+
+${trimmedMemory}`);
+  }
+
+  const systemPrompt = parts.join('\n\n');
 
   const userPrompt =
     `Scheduled instruction: ${instruction}\n` +
@@ -302,19 +329,44 @@ export async function formulateResponse(opts: {
 }): Promise<string> {
   const { provider, model, packageName, goal, status, rawMessage, drivingMode, language } = opts;
 
+  // Load soul and personal memory directly from stores
+  const soul = await SoulStore.getSoul();
+  const personalMemory = await PersonalMemoryStore.getMemory();
+
   const langName = resolveLanguageName(language);
   const outputStyle = getOutputStyleDescription(drivingMode);
 
-  const systemPrompt =
-    `You are Sanna, a friendly AI assistant confirming the outcome of a background task. ` +
-    `\n\n## Operating Mode\n${outputStyle}\n\n` +
-    `## Important Rules\n` +
-    `1. **Language** – You MUST respond in **${langName}**. Always use this language for every reply. ` +
-    `2. Base your reply on what the USER wanted to achieve (the Goal), not on the technical steps the automation took. ` +
-    `3. Do NOT mention clicking, typing, tapping, nodes, buttons, or any UI internals. ` +
-    `4. On success: confirm the user's intent was fulfilled in one short sentence. ` +
-    `5. On failure: explain what did NOT work in plain language, in one short sentence. ` +
-    `6. The app package name is provided – refer to it by its common name (e.g. "com.whatsapp" → "WhatsApp").`;
+  const parts: string[] = [];
+  parts.push(`You are Sanna, a friendly AI assistant confirming the outcome of a background task.`);
+  parts.push(`## Operating Mode\n${outputStyle}`);
+  parts.push(`## Important Rules
+1. **Language** – You MUST respond in **${langName}**. Always use this language for every reply.
+2. Base your reply on what the USER wanted to achieve (the Goal), not on the technical steps the automation took.
+3. Do NOT mention clicking, typing, tapping, nodes, buttons, or any UI internals.
+4. On success: confirm the user's intent was fulfilled in one short sentence.
+5. On failure: explain what did NOT work in plain language, in one short sentence.
+6. The app package name is provided – refer to it by its common name (e.g. "com.whatsapp" → "WhatsApp").`);
+
+  const trimmedSoul = soul?.trim();
+  if (trimmedSoul) {
+    parts.push(`## SOUL (Persona)
+
+Follow this persona/tone unless it conflicts with higher-priority rules (tool execution, safety, language policy).
+
+${trimmedSoul}`);
+  }
+
+  const trimmedMemory = personalMemory?.trim();
+  if (trimmedMemory) {
+    parts.push(`## Personal Memory (Read-only)
+
+Use this as durable user context (name, family, work, location, hobbies, favorite places/preferences).
+Also includes important personal dates/events (birthdays, namedays, all anniversaries, major life events).
+
+${trimmedMemory}`);
+  }
+
+  const systemPrompt = parts.join('\n\n');
 
   const userPrompt =
     `App package: ${packageName}\n` +
