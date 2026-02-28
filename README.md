@@ -26,13 +26,15 @@ There are two ways to get a beta release of Sanna:
 ## ✨ Highlights
 
 - **🗣️ Voice-first** – Wake word ("Hey Sanna") → Speech-to-Text → LLM agent → Text-to-Speech, fully hands-free
+- **🪄 Persona (SOUL)** – Give Sanna a personality. Define her tone, style, and character in plain text. Editable in Settings, supports voice dictation (STT), persists across reinstalls.
+- **🧠 Personal Memory** – Sanna remembers facts about you: name, family, job, home, hobbies, anniversaries, birthdays, important events. When you mention a personal detail, she writes it into a structured personal memory that is injected into every prompt. Curated automatically by the LLM – deduplicated and condensed on every update.
 - **📝 Skills are Markdown** – Drop a `SKILL.md` in a folder, the agent learns a new capability. No code changes.
 - **🔄 Agentic tool loop** – LLM → tool call → result → back to LLM, until final answer. Multi-step reasoning out of the box.
 - **📋 Local list management** – Shopping lists, to-dos, packing lists – stored on-device, fully offline, no cloud.
 - **⏰ Sub-agent scheduler** – Schedule natural-language tasks ("Every Monday at 9am, brief me on today's calendar via SMS"). A real LLM executes them – not a dumb cron job.
 - **🔔 Notification rules** – Define what happens when a notification arrives: read it aloud, auto-reply, play an alarm – each rule spawns its own LLM sub-agent with full tool access.
 - **🤖 UI Automation** – Controls other apps via Android Accessibility Services. An LLM sub-agent reads the UI tree, clicks buttons, types text – e.g. sends WhatsApp messages without any API.
-- **🧠 Learning Accessibility** – The system learns from every UI interaction: After each run, successful and failed flows are condensed into natural language and stored per app. On the next task for the same app, these hints are automatically injected into the system prompt, enabling the agent to learn from past experiences and improve over time.
+- **🧩 Learning Accessibility** – The system learns from every UI interaction: After each run, successful and failed flows are condensed into natural language and stored per app. On the next task for the same app, these hints are automatically injected into the system prompt, enabling the agent to learn from past experiences and improve over time.
 - **🚗 Driving mode** – Short spoken responses, auto-reads incoming notifications, optimized for hands-free use.
 - **🔒 No backend needed** – OAuth flows use PKCE. All data stays on your device.
 
@@ -230,6 +232,8 @@ Main Pipeline (user conversation)
     └── Accessibility Sub-Agent (UI automation, per task)
         └── AccessibilityHintStore (learned hints per app, persisted in AsyncStorage)
 ```
+
+**Persona & Memory injection:** Soul (persona) and Personal Memory are loaded from on-device storage and injected into the system prompt of every agent – main pipeline, notification sub-agent, and scheduler sub-agent. The accessibility sub-agent receives them read-only (no memory writes during UI automation). Memory writes (`memory_personal_upsert`) are restricted to the main loop only.
 
 **Learning mechanism:** After each accessibility automation run, the full interaction history (accessibility trees + actions) is condensed by an LLM into natural-language hints. These hints are stored per app package and automatically injected into future runs for the same app, enabling the agent to learn from past experiences and improve over time.
 
