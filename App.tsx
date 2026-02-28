@@ -21,6 +21,7 @@ import { DynamicSkillStore } from './src/agent/dynamic-skill-store';
 import { SkillSummaryGenerator } from './src/agent/skill-summary-generator';
 import { validateSkillContent, extractSkillName } from './src/agent/skill-validator';
 import { ConversationPipeline } from './src/agent/conversation-pipeline';
+import { SoulStore } from './src/agent/soul-store';
 import { DebugLogger } from './src/agent/debug-logger';
 import type { PipelineState } from './src/agent/conversation-pipeline';
 import { createToolRegistry } from './src/agent/create-tool-registry';
@@ -423,6 +424,7 @@ export default function App(): React.JSX.Element {
   const [pipelineState, setPipelineState] = useState<PipelineState>('idle');
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [soulText, setSoulText] = useState('');
 
   // Services (initialized lazily)
   const ttsService = useRef(new TTSService());
@@ -472,9 +474,10 @@ export default function App(): React.JSX.Element {
     await seedLocalConfigKeys(store);
 
     // Load preferences + secure keys in parallel (both from Keychain)
-    const [{ prefs, isFirstRun }, secureKeys] = await Promise.all([
+    const [{ prefs, isFirstRun }, secureKeys, loadedSoul] = await Promise.all([
       loadPreferences(store),
       loadSecureKeys(store),
+      SoulStore.getSoul(),
     ]);
 
     // On first start, auto-enable only skills that need no runtime permissions
@@ -486,6 +489,7 @@ export default function App(): React.JSX.Element {
     setLocale(prefs.appLanguage);
 
     setSettings({ ...prefs, ...secureKeys });
+    setSoulText(loadedSoul);
     setSettingsLoaded(true);
     setInitializing(false);
 
@@ -625,6 +629,15 @@ export default function App(): React.JSX.Element {
     vaultUnlocked,
   ]);
 
+  // Persist SOUL.md-like persona text (debounced, AsyncStorage-backed).
+  useEffect(() => {
+    if (!vaultUnlocked) return;
+    const timer = setTimeout(() => {
+      SoulStore.saveSoul(soulText).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [vaultUnlocked, soulText]);
+
   // Initialize services (audio only – auth services are configured reactively below)
   useEffect(() => {
     ttsService.current.init();
@@ -752,6 +765,7 @@ export default function App(): React.JSX.Element {
       maxIterations: settings.maxIterations ?? 10,
       maxHistoryMessages: 20,
       language: resolvedLanguage,
+      soul: soulText,
     });
 
     pipeline.setEnabledSkills(enabledSkillNames);
@@ -827,6 +841,10 @@ export default function App(): React.JSX.Element {
     settings.maxSubAgentIterations,
     settings.maxAccessibilityIterations,
   ]);
+
+  useEffect(() => {
+    pipelineRef.current?.setSoul(soulText);
+  }, [soulText]);
 
   // ─── Handlers (defined early for use in useEffects) ────────────────────────
 
@@ -1035,6 +1053,28 @@ export default function App(): React.JSX.Element {
       }
     }
   }, []);
+
+  const handleDictateSoul = useCallback(async (): Promise<string> => {
+    const permResult = await permissionManager.current.ensurePermissions([
+      'android.permission.RECORD_AUDIO',
+    ]);
+    if (!permResult.allGranted) {
+      Alert.alert(t('alert.micPermission.title'), t('alert.micPermission.message'));
+      return '';
+    }
+
+    try {
+      const language = settings.sttLanguage === 'system'
+        ? getSystemLocale()
+        : settings.sttLanguage;
+      return await sttService.current.listen(language, settings.sttMode);
+    } catch (err) {
+      if (err instanceof Error && !err.message.includes('cancel')) {
+        Alert.alert(t('alert.sttError'), err.message);
+      }
+      return '';
+    }
+  }, [settings.sttLanguage, settings.sttMode]);
 
   const handleToggleDrivingMode = useCallback(() => {
     setSettings(s => ({ ...s, drivingMode: !s.drivingMode }));
@@ -1379,6 +1419,13 @@ export default function App(): React.JSX.Element {
             onMaxSubAgentIterationsChange={v => setSettings(s => ({ ...s, maxSubAgentIterations: v }))}
             maxAccessibilityIterations={settings.maxAccessibilityIterations ?? 12}
             onMaxAccessibilityIterationsChange={v => setSettings(s => ({ ...s, maxAccessibilityIterations: v }))}
+            soulText={soulText}
+            onSoulTextChange={setSoulText}
+            onDictateSoul={handleDictateSoul}
+            onClearSoul={() => {
+              setSoulText('');
+              SoulStore.clearSoul().catch(() => {});
+            }}
           />
         </SafeAreaProvider>
       </View>

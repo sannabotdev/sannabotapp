@@ -34,6 +34,7 @@ export interface PipelineConfig {
   maxIterations?: number;
   maxHistoryMessages?: number;
   language?: string;
+  soul?: string;
 }
 
 export type StateChangeCallback = (state: PipelineState) => void;
@@ -69,6 +70,10 @@ export class ConversationPipeline {
 
   setDrivingMode(enabled: boolean): void {
     this.config.drivingMode = enabled;
+  }
+
+  setSoul(soul: string): void {
+    this.config.soul = soul;
   }
 
   getState(): PipelineState {
@@ -159,6 +164,7 @@ export class ConversationPipeline {
         enabledSkillNames: this.enabledSkillNames,
         drivingMode: this.config.drivingMode,
         language: this.config.language,
+        soul: this.config.soul,
       });
       DebugLogger.logSystemPrompt(systemPrompt);
 

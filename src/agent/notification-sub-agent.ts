@@ -28,6 +28,7 @@ export interface NotificationSubAgentConfig {
   enabledSkillNames: string[];
   drivingMode: boolean;
   language: string;
+  soul?: string;
   /** Maximum number of tool loop iterations (default: 8) */
   maxIterations?: number;
 }
@@ -56,7 +57,7 @@ export async function runNotificationSubAgent(
   notification: NotificationPayload,
   rules: NotificationRule[],
 ): Promise<string> {
-  const { provider, credentialManager, enabledSkillNames, drivingMode, language, maxIterations } = config;
+  const { provider, credentialManager, enabledSkillNames, drivingMode, language, soul, maxIterations } = config;
 
   DebugLogger.add(
     'info',
@@ -98,6 +99,7 @@ export async function runNotificationSubAgent(
     enabledSkillNames,
     drivingMode,
     language,
+    soul,
   });
   DebugLogger.add(
     'info',

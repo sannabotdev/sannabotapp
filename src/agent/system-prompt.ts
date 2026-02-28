@@ -21,6 +21,8 @@ export interface SystemPromptConfig {
   drivingMode: boolean;
   /** BCP-47 language tag or 'system'. Defaults to 'en'. */
   language?: string;
+  /** Optional user-defined persona instructions (SOUL.md equivalent). */
+  soul?: string;
 }
 
 /** Map a BCP-47 tag to a human-readable language name.
@@ -49,7 +51,7 @@ function resolveLanguageName(lang: string | undefined): string {
 }
 
 export function buildSystemPrompt(config: SystemPromptConfig): string {
-  const { skillLoader, toolRegistry, enabledSkillNames, drivingMode, language } = config;
+  const { skillLoader, toolRegistry, enabledSkillNames, drivingMode, language, soul } = config;
 
   const langName = resolveLanguageName(language);
 
@@ -97,6 +99,15 @@ ${drivingMode
 1. **ALWAYS use tools** – If you need to perform an action, use the appropriate tool. Never just say you would do it.
 2. **Language** – You MUST respond in **${langName}**. Always use this language for every reply, regardless of the language the user writes in, unless the user explicitly asks you to switch languages.
 3. **Errors** – When something goes wrong, clearly tell the user what happened.`);
+
+  const trimmedSoul = soul?.trim();
+  if (trimmedSoul) {
+    parts.push(`## SOUL (Persona)
+
+Follow this persona/tone unless it conflicts with higher-priority rules (tool execution, safety, language policy).
+
+${trimmedSoul}`);
+  }
 
   // Tools section
   const toolSummaries = toolRegistry.getSummaries();

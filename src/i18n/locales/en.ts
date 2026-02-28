@@ -53,6 +53,7 @@ const en = {
   'settings.section.provider': 'AI Provider',
   'settings.section.wakeWord': 'Wake Word',
   'settings.section.language': 'Language',
+  'settings.section.soul': 'Persona',
   'settings.section.skills': 'Skills',
   'settings.section.about': 'About',
 
@@ -88,6 +89,13 @@ const en = {
   'settings.speech.mode.offline.desc': 'On-device only',
   'settings.speech.mode.online': 'Online',
   'settings.speech.mode.online.desc': 'Cloud only',
+
+  // SOUL
+  'settings.soul.description': 'Define Sanna\'s personality and tone.',
+  'settings.soul.dictate': 'Dictate',
+  'settings.soul.clear': 'Clear',
+  'settings.soul.clearConfirm': 'Delete all text?',
+  'settings.soul.placeholder': 'Write your instructions here...',
 
   // Skills
   'settings.skills.filterLabel': 'Show only available skills',

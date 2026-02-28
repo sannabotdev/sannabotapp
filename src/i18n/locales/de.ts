@@ -53,6 +53,7 @@ const de = {
   'settings.section.provider': 'KI-Anbieter',
   'settings.section.wakeWord': 'Wake Word',
   'settings.section.language': 'Sprache',
+  'settings.section.soul': 'Persona',
   'settings.section.skills': 'Skills',
   'settings.section.about': 'Über Sanna',
 
@@ -88,6 +89,13 @@ const de = {
   'settings.speech.mode.offline.desc': 'Nur On-Device Erkennung',
   'settings.speech.mode.online': 'Online',
   'settings.speech.mode.online.desc': 'Nur Cloud-basiert',
+
+  // SOUL
+  'settings.soul.description': 'Definiert Sannas Persönlichkeit und Tonfall.',
+  'settings.soul.dictate': 'Diktieren',
+  'settings.soul.clear': 'Löschen',
+  'settings.soul.clearConfirm': 'Gesamten Text löschen?',
+  'settings.soul.placeholder': 'Schreibe hier deine Anweisungen...',
 
   // Skills
   'settings.skills.filterLabel': 'Nur verfügbare Skills anzeigen',

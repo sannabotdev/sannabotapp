@@ -16,11 +16,12 @@ import { AgentSection } from './sections/AgentSection';
 import { ProviderSection } from './sections/ProviderSection';
 import { ServicesSection } from './sections/ServicesSection';
 import { SkillsSection } from './sections/SkillsSection';
+import { SoulSection } from './sections/SoulSection';
 import { SpeechSection } from './sections/SpeechSection';
 import { WakeWordSection } from './sections/WakeWordSection';
 import { t } from '../../i18n';
 
-type SectionId = 'provider' | 'wakeWord' | 'services' | 'speech' | 'skills' | 'agent' | 'about';
+type SectionId = 'provider' | 'wakeWord' | 'services' | 'speech' | 'soul' | 'skills' | 'agent' | 'about';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -79,6 +80,10 @@ interface SettingsScreenProps {
   onMaxSubAgentIterationsChange: (value: number) => void;
   maxAccessibilityIterations: number;
   onMaxAccessibilityIterationsChange: (value: number) => void;
+  soulText: string;
+  onSoulTextChange: (value: string) => void;
+  onDictateSoul: () => Promise<string>;
+  onClearSoul: () => void;
 }
 
 export function SettingsScreen({
@@ -128,6 +133,10 @@ export function SettingsScreen({
   onMaxSubAgentIterationsChange,
   maxAccessibilityIterations,
   onMaxAccessibilityIterationsChange,
+  soulText,
+  onSoulTextChange,
+  onDictateSoul,
+  onClearSoul,
 }: SettingsScreenProps): React.JSX.Element {
   const { skillCredentialStatus, checkSkillCredentials } = useSkillCredentials(
     allSkills,
@@ -145,7 +154,7 @@ export function SettingsScreen({
   } = useSkillTesting(onTestSkill);
 
   // Accordion: Only one section open at a time
-  const [openSection, setOpenSection] = useState<SectionId | null>('provider');
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
 
   const handleSectionToggle = (sectionId: SectionId) => {
     setOpenSection(prev => (prev === sectionId ? null : sectionId));
@@ -225,6 +234,19 @@ export function SettingsScreen({
             onSttModeChange={onSttModeChange}
             appLanguage={appLanguage}
             onAppLanguageChange={onAppLanguageChange}
+          />
+        </CollapsibleSection>
+
+        {/* Soul */}
+        <CollapsibleSection
+          title={t('settings.section.soul')}
+          expanded={openSection === 'soul'}
+          onToggle={() => handleSectionToggle('soul')}>
+          <SoulSection
+            soulText={soulText}
+            onSoulTextChange={onSoulTextChange}
+            onDictateSoul={onDictateSoul}
+            onClearSoul={onClearSoul}
           />
         </CollapsibleSection>
 
