@@ -96,6 +96,10 @@ const en = {
   'settings.soul.clear': 'Clear',
   'settings.soul.clearConfirm': 'Delete all text?',
   'settings.soul.placeholder': 'Write your instructions here...',
+  'settings.persona.memory.description': 'Personal Facts (like name, family, work, location, hobbies, favorites).',
+  'settings.persona.memory.placeholder': 'Write personal facts as short bullet points or lines...',
+  'settings.persona.memory.clear': 'Clear memory',
+  'settings.persona.memory.clearConfirm': 'Delete all personal memory text?',
 
   // Skills
   'settings.skills.filterLabel': 'Show only available skills',

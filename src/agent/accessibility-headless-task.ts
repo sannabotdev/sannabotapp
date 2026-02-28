@@ -38,6 +38,7 @@ import { ConversationStore } from './conversation-store';
 import { DebugLogger } from './debug-logger';
 import { formulateResponse } from './system-prompt';
 import { AccessibilityHintStore } from './accessibility-hint-store';
+import { PersonalMemoryStore } from './personal-memory-store';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -354,6 +355,7 @@ export default async function accessibilityHeadlessTask(
   console.log('[AccessibilityTask] Running sub-agent...');
   let subResult: { message: string; status: 'success' | 'failed' | 'timeout'; messages: Message[] };
   try {
+    const personalMemory = await PersonalMemoryStore.getMemory();
     subResult = await runAccessibilitySubAgent({
       provider,
       model,
@@ -361,6 +363,7 @@ export default async function accessibilityHeadlessTask(
       goal,
       accessibilityTree,
       maxIterations: config.maxAccessibilityIterations,
+      personalMemory,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

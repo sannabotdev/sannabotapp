@@ -89,6 +89,9 @@ interface SettingsScreenProps {
   onSoulTextChange: (value: string) => void;
   onDictateSoul: () => Promise<string>;
   onClearSoul: () => void;
+  personalMemoryText: string;
+  onPersonalMemoryTextChange: (value: string) => void;
+  onClearPersonalMemory: () => void;
 }
 
 export function SettingsScreen({
@@ -146,6 +149,9 @@ export function SettingsScreen({
   onSoulTextChange,
   onDictateSoul,
   onClearSoul,
+  personalMemoryText,
+  onPersonalMemoryTextChange,
+  onClearPersonalMemory,
 }: SettingsScreenProps): React.JSX.Element {
   const { skillCredentialStatus, checkSkillCredentials } = useSkillCredentials(
     allSkills,
@@ -218,6 +224,9 @@ export function SettingsScreen({
             onSoulTextChange={onSoulTextChange}
             onDictateSoul={onDictateSoul}
             onClearSoul={onClearSoul}
+            personalMemoryText={personalMemoryText}
+            onPersonalMemoryTextChange={onPersonalMemoryTextChange}
+            onClearPersonalMemory={onClearPersonalMemory}
           />
         </CollapsibleSection>
 

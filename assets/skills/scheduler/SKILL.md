@@ -138,18 +138,32 @@ Only the specified fields are changed; the rest remains the same.
 
 ### Workflow for time calculation
 
-1. Get current time with `device` tool (`get_time`) — this returns `now_ms` (Unix timestamp in ms)
-2. For relative times: simply compute `now_ms + offset_in_ms`
-3. For absolute times: compute offset from `now_ms` using the returned local time
+**For relative times** ("in 5 minutes", "in an hour"):
+1. Get current time with `device` tool (`get_time`) — this returns `now_ms`
+2. Compute `now_ms + offset_in_ms`
+   - "in 5 minutes": `now_ms + 300000`
+   - "in an hour": `now_ms + 3600000`
 
-### Examples (using now_ms from device get_time)
+**For absolute times** ("next Tuesday at 8 PM", "tomorrow at 9", "on March 5 at 14:00"):
+1. Use `device` tool with `get_date_timestamp` — this returns the **exact** Unix timestamp. **Do NOT calculate manually.**
+2. Parameters:
+   - `date`: `"today"`, `"tomorrow"`, `"next_monday"`–`"next_sunday"`, `"in_2_weeks"`–`"in_4_weeks"`, `"next_month"`, `"next_year"`, or `"YYYY-MM-DD"`
+   - `time`: `"HH:MM"` (e.g. `"20:00"`)
+   - `unit`: `"milliseconds"`
+3. Use the returned timestamp directly as `trigger_at_ms`.
 
-- "in 5 minutes": `now_ms + 5 * 60 * 1000`
-- "in an hour": `now_ms + 60 * 60 * 1000`
-- "at 2:00 PM today": compute difference between 14:00 and current local time, then `now_ms + difference_ms`
-- "tomorrow at 9": compute difference to next 09:00, then `now_ms + difference_ms`
+### Examples
 
-**CRITICAL**: Always use the `now_ms` value from the `device` tool response for calculations. Do NOT try to convert local time strings to Unix timestamps manually — this causes timezone errors.
+- "in 5 minutes" → `device` `get_time`, then `now_ms + 300000`
+- "tomorrow at 9" → `device` `get_date_timestamp` with `date: "tomorrow"`, `time: "09:00"`, `unit: "milliseconds"`
+- "next Tuesday at 8 PM" → `device` `get_date_timestamp` with `date: "next_tuesday"`, `time: "20:00"`, `unit: "milliseconds"`
+- "in two weeks at noon" → `device` `get_date_timestamp` with `date: "in_2_weeks"`, `time: "12:00"`, `unit: "milliseconds"`
+- "in three weeks" → `device` `get_date_timestamp` with `date: "in_3_weeks"`, `time: "09:00"`, `unit: "milliseconds"`
+- "next month at 10 AM" → `device` `get_date_timestamp` with `date: "next_month"`, `time: "10:00"`, `unit: "milliseconds"`
+- "next year" → `device` `get_date_timestamp` with `date: "next_year"`, `time: "09:00"`, `unit: "milliseconds"`
+- "on March 5 at 2 PM" → `device` `get_date_timestamp` with `date: "2026-03-05"`, `time: "14:00"`, `unit: "milliseconds"`
+
+**CRITICAL**: For any date/weekday-based scheduling, ALWAYS use `get_date_timestamp`. Do NOT compute day offsets or timestamps manually — this causes calculation errors.
 
 ## Writing instructions
 
@@ -182,20 +196,18 @@ For contacts: Look up the number first with the `query` tool and include it dire
 ### "Send an SMS to Peter at 2 PM: on my way"
 
 1. `query`: Look up contact "Peter" → get number
-2. `device`: `get_time` → current time
-3. Calculate timestamp for 14:00 today
-4. `scheduler`: `create` with:
+2. `device`: `get_date_timestamp` with `date: "today"`, `time: "14:00"`, `unit: "milliseconds"` → get exact timestamp
+3. `scheduler`: `create` with:
    - `instruction`: `"Send an SMS to +4366012345678 with the text: On my way"`
-   - `trigger_at_ms`: 14:00 timestamp
+   - `trigger_at_ms`: timestamp from step 2
    - `recurrence_type`: `"once"`
 
 ### "Read my appointments every morning at 8"
 
-1. `device`: `get_time` → current time
-2. Calculate timestamp for tomorrow 08:00
-3. `scheduler`: `create` with:
+1. `device`: `get_date_timestamp` with `date: "tomorrow"`, `time: "08:00"`, `unit: "milliseconds"` → get exact timestamp
+2. `scheduler`: `create` with:
    - `instruction`: `"Fetch my Google Calendar events for today and read them via TTS"`
-   - `trigger_at_ms`: tomorrow 08:00
+   - `trigger_at_ms`: timestamp from step 1
    - `recurrence_type`: `"daily"`
    - `recurrence_time`: `"08:00"`
 

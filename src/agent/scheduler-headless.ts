@@ -21,6 +21,7 @@ import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider, Message } from '../llm/types';
 import { DebugLogger } from './debug-logger';
 import { ConversationStore } from './conversation-store';
+import { PersonalMemoryStore } from './personal-memory-store';
 
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
@@ -173,8 +174,11 @@ export default async function schedulerHeadlessTask(
       skillLoader,
       includeTts: false, // result is passed to foreground via appendPending; no TTS in background
       includeScheduler: false, // prevent recursive schedule creation
+      includePersonalMemoryTool: false,
     });
     toolRegistry.removeDisabledSkillTools(skillLoader, config.enabledSkillNames);
+
+    const personalMemory = await PersonalMemoryStore.getMemory();
 
     // 5. Build system prompt
     const systemPrompt = buildSystemPrompt({
@@ -183,6 +187,7 @@ export default async function schedulerHeadlessTask(
       enabledSkillNames: config.enabledSkillNames,
       drivingMode,
       language: lang,
+      personalMemory,
     });
 
     // 6. Build the instruction with context

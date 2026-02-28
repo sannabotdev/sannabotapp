@@ -23,6 +23,8 @@ export interface SystemPromptConfig {
   language?: string;
   /** Optional user-defined persona instructions (SOUL.md equivalent). */
   soul?: string;
+  /** Optional personal memory markdown (MEMORY.md equivalent). */
+  personalMemory?: string;
 }
 
 /** Map a BCP-47 tag to a human-readable language name.
@@ -51,7 +53,7 @@ function resolveLanguageName(lang: string | undefined): string {
 }
 
 export function buildSystemPrompt(config: SystemPromptConfig): string {
-  const { skillLoader, toolRegistry, enabledSkillNames, drivingMode, language, soul } = config;
+  const { skillLoader, toolRegistry, enabledSkillNames, drivingMode, language, soul, personalMemory } = config;
 
   const langName = resolveLanguageName(language);
 
@@ -107,6 +109,21 @@ ${drivingMode
 Follow this persona/tone unless it conflicts with higher-priority rules (tool execution, safety, language policy).
 
 ${trimmedSoul}`);
+  }
+
+  const trimmedMemory = personalMemory?.trim();
+  const hasMemoryUpsertTool = !!toolRegistry.get('memory_personal_upsert');
+  if (trimmedMemory || hasMemoryUpsertTool) {
+    parts.push(`## Personal Memory (MEMORY.md)
+
+Use this as durable user context (name, family, work, location, hobbies, favorite places/preferences).
+Also includes important personal dates/events (birthdays, namedays, all anniversaries, major life events).
+
+${hasMemoryUpsertTool
+  ? 'When the user mentions a NEW stable personal fact, call `memory_personal_upsert` to save it as a concise fact.'
+  : 'This context is read-only in this agent; do not attempt to modify it.'}
+
+${trimmedMemory || '(No personal facts stored yet.)'}`);
   }
 
   // Tools section

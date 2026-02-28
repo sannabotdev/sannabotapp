@@ -96,6 +96,10 @@ const de = {
   'settings.soul.clear': 'Löschen',
   'settings.soul.clearConfirm': 'Gesamten Text löschen?',
   'settings.soul.placeholder': 'Schreibe hier deine Anweisungen...',
+  'settings.persona.memory.description': 'Persönliche Fakten (wie Name, Familie, Arbeit, Wohnort, Hobbies, Lieblingsorte).',
+  'settings.persona.memory.placeholder': 'Persönliche Fakten als kurze Zeilen oder Bullet-Points eintragen...',
+  'settings.persona.memory.clear': 'Memory löschen',
+  'settings.persona.memory.clearConfirm': 'Gesamten persönlichen Memory-Text löschen?',
 
   // Skills
   'settings.skills.filterLabel': 'Nur verfügbare Skills anzeigen',

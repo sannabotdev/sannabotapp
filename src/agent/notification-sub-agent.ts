@@ -29,6 +29,7 @@ export interface NotificationSubAgentConfig {
   drivingMode: boolean;
   language: string;
   soul?: string;
+  personalMemory?: string;
   /** Maximum number of tool loop iterations (default: 8) */
   maxIterations?: number;
 }
@@ -57,7 +58,7 @@ export async function runNotificationSubAgent(
   notification: NotificationPayload,
   rules: NotificationRule[],
 ): Promise<string> {
-  const { provider, credentialManager, enabledSkillNames, drivingMode, language, soul, maxIterations } = config;
+  const { provider, credentialManager, enabledSkillNames, drivingMode, language, soul, personalMemory, maxIterations } = config;
 
   DebugLogger.add(
     'info',
@@ -81,6 +82,7 @@ export async function runNotificationSubAgent(
     skillLoader,
     includeTts: false,
     includeScheduler: false,
+    includePersonalMemoryTool: false,
   });
 
   toolRegistry.removeDisabledSkillTools(skillLoader, enabledSkillNames);
@@ -100,6 +102,7 @@ export async function runNotificationSubAgent(
     drivingMode,
     language,
     soul,
+    personalMemory,
   });
   DebugLogger.add(
     'info',

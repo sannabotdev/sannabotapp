@@ -33,7 +33,7 @@ export class DeviceTool implements Tool {
   }
 
   description(): string {
-    return 'Query and control device state: GPS location, battery level, time, volume (read/set), Wi-Fi status. Calculate Unix timestamps for dates (today, yesterday, tomorrow, or YYYY-MM-DD).';
+    return 'Query and control device state: GPS location, battery level, time, volume (read/set), Wi-Fi status. Calculate Unix timestamps for dates (today, yesterday, tomorrow, next_monday–next_sunday, in_2_weeks–in_4_weeks, next_month, next_year, or YYYY-MM-DD).';
   }
 
   parameters(): Record<string, unknown> {
@@ -55,7 +55,7 @@ export class DeviceTool implements Tool {
         },
         date: {
           type: 'string',
-          description: 'Only for get_date_timestamp: date specification. Can be "today", "yesterday", "tomorrow", or a date in YYYY-MM-DD format.',
+          description: 'Only for get_date_timestamp: date specification. Options: "today", "yesterday", "tomorrow", "next_monday"–"next_sunday" (next occurrence of that weekday), "in_2_weeks"–"in_4_weeks" (today + N×7 days), "next_month" (today + 30 days), "next_year" (exactly one year later), or a date in YYYY-MM-DD format.',
         },
         time: {
           type: 'string',
@@ -222,7 +222,8 @@ export class DeviceTool implements Tool {
     return successResult(
       `Time: ${timeStr}, Date: ${dateStr}, ISO-Date: ${isoDate}, ` +
       `Today is ${dateStr} (${isoDate}), ` +
-      `now_ms: ${nowMs} (Unix timestamp in milliseconds – for scheduler trigger_at_ms: simply calculate now_ms + desired duration in ms)`,
+      `now_ms: ${nowMs} (Unix timestamp in milliseconds – for relative scheduler offsets: now_ms + duration_in_ms. ` +
+      `For absolute dates/weekdays use device get_date_timestamp instead – it supports today, tomorrow, next_monday–next_sunday, in_2_weeks–in_4_weeks, next_month, next_year, and YYYY-MM-DD with a time and returns the exact ms timestamp.)`,
     );
   }
 
@@ -315,6 +316,24 @@ export class DeviceTool implements Tool {
       const now = new Date();
       let targetDate: Date;
 
+      // Map for "next_<weekday>" keywords → JS day number (0=Sun, 1=Mon, ..., 6=Sat)
+      const nextWeekdayMap: Record<string, number> = {
+        next_monday: 1,
+        next_tuesday: 2,
+        next_wednesday: 3,
+        next_thursday: 4,
+        next_friday: 5,
+        next_saturday: 6,
+        next_sunday: 0,
+      };
+
+      // Map for "in_N_weeks" keywords → number of days to add
+      const inWeeksMap: Record<string, number> = {
+        in_2_weeks: 14,
+        in_3_weeks: 21,
+        in_4_weeks: 28,
+      };
+
       // Parse date specification
       if (date === 'today') {
         targetDate = new Date(now);
@@ -324,11 +343,33 @@ export class DeviceTool implements Tool {
       } else if (date === 'tomorrow') {
         targetDate = new Date(now);
         targetDate.setDate(targetDate.getDate() + 1);
+      } else if (date === 'next_month') {
+        // next_month = today + 30 days
+        targetDate = new Date(now);
+        targetDate.setDate(targetDate.getDate() + 30);
+      } else if (date === 'next_year') {
+        // next_year = exactly one year later (handles leap years correctly)
+        targetDate = new Date(now);
+        targetDate.setFullYear(targetDate.getFullYear() + 1);
+      } else if (date.toLowerCase() in inWeeksMap) {
+        // "in_2_weeks", "in_3_weeks", "in_4_weeks"
+        targetDate = new Date(now);
+        targetDate.setDate(targetDate.getDate() + inWeeksMap[date.toLowerCase()]);
+      } else if (date.toLowerCase() in nextWeekdayMap) {
+        // "next_monday" through "next_sunday": find the NEXT occurrence of that weekday
+        const targetDay = nextWeekdayMap[date.toLowerCase()];
+        targetDate = new Date(now);
+        const currentDay = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        let daysAhead = targetDay - currentDay;
+        if (daysAhead <= 0) {
+          daysAhead += 7; // Always advance to NEXT week if today or already passed
+        }
+        targetDate.setDate(targetDate.getDate() + daysAhead);
       } else {
         // Try to parse as YYYY-MM-DD
         const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (!dateMatch) {
-          return errorResult(`get_date_timestamp: invalid date format. Use "today", "yesterday", "tomorrow", or YYYY-MM-DD.`);
+          return errorResult(`get_date_timestamp: invalid date format. Use "today", "yesterday", "tomorrow", "next_monday"–"next_sunday", "in_2_weeks"–"in_4_weeks", "next_month", "next_year", or YYYY-MM-DD.`);
         }
         const [, year, month, day] = dateMatch;
         targetDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));

@@ -22,6 +22,7 @@ import { SkillSummaryGenerator } from './src/agent/skill-summary-generator';
 import { validateSkillContent, extractSkillName } from './src/agent/skill-validator';
 import { ConversationPipeline } from './src/agent/conversation-pipeline';
 import { SoulStore } from './src/agent/soul-store';
+import { PersonalMemoryStore } from './src/agent/personal-memory-store';
 import { DebugLogger } from './src/agent/debug-logger';
 import type { PipelineState } from './src/agent/conversation-pipeline';
 import { createToolRegistry } from './src/agent/create-tool-registry';
@@ -443,6 +444,7 @@ export default function App(): React.JSX.Element {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [soulText, setSoulText] = useState('');
+  const [personalMemoryText, setPersonalMemoryText] = useState('');
 
   // Services (initialized lazily)
   const ttsService = useRef(new TTSService());
@@ -492,10 +494,11 @@ export default function App(): React.JSX.Element {
     await seedLocalConfigKeys(store);
 
     // Load preferences + secure keys in parallel (both from Keychain)
-    const [{ prefs, isFirstRun }, secureKeys, loadedSoul] = await Promise.all([
+    const [{ prefs, isFirstRun }, secureKeys, loadedSoul, loadedPersonalMemory] = await Promise.all([
       loadPreferences(store),
       loadSecureKeys(store),
       SoulStore.getSoul(),
+      PersonalMemoryStore.getMemory(),
     ]);
 
     // On first start, auto-enable only skills that need no runtime permissions
@@ -508,6 +511,7 @@ export default function App(): React.JSX.Element {
 
     setSettings({ ...prefs, ...secureKeys });
     setSoulText(loadedSoul);
+    setPersonalMemoryText(loadedPersonalMemory);
     setSettingsLoaded(true);
     setInitializing(false);
 
@@ -659,6 +663,14 @@ export default function App(): React.JSX.Element {
     return () => clearTimeout(timer);
   }, [vaultUnlocked, soulText]);
 
+  useEffect(() => {
+    if (!vaultUnlocked) return;
+    const timer = setTimeout(() => {
+      PersonalMemoryStore.saveMemory(personalMemoryText).catch(() => {});
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [vaultUnlocked, personalMemoryText]);
+
   // Initialize services (audio only – auth services are configured reactively below)
   useEffect(() => {
     ttsService.current.init();
@@ -768,6 +780,7 @@ export default function App(): React.JSX.Element {
     const toolRegistry = createToolRegistry({
       credentialManager: credentialManager.current,
       skillLoader: skillLoader.current,
+      includePersonalMemoryTool: true,
     });
     toolRegistry.removeDisabledSkillTools(skillLoader.current, enabledSkillNames);
 
@@ -787,6 +800,7 @@ export default function App(): React.JSX.Element {
       maxHistoryMessages: settings.llmContextMaxMessages ?? 20,
       language: resolvedLanguage,
       soul: soulText,
+      personalMemory: personalMemoryText,
     });
 
     pipeline.setEnabledSkills(enabledSkillNames);
@@ -794,6 +808,13 @@ export default function App(): React.JSX.Element {
       onStateChange: setPipelineState,
       onError: (err: string) => {
         Alert.alert(t('alert.error'), err);
+      },
+      onToolExecuted: (name: string) => {
+        if (name === 'memory_personal_upsert') {
+          PersonalMemoryStore.getMemory()
+            .then(setPersonalMemoryText)
+            .catch(() => {});
+        }
       },
       onTranscript: (role: 'user' | 'assistant', text: string) => {
         // Capture the latest assistant response for driving-mode question detection.
@@ -867,11 +888,21 @@ export default function App(): React.JSX.Element {
     settings.llmContextMaxMessages,
     settings.conversationHistoryMaxMessages,
     soulText,
+    personalMemoryText,
   ]);
 
   useEffect(() => {
     pipelineRef.current?.setSoul(soulText);
   }, [soulText]);
+
+  useEffect(() => {
+    pipelineRef.current?.setPersonalMemory(personalMemoryText);
+  }, [personalMemoryText]);
+
+  useEffect(() => {
+    if (!vaultUnlocked || screen !== 'settings') return;
+    PersonalMemoryStore.getMemory().then(setPersonalMemoryText).catch(() => {});
+  }, [vaultUnlocked, screen]);
 
   // ─── Handlers (defined early for use in useEffects) ────────────────────────
 
@@ -1323,6 +1354,7 @@ export default function App(): React.JSX.Element {
         credentialManager: credentialManager.current,
         skillLoader: skillLoader.current,
         includeTts: true,
+        includePersonalMemoryTool: false,
       });
 
       return await runSkillTest(
@@ -1460,6 +1492,12 @@ export default function App(): React.JSX.Element {
             onClearSoul={() => {
               setSoulText('');
               SoulStore.clearSoul().catch(() => {});
+            }}
+            personalMemoryText={personalMemoryText}
+            onPersonalMemoryTextChange={setPersonalMemoryText}
+            onClearPersonalMemory={() => {
+              setPersonalMemoryText('');
+              PersonalMemoryStore.clearMemory().catch(() => {});
             }}
           />
         </SafeAreaProvider>

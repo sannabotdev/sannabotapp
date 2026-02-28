@@ -24,6 +24,7 @@ import { BeepTool } from '../tools/beep-tool';
 import { AppSearchTool } from '../tools/app-search-tool';
 import { SkillDetailTool } from '../tools/skill-detail-tool';
 import { CheckCredentialTool } from '../tools/check-credential-tool';
+import { PersonalMemoryTool } from '../tools/personal-memory-tool';
 
 export interface CreateToolRegistryOptions {
   credentialManager: CredentialManager;
@@ -42,6 +43,12 @@ export interface CreateToolRegistryOptions {
    * - `true` (default) everywhere else.
    */
   includeScheduler?: boolean;
+
+  /**
+   * Include personal-memory write tool.
+   * Enable in main loop, disable in sub-agent loops.
+   */
+  includePersonalMemoryTool?: boolean;
 }
 
 /**
@@ -71,6 +78,9 @@ export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistr
   registry.register(new BeepTool());
   registry.register(new SkillDetailTool(opts.skillLoader));
   registry.register(new CheckCredentialTool(opts.credentialManager));
+  if (opts.includePersonalMemoryTool !== false) {
+    registry.register(new PersonalMemoryTool());
+  }
 
   return registry;
 }

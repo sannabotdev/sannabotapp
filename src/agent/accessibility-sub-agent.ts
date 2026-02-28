@@ -41,6 +41,8 @@ export interface AccessibilitySubAgentConfig {
   accessibilityTree: string;
   /** Maximum number of tool loop iterations (default: 12) */
   maxIterations?: number;
+  /** Optional personal memory context (read-only in this sub-agent). */
+  personalMemory?: string;
 }
 
 export interface AccessibilitySubAgentResult {
@@ -64,7 +66,7 @@ export interface AccessibilitySubAgentResult {
 export async function runAccessibilitySubAgent(
   config: AccessibilitySubAgentConfig,
 ): Promise<AccessibilitySubAgentResult> {
-  const { provider, model, packageName, goal, accessibilityTree, maxIterations } = config;
+  const { provider, model, packageName, goal, accessibilityTree, maxIterations, personalMemory } = config;
 
   // ── Load learned hints for this app ─────────────────────────────────────
   const existingHints = await AccessibilityHintStore.getHints(packageName);
@@ -83,12 +85,15 @@ export async function runAccessibilitySubAgent(
   const hintsSection = existingHints
     ? `## Learned Hints (from previous tasks)\n${existingHints}\n\n`
     : '';
+  const memorySection = personalMemory?.trim()
+    ? `## Personal Memory (Read-only)\n${personalMemory.trim()}\n\n`
+    : '';
 
   // ── System prompt (instructions ONLY – no UI state) ───────────────────────
   const systemPrompt = `You are an Accessibility Sub-Agent for the Sanna AI assistant.
 Your job is to control the Android UI of the app "${packageName}" to achieve a specific goal.
 
-${hintsSection}## Your Goal
+${hintsSection}${memorySection}## Your Goal
 ${goal}
 
 ## Initial Navigation

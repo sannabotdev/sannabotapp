@@ -24,6 +24,7 @@ import type { LLMProvider } from '../llm/types';
 import { DebugLogger } from './debug-logger';
 import { ConversationStore } from './conversation-store';
 import { SoulStore } from './soul-store';
+import { PersonalMemoryStore } from './personal-memory-store';
 import { loadRules, getRulesForApp } from './notification-rules-store';
 import type { NotificationRule } from './notification-rules-store';
 import IntentModule from '../native/IntentModule';
@@ -220,6 +221,7 @@ export default async function notificationHeadlessTask(
   // 7. Run notification sub-agent
   try {
     const soul = await SoulStore.getSoul();
+    const personalMemory = await PersonalMemoryStore.getMemory();
     DebugLogger.add('info', TAG, `Running sub-agent for: "${appName} – ${payload.sender}"`);
 
     const resultText = await runNotificationSubAgent(
@@ -230,6 +232,7 @@ export default async function notificationHeadlessTask(
         drivingMode,
         language: lang,
         soul,
+        personalMemory,
         maxIterations: config.maxSubAgentIterations,
       },
       payload,
