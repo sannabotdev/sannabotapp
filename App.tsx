@@ -781,6 +781,7 @@ export default function App(): React.JSX.Element {
       credentialManager: credentialManager.current,
       skillLoader: skillLoader.current,
       includePersonalMemoryTool: true,
+      provider,
     });
     toolRegistry.removeDisabledSkillTools(skillLoader.current, enabledSkillNames);
 

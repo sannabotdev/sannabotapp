@@ -7,8 +7,6 @@
 import type { LLMProvider, Message } from '../llm/types';
 import type { ToolRegistry } from './tool-registry';
 import { DebugLogger } from './debug-logger';
-import type { ToolResult } from '../tools/types';
-
 export interface ToolLoopConfig {
   provider: LLMProvider;
   model: string;
@@ -16,12 +14,6 @@ export interface ToolLoopConfig {
   maxIterations: number;
   /** Called when a tool result has a forUser value (driving mode TTS) */
   onUserMessage?: (message: string) => void;
-  /** Called after each executed tool (for UI sync hooks, telemetry, etc.). */
-  onToolExecuted?: (
-    name: string,
-    args: Record<string, unknown>,
-    result: ToolResult,
-  ) => void;
   /**
    * Optional early-exit predicate. Checked after every tool call batch.
    * When it returns true the loop stops immediately and `earlyExitContent`
@@ -84,7 +76,6 @@ export async function runToolLoop(
       DebugLogger.logToolCall(tc.name, tc.arguments);
       const result = await config.tools.execute(tc.name, tc.arguments);
       DebugLogger.logToolResult(tc.name, result.forLLM, result.forUser, result.isError);
-      config.onToolExecuted?.(tc.name, tc.arguments, result);
 
       // In driving mode, speak tool results to user immediately
       if (result.forUser && config.onUserMessage) {

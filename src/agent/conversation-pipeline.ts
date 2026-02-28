@@ -42,11 +42,6 @@ export interface PipelineConfig {
 export type StateChangeCallback = (state: PipelineState) => void;
 export type ErrorCallback = (error: string) => void;
 export type TranscriptCallback = (role: 'user' | 'assistant', text: string) => void;
-export type ToolExecutedCallback = (
-  name: string,
-  args: Record<string, unknown>,
-  result: { forLLM: string; forUser?: string; isError: boolean },
-) => void;
 
 export class ConversationPipeline {
   private config: PipelineConfig;
@@ -55,7 +50,6 @@ export class ConversationPipeline {
   private onStateChange?: StateChangeCallback;
   private onError?: ErrorCallback;
   private onTranscript?: TranscriptCallback;
-  private onToolExecuted?: ToolExecutedCallback;
   private state: PipelineState = 'idle';
 
   constructor(config: PipelineConfig) {
@@ -66,12 +60,10 @@ export class ConversationPipeline {
     onStateChange?: StateChangeCallback;
     onError?: ErrorCallback;
     onTranscript?: TranscriptCallback;
-    onToolExecuted?: ToolExecutedCallback;
   }): void {
     this.onStateChange = callbacks.onStateChange;
     this.onError = callbacks.onError;
     this.onTranscript = callbacks.onTranscript;
-    this.onToolExecuted = callbacks.onToolExecuted;
   }
 
   setEnabledSkills(skillNames: string[]): void {
@@ -208,7 +200,6 @@ export class ConversationPipeline {
           model: this.config.model,
           tools: this.config.tools,
           maxIterations: this.config.maxIterations ?? 10,
-          onToolExecuted: this.onToolExecuted,
         },
         messages,
       );

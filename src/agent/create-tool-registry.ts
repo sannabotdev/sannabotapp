@@ -8,6 +8,7 @@
 import { ToolRegistry } from './tool-registry';
 import { CredentialManager } from '../permissions/credential-manager';
 import type { SkillLoader } from './skill-loader';
+import type { LLMProvider } from '../llm/types';
 
 // Tools
 import { IntentTool } from '../tools/intent-tool';
@@ -49,6 +50,12 @@ export interface CreateToolRegistryOptions {
    * Enable in main loop, disable in sub-agent loops.
    */
   includePersonalMemoryTool?: boolean;
+
+  /**
+   * LLM provider for memory condensing after each upsert.
+   * Only used when includePersonalMemoryTool is true.
+   */
+  provider?: LLMProvider;
 }
 
 /**
@@ -79,7 +86,7 @@ export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistr
   registry.register(new SkillDetailTool(opts.skillLoader));
   registry.register(new CheckCredentialTool(opts.credentialManager));
   if (opts.includePersonalMemoryTool !== false) {
-    registry.register(new PersonalMemoryTool());
+    registry.register(new PersonalMemoryTool(opts.provider));
   }
 
   return registry;
