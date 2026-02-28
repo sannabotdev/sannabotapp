@@ -146,7 +146,7 @@ export default async function schedulerHeadlessTask(
       ? new ClaudeProvider(config.apiKey, config.model)
       : new OpenAIProvider(config.apiKey, config.model);
 
-    model = provider.getDefaultModel();
+    model = provider.getCurrentModel();
     DebugLogger.add('info', TAG, `Provider: ${config.provider} (${model})`);
 
     // 4. Create tool registry (same tools as main app, minus scheduler to prevent recursion)
@@ -218,7 +218,6 @@ export default async function schedulerHeadlessTask(
     const result = await runToolLoop(
       {
         provider,
-        model,
         tools: toolRegistry,
         maxIterations: config.maxSubAgentIterations ?? 8,
       },
@@ -237,7 +236,6 @@ export default async function schedulerHeadlessTask(
       const rawError = `Scheduled task reached iteration limit (${result.iterations} iterations) and could not be completed.`;
       messageToShow = await formulateError({
         provider,
-        model,
         instruction: instruction,
         rawError,
         drivingMode,
@@ -271,7 +269,6 @@ export default async function schedulerHeadlessTask(
     if (provider) {
       const userMessage = await formulateError({
         provider,
-        model: model || provider.getDefaultModel(), // Use model if available, otherwise get from provider
         instruction: instruction || scheduleId,
         rawError: errMsg,
         drivingMode,

@@ -175,7 +175,6 @@ export async function runNotificationSubAgent(
     const result = await runToolLoop(
       {
         provider,
-        model: provider.getDefaultModel(),
         tools: toolRegistry,
         maxIterations: resolvedMaxIterations,
       },

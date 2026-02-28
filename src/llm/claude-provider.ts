@@ -42,14 +42,13 @@ export class ClaudeProvider implements LLMProvider {
     this.defaultModel = defaultModel;
   }
 
-  getDefaultModel(): string {
+  getCurrentModel(): string {
     return this.defaultModel;
   }
 
   async chat(
     messages: Message[],
     tools: ToolDefinition[],
-    model: string,
     options: LLMOptions = {},
   ): Promise<LLMResponse> {
     const systemMessage = messages.find(m => m.role === 'system');
@@ -106,7 +105,7 @@ export class ClaudeProvider implements LLMProvider {
     }));
 
     const body: Record<string, unknown> = {
-      model: model || this.defaultModel,
+      model: this.defaultModel,
       max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
       messages: anthropicMessages,
     };

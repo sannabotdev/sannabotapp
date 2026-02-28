@@ -197,7 +197,6 @@ export class ConversationPipeline {
       const result = await runToolLoop(
         {
           provider: this.config.provider,
-          model: this.config.model,
           tools: this.config.tools,
           maxIterations: this.config.maxIterations ?? 10,
         },

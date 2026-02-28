@@ -169,7 +169,7 @@ export default async function notificationHeadlessTask(
     ? new ClaudeProvider(config.apiKey, config.model)
     : new OpenAIProvider(config.apiKey, config.model);
 
-  const model = provider.getDefaultModel();
+  const model = provider.getCurrentModel();
   DebugLogger.add('info', TAG, `Provider: ${config.provider} (${model})`);
 
   // 4. Load rules from AsyncStorage and filter for this app
@@ -259,7 +259,6 @@ export default async function notificationHeadlessTask(
       const rawError = `Notification processing for "${packageName}" completed, but no output was generated.`;
       const formattedError = await formulateError({
         provider,
-        model,
         instruction: `Process notification from ${packageName}`,
         rawError,
         drivingMode,
@@ -273,7 +272,6 @@ export default async function notificationHeadlessTask(
     DebugLogger.add('error', TAG, `Sub-agent failed: ${errMsg}`);
     const formattedError = await formulateError({
       provider,
-      model,
       instruction: `Process notification from ${packageName}`,
       rawError: errMsg,
       drivingMode,

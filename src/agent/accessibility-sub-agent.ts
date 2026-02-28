@@ -32,7 +32,6 @@ import { AccessibilityHintStore } from './accessibility-hint-store';
 
 export interface AccessibilitySubAgentConfig {
   provider: LLMProvider;
-  model: string;
   /** Android package of the target app (e.g. "com.whatsapp") */
   packageName: string;
   /** Natural-language description of what to do */
@@ -66,7 +65,7 @@ export interface AccessibilitySubAgentResult {
 export async function runAccessibilitySubAgent(
   config: AccessibilitySubAgentConfig,
 ): Promise<AccessibilitySubAgentResult> {
-  const { provider, model, packageName, goal, accessibilityTree, maxIterations, personalMemory } = config;
+  const { provider, packageName, goal, accessibilityTree, maxIterations, personalMemory } = config;
 
   // ── Load learned hints for this app ─────────────────────────────────────
   const existingHints = await AccessibilityHintStore.getHints(packageName);
@@ -142,7 +141,6 @@ Please achieve the goal: ${goal}`;
   const result = await runToolLoop(
     {
       provider,
-      model,
       tools: toolRegistry,
       maxIterations: maxIterations ?? 12,
       shouldExit: () => termination.done,

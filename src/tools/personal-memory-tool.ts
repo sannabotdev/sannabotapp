@@ -181,8 +181,8 @@ export class PersonalMemoryTool implements Tool {
         content: `Current memory:\n\n${memoryText}\n\n---\n\n${factsText}`,
       },
     ];
-    DebugLogger.logLLMRequest(this.provider!.getDefaultModel(), messages.length, 0, messages);
-    const response = await this.provider!.chat(messages, [], this.provider!.getDefaultModel());
+    DebugLogger.logLLMRequest(this.provider!.getCurrentModel(), messages.length, 0, messages);
+    const response = await this.provider!.chat(messages, []);
     DebugLogger.logLLMResponse(response.content, [], response.usage, response);
     const result = response.content?.trim();
     // Safety: if LLM returns empty/garbage, keep original

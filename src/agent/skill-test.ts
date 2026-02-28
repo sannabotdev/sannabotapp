@@ -57,7 +57,6 @@ export async function runSkillTest(
     const result = await runToolLoop(
       {
         provider,
-        model,
         tools: silentRegistry,
         maxIterations: 3,
       },

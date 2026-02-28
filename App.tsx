@@ -756,7 +756,7 @@ export default function App(): React.JSX.Element {
     // Generate skill summaries in background (non-blocking)
     const summaryGenerator = new SkillSummaryGenerator({
       provider,
-      model: provider.getDefaultModel(),
+      model: provider.getCurrentModel(),
     });
     const allSkills = skillLoader.current.getAllSkills();
     // Pre-generate summaries and update SkillLoader
@@ -793,7 +793,7 @@ export default function App(): React.JSX.Element {
 
       const pipeline = new ConversationPipeline({
         provider,
-        model: provider.getDefaultModel(),
+        model: provider.getCurrentModel(),
         tools: toolRegistry,
         skillLoader: skillLoader.current,
         ttsService: ttsService.current,
@@ -1355,7 +1355,7 @@ export default function App(): React.JSX.Element {
         skillLoader.current,
         provider,
         toolRegistry,
-        provider.getDefaultModel(),
+        provider.getCurrentModel(),
       );
     },
     [settings],

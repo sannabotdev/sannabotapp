@@ -9,7 +9,6 @@ import type { ToolRegistry } from './tool-registry';
 import { DebugLogger } from './debug-logger';
 export interface ToolLoopConfig {
   provider: LLMProvider;
-  model: string;
   tools: ToolRegistry;
   maxIterations: number;
   /** Called when a tool result has a forUser value (driving mode TTS) */
@@ -47,11 +46,10 @@ export async function runToolLoop(
     const toolDefs = config.tools.definitions();
 
     // Call LLM
-    DebugLogger.logLLMRequest(config.model, messages.length, toolDefs.length, messages);
+    DebugLogger.logLLMRequest(config.provider.getCurrentModel(), messages.length, toolDefs.length, messages);
     const response = await config.provider.chat(
       messages,
       toolDefs,
-      config.model,
     );
     DebugLogger.logLLMResponse(response.content, response.toolCalls ?? [], response.usage, response);
 

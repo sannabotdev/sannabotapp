@@ -80,7 +80,6 @@ async function failFormatted(
   rawMessage: string,
   ctx: {
     provider: LLMProvider;
-    model: string;
     packageName: string;
     goal: string;
     drivingMode: boolean;
@@ -162,7 +161,6 @@ async function extractAndCondenseHints(
   goal: string,
   status: 'success' | 'failed',
   provider: LLMProvider,
-  model: string,
 ): Promise<void> {
   try {
     const fullMessageHistory = formatMessagesForCondensing(messages);
@@ -200,9 +198,9 @@ async function extractAndCondenseHints(
       { role: 'system' as const, content: systemPrompt },
       { role: 'user' as const, content: userPrompt },
     ];
-    DebugLogger.logLLMRequest(model, condenseMessages.length, 0, condenseMessages);
+    DebugLogger.logLLMRequest(provider.getCurrentModel(), condenseMessages.length, 0, condenseMessages);
 
-    const response = await provider.chat(condenseMessages, [], model);
+    const response = await provider.chat(condenseMessages, []);
 
     DebugLogger.logLLMResponse(response.content, [], response.usage, response);
 
@@ -261,12 +259,11 @@ export default async function accessibilityHeadlessTask(
     ? new ClaudeProvider(config.apiKey, config.model)
     : new OpenAIProvider(config.apiKey, config.model);
 
-  const model = provider.getDefaultModel();
   const drivingMode = config.drivingMode ?? false;
   const language = config.language ?? 'en-US';
 
   // Shared context passed to failFormatted for every subsequent error
-  const ctx = { provider, model, packageName, goal, drivingMode, language };
+  const ctx = { provider, packageName, goal, drivingMode, language };
 
   // 4. Check Accessibility Service
   let serviceEnabled = false;
@@ -358,7 +355,6 @@ export default async function accessibilityHeadlessTask(
     const personalMemory = await PersonalMemoryStore.getMemory();
     subResult = await runAccessibilitySubAgent({
       provider,
-      model,
       packageName,
       goal,
       accessibilityTree,
@@ -382,7 +378,6 @@ export default async function accessibilityHeadlessTask(
       goal,
       subResult.status,
       provider,
-      model,
     );
   }
 

@@ -40,15 +40,13 @@ export interface LLMResponse {
 export interface LLMOptions {
   maxTokens?: number;
   temperature?: number;
-  model?: string;
 }
 
 export interface LLMProvider {
   chat(
     messages: Message[],
     tools: ToolDefinition[],
-    model: string,
     options?: LLMOptions,
   ): Promise<LLMResponse>;
-  getDefaultModel(): string;
+  getCurrentModel(): string;
 }

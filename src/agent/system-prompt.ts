@@ -188,13 +188,12 @@ function getOutputStyleDescription(drivingMode: boolean): string {
  */
 export async function formulateError(opts: {
   provider: LLMProvider;
-  model: string;
   instruction: string;
   rawError: string;
   drivingMode: boolean;
   language: string;
 }): Promise<string> {
-  const { provider, model, instruction, rawError, drivingMode, language } = opts;
+  const { provider, instruction, rawError, drivingMode, language } = opts;
 
   // Load soul and personal memory directly from stores
   const soul = await SoulStore.getSoul();
@@ -246,7 +245,6 @@ ${trimmedMemory}`);
         { role: 'user', content: userPrompt },
       ],
       [],
-      model,
     );
     const result = response.content?.trim() || rawError;
     DebugLogger.add('llm', 'FormulateError', `Formatted error → ${result}`);
@@ -264,14 +262,13 @@ ${trimmedMemory}`);
  */
 export async function generateAnnouncement(opts: {
   provider: LLMProvider;
-  model: string;
   appName: string;
   sender: string;
   preview: string;
   language: string;
   drivingMode: boolean;
 }): Promise<string> {
-  const { provider, model, appName, sender, preview, language, drivingMode } = opts;
+  const { provider, appName, sender, preview, language, drivingMode } = opts;
 
   const langName = resolveLanguageName(language);
   const outputStyle = getOutputStyleDescription(drivingMode);
@@ -299,7 +296,6 @@ export async function generateAnnouncement(opts: {
     const response = await provider.chat(
       [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       [],
-      model,
     );
     return response.content?.trim() || `${appName} von ${sender} erhalten, verarbeite…`;
   } catch (err) {
@@ -319,7 +315,6 @@ export async function generateAnnouncement(opts: {
  */
 export async function formulateResponse(opts: {
   provider: LLMProvider;
-  model: string;
   packageName: string;
   goal: string;
   status: 'success' | 'failed' | 'timeout';
@@ -327,7 +322,7 @@ export async function formulateResponse(opts: {
   drivingMode: boolean;
   language: string;
 }): Promise<string> {
-  const { provider, model, packageName, goal, status, rawMessage, drivingMode, language } = opts;
+  const { provider, packageName, goal, status, rawMessage, drivingMode, language } = opts;
 
   // Load soul and personal memory directly from stores
   const soul = await SoulStore.getSoul();
@@ -388,7 +383,6 @@ ${trimmedMemory}`);
         { role: 'user', content: userPrompt },
       ],
       [],
-      model,
     );
     const result = response.content?.trim() || rawMessage;
     DebugLogger.add('llm', 'FormulateResponse', `→ ${result}`);

@@ -104,7 +104,6 @@ export class SkillSummaryGenerator {
       const response = await this.config.provider.chat(
         messages,
         [],
-        this.config.model,
       );
 
       const summary = response.content?.trim() || skill.description;

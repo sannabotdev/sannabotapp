@@ -137,7 +137,6 @@ Summary:`,
       const response = await this.config.summarizeProvider.chat(
         summaryPrompt,
         [],
-        this.config.summarizeModel,
         { maxTokens: 1024, temperature: 0 },
       );
       return response.content;

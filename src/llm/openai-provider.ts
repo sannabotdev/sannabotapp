@@ -29,14 +29,13 @@ export class OpenAIProvider implements LLMProvider {
     this.baseUrl = baseUrl;
   }
 
-  getDefaultModel(): string {
+  getCurrentModel(): string {
     return this.defaultModel;
   }
 
   async chat(
     messages: Message[],
     tools: ToolDefinition[],
-    model: string,
     options: LLMOptions = {},
   ): Promise<LLMResponse> {
     // OpenAI uses the same role structure, just map tool messages correctly
@@ -68,11 +67,11 @@ export class OpenAIProvider implements LLMProvider {
       };
     });
 
-    const resolvedModel = model || this.defaultModel;
+    const resolvedModel = this.defaultModel;
 
     // Newer OpenAI models (gpt-4.1+, gpt-5+, o-series) require
     // 'max_completion_tokens' instead of the legacy 'max_tokens' parameter.
-    const useNewTokenParam = /^(gpt-4\.[1-9]|gpt-[5-9]|o[1-9])/.test(resolvedModel);
+    const useNewTokenParam = /^(gpt-4\.[1-9]|gpt-[5-9]|o[1-9])/.test(this.defaultModel);
     const tokenLimit = options.maxTokens ?? DEFAULT_MAX_TOKENS;
 
     const body: Record<string, unknown> = {
