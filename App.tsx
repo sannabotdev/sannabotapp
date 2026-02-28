@@ -161,6 +161,10 @@ interface AppPreferences {
   maxSubAgentIterations?: number;
   /** Max iterations for the accessibility sub-agent (default: 12) */
   maxAccessibilityIterations?: number;
+  /** Max messages kept in LLM context history (ConversationPipeline). */
+  llmContextMaxMessages?: number;
+  /** Max messages kept in persisted/UI conversation history. */
+  conversationHistoryMaxMessages?: number;
 }
 
 /** Full app settings (preferences + secure keys loaded from Keychain) */
@@ -188,6 +192,8 @@ const DEFAULT_PREFS: AppPreferences = {
   maxIterations: 10,
   maxSubAgentIterations: 8,
   maxAccessibilityIterations: 12,
+  llmContextMaxMessages: 20,
+  conversationHistoryMaxMessages: 50,
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -226,7 +232,17 @@ async function loadPreferences(store: TokenStore): Promise<{ prefs: AppPreferenc
     const json = await store.getApiKey(SECURE_KEY_IDS.preferences);
     if (json) {
       const saved = JSON.parse(json) as Partial<AppPreferences>;
-      return { prefs: { ...DEFAULT_PREFS, ...saved }, isFirstRun: false };
+      const merged: AppPreferences = { ...DEFAULT_PREFS, ...saved };
+      const llmContextMaxMessages = Math.min(200, Math.max(10, merged.llmContextMaxMessages ?? 20));
+      const conversationHistoryMaxMessages = Math.min(200, Math.max(50, merged.conversationHistoryMaxMessages ?? 50));
+      return {
+        prefs: {
+          ...merged,
+          llmContextMaxMessages,
+          conversationHistoryMaxMessages,
+        },
+        isFirstRun: false,
+      };
     }
   } catch {
     // Corrupt or missing – fall through to defaults
@@ -249,6 +265,8 @@ async function savePreferences(store: TokenStore, s: AppPreferences): Promise<vo
       maxIterations: s.maxIterations,
       maxSubAgentIterations: s.maxSubAgentIterations,
       maxAccessibilityIterations: s.maxAccessibilityIterations,
+      llmContextMaxMessages: s.llmContextMaxMessages,
+      conversationHistoryMaxMessages: s.conversationHistoryMaxMessages,
     };
     await store.saveApiKey(SECURE_KEY_IDS.preferences, JSON.stringify(toSave));
   } catch {
@@ -507,7 +525,7 @@ export default function App(): React.JSX.Element {
     syncNotificationRules().catch(() => {});
 
     // Restore persisted conversation history into the UI
-    const storedMessages = await ConversationStore.loadHistory();
+    const storedMessages = await ConversationStore.loadHistory(prefs.conversationHistoryMaxMessages ?? 50);
     if (storedMessages.length > 0) {
       setMessages(
         storedMessages.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
@@ -585,6 +603,7 @@ export default function App(): React.JSX.Element {
             ];
             ConversationStore.saveHistory(
               updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+              settings.conversationHistoryMaxMessages ?? 50,
             ).catch(() => {});
             return updated;
           });
@@ -609,7 +628,7 @@ export default function App(): React.JSX.Element {
       }
     });
     return () => sub.remove();
-  }, [settings.drivingMode]);
+  }, [settings.drivingMode, settings.appLanguage, settings.conversationHistoryMaxMessages]);
 
   // Persist preferences to Keychain whenever they change
   useEffect(() => {
@@ -625,6 +644,8 @@ export default function App(): React.JSX.Element {
     settings.sttLanguage,
     settings.sttMode,
     settings.appLanguage,
+    settings.llmContextMaxMessages,
+    settings.conversationHistoryMaxMessages,
     settingsLoaded,
     vaultUnlocked,
   ]);
@@ -763,7 +784,7 @@ export default function App(): React.JSX.Element {
       ttsService: ttsService.current,
       drivingMode: settings.drivingMode,
       maxIterations: settings.maxIterations ?? 10,
-      maxHistoryMessages: 20,
+      maxHistoryMessages: settings.llmContextMaxMessages ?? 20,
       language: resolvedLanguage,
       soul: soulText,
     });
@@ -786,6 +807,7 @@ export default function App(): React.JSX.Element {
           // Fire-and-forget: persist conversation after each message
           ConversationStore.saveHistory(
             updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+            settings.conversationHistoryMaxMessages ?? 50,
           ).catch(() => {});
           return updated;
         });
@@ -798,11 +820,13 @@ export default function App(): React.JSX.Element {
       pipeline.importHistory(oldPipeline.exportHistory());
     } else {
       // First pipeline creation: restore LLM history from AsyncStorage.
-      // Only the last 20 messages are injected (maxHistoryMessages cap).
-      ConversationStore.loadHistory().then(stored => {
+      // Inject only the last N messages configured for LLM context.
+      ConversationStore.loadHistory(settings.conversationHistoryMaxMessages ?? 50).then(stored => {
         if (stored.length > 0) {
           pipeline.importHistory(
-            stored.slice(-20).map(m => ({ role: m.role, content: m.text })),
+            stored
+              .slice(-(settings.llmContextMaxMessages ?? 20))
+              .map(m => ({ role: m.role, content: m.text })),
           );
         }
       }).catch(() => {});
@@ -840,6 +864,9 @@ export default function App(): React.JSX.Element {
     settings.maxIterations,
     settings.maxSubAgentIterations,
     settings.maxAccessibilityIterations,
+    settings.llmContextMaxMessages,
+    settings.conversationHistoryMaxMessages,
+    soulText,
   ]);
 
   useEffect(() => {
@@ -1419,6 +1446,14 @@ export default function App(): React.JSX.Element {
             onMaxSubAgentIterationsChange={v => setSettings(s => ({ ...s, maxSubAgentIterations: v }))}
             maxAccessibilityIterations={settings.maxAccessibilityIterations ?? 12}
             onMaxAccessibilityIterationsChange={v => setSettings(s => ({ ...s, maxAccessibilityIterations: v }))}
+            llmContextMaxMessages={settings.llmContextMaxMessages ?? 20}
+            onLlmContextMaxMessagesChange={v =>
+              setSettings(s => ({ ...s, llmContextMaxMessages: Math.min(200, Math.max(10, v)) }))
+            }
+            conversationHistoryMaxMessages={settings.conversationHistoryMaxMessages ?? 50}
+            onConversationHistoryMaxMessagesChange={v =>
+              setSettings(s => ({ ...s, conversationHistoryMaxMessages: Math.min(200, Math.max(50, v)) }))
+            }
             soulText={soulText}
             onSoulTextChange={setSoulText}
             onDictateSoul={handleDictateSoul}

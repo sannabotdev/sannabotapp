@@ -23,8 +23,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const HISTORY_KEY = 'conversation_history';
 const PENDING_KEY = 'background_pending';
 
-/** Max messages stored in conversation_history (shown in UI) */
-const MAX_HISTORY = 50;
+/** Default max messages stored in conversation_history (shown in UI) */
+const DEFAULT_MAX_HISTORY = 50;
 
 /** Max messages stored in background_pending (usually drained quickly) */
 const MAX_PENDING = 10;
@@ -43,10 +43,11 @@ export interface StoredMessage {
 export class ConversationStore {
   /**
    * Save the full conversation history (called by main app after each turn).
-   * Truncates to the last MAX_HISTORY messages.
+   * Truncates to the last `maxMessages` entries.
    */
-  static async saveHistory(messages: StoredMessage[]): Promise<void> {
-    const truncated = messages.slice(-MAX_HISTORY);
+  static async saveHistory(messages: StoredMessage[], maxMessages = DEFAULT_MAX_HISTORY): Promise<void> {
+    const safeMax = Math.max(1, maxMessages);
+    const truncated = messages.slice(-safeMax);
     await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(truncated));
   }
 
@@ -54,16 +55,18 @@ export class ConversationStore {
    * Load the persisted conversation history (called by main app on startup).
    * Returns an empty array if nothing is stored yet.
    */
-  static async loadHistory(): Promise<StoredMessage[]> {
+  static async loadHistory(maxMessages = DEFAULT_MAX_HISTORY): Promise<StoredMessage[]> {
     try {
       const json = await AsyncStorage.getItem(HISTORY_KEY);
       if (!json) return [];
       const parsed = JSON.parse(json) as unknown;
       if (!Array.isArray(parsed)) return [];
       // Validate shape – filter out any malformed entries
-      return (parsed as StoredMessage[]).filter(
+      const valid = (parsed as StoredMessage[]).filter(
         m => (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string',
       );
+      const safeMax = Math.max(1, maxMessages);
+      return valid.slice(-safeMax);
     } catch {
       return [];
     }

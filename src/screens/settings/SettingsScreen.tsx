@@ -13,6 +13,7 @@ import { useSkillCredentials } from './hooks/useSkillCredentials';
 import { useSkillTesting } from './hooks/useSkillTesting';
 import { AboutSection } from './sections/AboutSection';
 import { AgentSection } from './sections/AgentSection';
+import { HistorySection } from './sections/HistorySection';
 import { ProviderSection } from './sections/ProviderSection';
 import { ServicesSection } from './sections/ServicesSection';
 import { SkillsSection } from './sections/SkillsSection';
@@ -21,7 +22,7 @@ import { SpeechSection } from './sections/SpeechSection';
 import { WakeWordSection } from './sections/WakeWordSection';
 import { t } from '../../i18n';
 
-type SectionId = 'provider' | 'wakeWord' | 'services' | 'speech' | 'soul' | 'skills' | 'agent' | 'about';
+type SectionId = 'provider' | 'wakeWord' | 'services' | 'speech' | 'soul' | 'skills' | 'agent' | 'history' | 'about';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -80,6 +81,10 @@ interface SettingsScreenProps {
   onMaxSubAgentIterationsChange: (value: number) => void;
   maxAccessibilityIterations: number;
   onMaxAccessibilityIterationsChange: (value: number) => void;
+  llmContextMaxMessages: number;
+  onLlmContextMaxMessagesChange: (value: number) => void;
+  conversationHistoryMaxMessages: number;
+  onConversationHistoryMaxMessagesChange: (value: number) => void;
   soulText: string;
   onSoulTextChange: (value: string) => void;
   onDictateSoul: () => Promise<string>;
@@ -133,6 +138,10 @@ export function SettingsScreen({
   onMaxSubAgentIterationsChange,
   maxAccessibilityIterations,
   onMaxAccessibilityIterationsChange,
+  llmContextMaxMessages,
+  onLlmContextMaxMessagesChange,
+  conversationHistoryMaxMessages,
+  onConversationHistoryMaxMessagesChange,
   soulText,
   onSoulTextChange,
   onDictateSoul,
@@ -171,22 +180,18 @@ export function SettingsScreen({
       </View>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: 48 }}>
-        {/* LLM Provider */}
+        {/* Language */}
         <CollapsibleSection
-          title={t('settings.section.provider')}
-          expanded={openSection === 'provider'}
-          onToggle={() => handleSectionToggle('provider')}>
-          <ProviderSection
-            selectedProvider={selectedProvider}
-            onProviderChange={onProviderChange}
-            claudeApiKey={claudeApiKey}
-            onClaudeApiKeyChange={onClaudeApiKeyChange}
-            openAIApiKey={openAIApiKey}
-            onOpenAIApiKeyChange={onOpenAIApiKeyChange}
-            selectedOpenAIModel={selectedOpenAIModel}
-            onOpenAIModelChange={onOpenAIModelChange}
-            selectedClaudeModel={selectedClaudeModel}
-            onClaudeModelChange={onClaudeModelChange}
+          title={t('settings.section.language')}
+          expanded={openSection === 'speech'}
+          onToggle={() => handleSectionToggle('speech')}>
+          <SpeechSection
+            sttLanguage={sttLanguage}
+            onSttLanguageChange={onSttLanguageChange}
+            sttMode={sttMode}
+            onSttModeChange={onSttModeChange}
+            appLanguage={appLanguage}
+            onAppLanguageChange={onAppLanguageChange}
           />
         </CollapsibleSection>
 
@@ -200,40 +205,6 @@ export function SettingsScreen({
             onWakeWordToggle={onWakeWordToggle}
             wakeWordKey={wakeWordKey}
             onWakeWordKeyChange={onWakeWordKeyChange}
-          />
-        </CollapsibleSection>
-
-        {/* Services & OAuth */}
-        <CollapsibleSection
-          title={t('settings.section.services')}
-          expanded={openSection === 'services'}
-          onToggle={() => handleSectionToggle('services')}>
-          <ServicesSection
-            googleWebClientId={googleWebClientId}
-            onGoogleWebClientIdChange={onGoogleWebClientIdChange}
-            spotifyClientId={spotifyClientId}
-            onSpotifyClientIdChange={onSpotifyClientIdChange}
-            wakeWordKey={wakeWordKey}
-            onWakeWordKeyChange={onWakeWordKeyChange}
-            slackClientId={slackClientId}
-            onSlackClientIdChange={onSlackClientIdChange}
-            googleMapsApiKey={googleMapsApiKey}
-            onGoogleMapsApiKeyChange={onGoogleMapsApiKeyChange}
-          />
-        </CollapsibleSection>
-
-        {/* Language */}
-        <CollapsibleSection
-          title={t('settings.section.language')}
-          expanded={openSection === 'speech'}
-          onToggle={() => handleSectionToggle('speech')}>
-          <SpeechSection
-            sttLanguage={sttLanguage}
-            onSttLanguageChange={onSttLanguageChange}
-            sttMode={sttMode}
-            onSttModeChange={onSttModeChange}
-            appLanguage={appLanguage}
-            onAppLanguageChange={onAppLanguageChange}
           />
         </CollapsibleSection>
 
@@ -274,6 +245,44 @@ export function SettingsScreen({
           />
         </CollapsibleSection>
 
+        {/* Services & OAuth */}
+        <CollapsibleSection
+          title={t('settings.section.services')}
+          expanded={openSection === 'services'}
+          onToggle={() => handleSectionToggle('services')}>
+          <ServicesSection
+            googleWebClientId={googleWebClientId}
+            onGoogleWebClientIdChange={onGoogleWebClientIdChange}
+            spotifyClientId={spotifyClientId}
+            onSpotifyClientIdChange={onSpotifyClientIdChange}
+            wakeWordKey={wakeWordKey}
+            onWakeWordKeyChange={onWakeWordKeyChange}
+            slackClientId={slackClientId}
+            onSlackClientIdChange={onSlackClientIdChange}
+            googleMapsApiKey={googleMapsApiKey}
+            onGoogleMapsApiKeyChange={onGoogleMapsApiKeyChange}
+          />
+        </CollapsibleSection>
+
+        {/* LLM Provider */}
+        <CollapsibleSection
+          title={t('settings.section.provider')}
+          expanded={openSection === 'provider'}
+          onToggle={() => handleSectionToggle('provider')}>
+          <ProviderSection
+            selectedProvider={selectedProvider}
+            onProviderChange={onProviderChange}
+            claudeApiKey={claudeApiKey}
+            onClaudeApiKeyChange={onClaudeApiKeyChange}
+            openAIApiKey={openAIApiKey}
+            onOpenAIApiKeyChange={onOpenAIApiKeyChange}
+            selectedOpenAIModel={selectedOpenAIModel}
+            onOpenAIModelChange={onOpenAIModelChange}
+            selectedClaudeModel={selectedClaudeModel}
+            onClaudeModelChange={onClaudeModelChange}
+          />
+        </CollapsibleSection>
+
         {/* Agent Iterations */}
         <CollapsibleSection
           title={t('settings.section.agent')}
@@ -289,12 +298,26 @@ export function SettingsScreen({
           />
         </CollapsibleSection>
 
+        {/* History */}
+        <CollapsibleSection
+          title={t('settings.section.history')}
+          expanded={openSection === 'history'}
+          onToggle={() => handleSectionToggle('history')}>
+          <HistorySection
+            llmContextMaxMessages={llmContextMaxMessages}
+            onLlmContextMaxMessagesChange={onLlmContextMaxMessagesChange}
+            conversationHistoryMaxMessages={conversationHistoryMaxMessages}
+            onConversationHistoryMaxMessagesChange={onConversationHistoryMaxMessagesChange}
+            onClearHistory={onClearHistory}
+          />
+        </CollapsibleSection>
+
         {/* About */}
         <CollapsibleSection
           title={t('settings.section.about')}
           expanded={openSection === 'about'}
           onToggle={() => handleSectionToggle('about')}>
-          <AboutSection onClearHistory={onClearHistory} />
+          <AboutSection />
         </CollapsibleSection>
       </ScrollView>
 

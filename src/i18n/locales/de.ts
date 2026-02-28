@@ -186,6 +186,14 @@ const de = {
   'settings.agent.accessibilityDesc': 'UI-Automatisierung (Apps steuern)',
   'settings.agent.validationError': 'Bitte einen Wert zwischen 6 und 50 eingeben',
 
+  // Verlauf
+  'settings.section.history': 'Verlauf',
+  'settings.history.description': 'Konfiguriert LLM-Kontextverlauf und gespeicherten Konversationsverlauf getrennt.',
+  'settings.history.llmContextLabel': 'LLM-Kontextverlauf',
+  'settings.history.llmContextDesc': 'Nachrichten im Prompt-Kontext (10–200)',
+  'settings.history.conversationHistoryLabel': 'Konversationsverlauf',
+  'settings.history.conversationHistoryDesc': 'Im Chat gespeicherte/angezeigte Nachrichten (50–200)',
+
   // Avatar-Menü
   'menu.settings': 'Einstellungen',
   'menu.debug': 'Debug-Log',

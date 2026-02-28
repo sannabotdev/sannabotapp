@@ -186,6 +186,14 @@ const en = {
   'settings.agent.accessibilityDesc': 'UI Automation (controlling apps)',
   'settings.agent.validationError': 'Please enter a value between 6 and 50',
 
+  // History
+  'settings.section.history': 'History',
+  'settings.history.description': 'Configure LLM context history and persisted conversation history independently.',
+  'settings.history.llmContextLabel': 'LLM Context History',
+  'settings.history.llmContextDesc': 'Messages kept in prompt context (10–200)',
+  'settings.history.conversationHistoryLabel': 'Conversation History',
+  'settings.history.conversationHistoryDesc': 'Messages stored/shown in chat history (50–200)',
+
   // Avatar Menu
   'menu.settings': 'Settings',
   'menu.debug': 'Debug Log',
