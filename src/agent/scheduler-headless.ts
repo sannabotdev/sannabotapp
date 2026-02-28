@@ -169,7 +169,7 @@ export default async function schedulerHeadlessTask(
 
     const skillLoader = new SkillLoader();
 
-    const toolRegistry = createToolRegistry({
+    const toolRegistry = await createToolRegistry({
       credentialManager,
       skillLoader,
       includeTts: false, // result is passed to foreground via appendPending; no TTS in background

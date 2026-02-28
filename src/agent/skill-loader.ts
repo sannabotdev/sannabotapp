@@ -340,6 +340,20 @@ export class SkillLoader {
   }
 
   /**
+   * Clear the summary for a skill from memory.
+   * Called when a summary is deleted from AsyncStorage.
+   * Invalidates the skills summary cache since summaries changed.
+   */
+  clearSkillSummary(skillName: string): void {
+    const skill = this.skills.get(skillName);
+    if (skill) {
+      skill.summary = undefined;
+      // Invalidate cache - summaries changed
+      this.skillsSummaryCache.clear();
+    }
+  }
+
+  /**
    * Build XML skill summary for system prompt
    * Only includes enabled skills.
    * Uses LLM-generated summaries if available, otherwise falls back to description.

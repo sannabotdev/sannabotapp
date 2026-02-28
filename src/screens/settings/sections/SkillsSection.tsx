@@ -17,6 +17,7 @@ import { useNotificationAccess } from '../hooks/useNotificationAccess';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n';
 import { AccessibilityHintsModal } from '../components/AccessibilityHintsModal';
+import { SkillSummaryModal } from '../components/SkillSummaryModal';
 
 const CATEGORY_ORDER = ['communication', 'productivity', 'information', 'media', 'other'] as const;
 type SkillCategory = (typeof CATEGORY_ORDER)[number];
@@ -81,6 +82,8 @@ interface SkillsSectionProps {
   onDeleteSkill?: (skillName: string) => Promise<void>;
   /** Names of dynamically uploaded skills (for delete button visibility). */
   dynamicSkillNames?: string[];
+  /** Called when a skill summary is deleted. */
+  onClearSkillSummary?: (skillName: string) => void;
 }
 
 export function SkillsSection({
@@ -99,10 +102,12 @@ export function SkillsSection({
   onAddSkill,
   onDeleteSkill,
   dynamicSkillNames = [],
+  onClearSkillSummary,
 }: SkillsSectionProps): React.JSX.Element {
   const [showOnlyInstalled, setShowOnlyInstalled] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showHintsModal, setShowHintsModal] = useState(false);
+  const [summaryModalSkill, setSummaryModalSkill] = useState<SkillInfo | null>(null);
   const { notificationAccessGranted, handleOpenNotificationSettings } =
     useNotificationAccess(enabledSkillNames);
 
@@ -339,6 +344,13 @@ export function SkillsSection({
                 <Text className="text-red-400 text-[13px] leading-none">✕</Text>
               </TouchableOpacity>
             )}
+            {/* Summary icon */}
+            <TouchableOpacity
+              onPress={() => setSummaryModalSkill(skill)}
+              style={{ width: 28, height: 28 }}
+              className="rounded-full bg-surface-tertiary items-center justify-center">
+              <Text className="text-label-primary text-[13px] leading-none">ℹ</Text>
+            </TouchableOpacity>
             <Switch
               value={isEnabled}
               onValueChange={v => onToggleSkill(skill.name, v)}
@@ -485,6 +497,15 @@ export function SkillsSection({
       <AccessibilityHintsModal
         visible={showHintsModal}
         onClose={() => setShowHintsModal(false)}
+      />
+
+      <SkillSummaryModal
+        visible={summaryModalSkill !== null}
+        skill={summaryModalSkill}
+        onClose={() => setSummaryModalSkill(null)}
+        onSummaryDeleted={(skillName) => {
+          onClearSkillSummary?.(skillName);
+        }}
       />
     </>
   );

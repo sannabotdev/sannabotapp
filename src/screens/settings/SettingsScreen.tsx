@@ -92,6 +92,7 @@ interface SettingsScreenProps {
   personalMemoryText: string;
   onPersonalMemoryTextChange: (value: string) => void;
   onClearPersonalMemory: () => void;
+  onClearSkillSummary?: (skillName: string) => void;
 }
 
 export function SettingsScreen({
@@ -152,6 +153,7 @@ export function SettingsScreen({
   personalMemoryText,
   onPersonalMemoryTextChange,
   onClearPersonalMemory,
+  onClearSkillSummary,
 }: SettingsScreenProps): React.JSX.Element {
   const { skillCredentialStatus, checkSkillCredentials } = useSkillCredentials(
     allSkills,
@@ -251,6 +253,7 @@ export function SettingsScreen({
             onAddSkill={onAddSkill}
             onDeleteSkill={onDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
+            onClearSkillSummary={onClearSkillSummary}
           />
         </CollapsibleSection>
 

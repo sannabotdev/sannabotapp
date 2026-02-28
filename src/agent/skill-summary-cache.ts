@@ -103,6 +103,23 @@ export class SkillSummaryCache {
   }
 
   /**
+   * Get the raw cached summary for viewing (without hash validation).
+   * Returns the summary text if it exists, null otherwise.
+   */
+  static async getRawSummary(skillName: string): Promise<string | null> {
+    try {
+      const key = SkillSummaryCache.key(skillName);
+      const cached = await AsyncStorage.getItem(key);
+      if (!cached) return null;
+
+      const data: CachedSummary = JSON.parse(cached);
+      return data.summary;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Clear all cached summaries.
    */
   static async clearAll(): Promise<void> {

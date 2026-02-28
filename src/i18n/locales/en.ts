@@ -125,6 +125,14 @@ const en = {
   'settings.skills.disconnect.cancel': 'Cancel',
   'settings.skills.disconnect.confirm': 'Disconnect',
   'settings.skills.connectError.title': 'Connection failed',
+  'settings.skills.summary.title': 'Summary',
+  'settings.skills.summary.empty': 'No summary available',
+  'settings.skills.summary.close': 'Close',
+  'settings.skills.summary.delete': 'Delete summary',
+  'settings.skills.summary.deleteConfirm.title': 'Delete summary?',
+  'settings.skills.summary.deleteConfirm.message': 'Do you really want to delete the summary for "{name}"?',
+  'settings.skills.summary.deleteConfirm.cancel': 'Cancel',
+  'settings.skills.summary.deleteConfirm.confirm': 'Delete',
 
   // Skill categories
   'settings.skills.category.communication': 'Communication',

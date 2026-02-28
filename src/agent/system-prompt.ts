@@ -143,11 +143,13 @@ ${toolSummaries.join('\n')}`);
 
 The following skills extend your capabilities. Each skill has a summary that indicates which tools and parameters to use.
 
-**How to use skills:**
-- Review the skill summaries below to identify which skill applies to the user's request.
-- **If no personal fact was detected above**, call \`skill_detail\` as your very first action to read the full skill definition before doing anything else.
-- **If a personal fact was detected**, call \`memory_personal_upsert\` first, then \`skill_detail\`, then proceed.
-- Only after reading the full skill definition, proceed with the tools and parameters described in it.
+**CRITICAL: How to use skills (MANDATORY WORKFLOW):**
+1. Review the skill summaries below to identify which skill applies to the user's request.
+2. **BEFORE using any skill, you MUST call \`skill_detail\` with the skill name as your FIRST action.** This is MANDATORY - never skip this step.
+3. **If a personal fact was detected above**, call \`memory_personal_upsert\` first, then \`skill_detail\`, then proceed.
+4. **If no personal fact was detected**, call \`skill_detail\` immediately as your very first tool call.
+5. Only after reading the full skill definition via \`skill_detail\`, proceed with the tools and parameters described in it.
+6. **NEVER attempt to use a skill without first calling \`skill_detail\`** - the summaries are not sufficient for execution.
 
 ${skillsSummary}`);
   }

@@ -77,7 +77,7 @@ export async function runNotificationSubAgent(
   // 1. Create tool registry (no TTS – result is passed to foreground; no scheduler to prevent recursion)
   DebugLogger.add('info', TAG, 'Creating tool registry…');
   const skillLoader = new SkillLoader();
-  const toolRegistry = createToolRegistry({
+  const toolRegistry = await createToolRegistry({
     credentialManager,
     skillLoader,
     includeTts: false,

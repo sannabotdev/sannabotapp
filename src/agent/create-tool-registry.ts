@@ -26,6 +26,7 @@ import { AppSearchTool } from '../tools/app-search-tool';
 import { SkillDetailTool } from '../tools/skill-detail-tool';
 import { CheckCredentialTool } from '../tools/check-credential-tool';
 import { PersonalMemoryTool } from '../tools/personal-memory-tool';
+import { GmailSendTool } from '../tools/gmail-send-tool';
 
 export interface CreateToolRegistryOptions {
   credentialManager: CredentialManager;
@@ -64,7 +65,7 @@ export interface CreateToolRegistryOptions {
  * After calling this you can still call `registry.removeDisabledSkillTools()`
  * to strip tools whose exclusive skill is disabled.
  */
-export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistry {
+export async function createToolRegistry(opts: CreateToolRegistryOptions): Promise<ToolRegistry> {
   const registry = new ToolRegistry();
 
   registry.register(new IntentTool());
@@ -87,6 +88,15 @@ export function createToolRegistry(opts: CreateToolRegistryOptions): ToolRegistr
   registry.register(new CheckCredentialTool(opts.credentialManager));
   if (opts.includePersonalMemoryTool !== false) {
     registry.register(new PersonalMemoryTool(opts.provider));
+  }
+
+  // Conditionally register GmailSendTool if Gmail skill is enabled and configured
+  const gmailSkill = opts.skillLoader.getSkill('gmail');
+  if (gmailSkill) {
+    const credentialsConfigured = await opts.credentialManager.areAllConfigured(gmailSkill.credentials);
+    if (credentialsConfigured) {
+      registry.register(new GmailSendTool(opts.credentialManager));
+    }
   }
 
   return registry;

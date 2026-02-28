@@ -777,79 +777,80 @@ export default function App(): React.JSX.Element {
         // Non-critical - summaries will be generated on-demand
       });
 
-    const toolRegistry = createToolRegistry({
-      credentialManager: credentialManager.current,
-      skillLoader: skillLoader.current,
-      includePersonalMemoryTool: true,
-      provider,
-    });
-    toolRegistry.removeDisabledSkillTools(skillLoader.current, enabledSkillNames);
-
     // Resolve 'system' → actual device locale before passing to pipeline.
     // The pipeline uses this for both TTS and the system-prompt language rule.
     const resolvedLanguage =
       settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
 
-    const pipeline = new ConversationPipeline({
-      provider,
-      model: provider.getDefaultModel(),
-      tools: toolRegistry,
-      skillLoader: skillLoader.current,
-      ttsService: ttsService.current,
-      drivingMode: settings.drivingMode,
-      maxIterations: settings.maxIterations ?? 10,
-      maxHistoryMessages: settings.llmContextMaxMessages ?? 20,
-      language: resolvedLanguage,
-      soul: soulText,
-      personalMemory: personalMemoryText,
-    });
+    (async () => {
+      const toolRegistry = await createToolRegistry({
+        credentialManager: credentialManager.current,
+        skillLoader: skillLoader.current,
+        includePersonalMemoryTool: true,
+        provider,
+      });
+      toolRegistry.removeDisabledSkillTools(skillLoader.current, enabledSkillNames);
 
-    pipeline.setEnabledSkills(enabledSkillNames);
+      const pipeline = new ConversationPipeline({
+        provider,
+        model: provider.getDefaultModel(),
+        tools: toolRegistry,
+        skillLoader: skillLoader.current,
+        ttsService: ttsService.current,
+        drivingMode: settings.drivingMode,
+        maxIterations: settings.maxIterations ?? 10,
+        maxHistoryMessages: settings.llmContextMaxMessages ?? 20,
+        language: resolvedLanguage,
+        soul: soulText,
+        personalMemory: personalMemoryText,
+      });
+
+      pipeline.setEnabledSkills(enabledSkillNames);
       pipeline.setCallbacks({
         onStateChange: setPipelineState,
         onError: (err: string) => {
           Alert.alert(t('alert.error'), err);
         },
         onTranscript: (role: 'user' | 'assistant', text: string) => {
-        // Capture the latest assistant response for driving-mode question detection.
-        // This ref is read by the tts_started handler to decide whether to start
-        // concurrent listening.
-        if (role === 'assistant') {
-          currentResponseTextRef.current = text;
-        }
-        setMessages(prev => {
-          const updated = [...prev, { role, text, timestamp: new Date() }];
-          // Fire-and-forget: persist conversation after each message
-          ConversationStore.saveHistory(
-            updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
-            settings.conversationHistoryMaxMessages ?? 50,
-          ).catch(() => {});
-          return updated;
-        });
-      },
-    });
+          // Capture the latest assistant response for driving-mode question detection.
+          // This ref is read by the tts_started handler to decide whether to start
+          // concurrent listening.
+          if (role === 'assistant') {
+            currentResponseTextRef.current = text;
+          }
+          setMessages(prev => {
+            const updated = [...prev, { role, text, timestamp: new Date() }];
+            // Fire-and-forget: persist conversation after each message
+            ConversationStore.saveHistory(
+              updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+              settings.conversationHistoryMaxMessages ?? 50,
+            ).catch(() => {});
+            return updated;
+          });
+        },
+      });
 
-    // Preserve conversation history across pipeline recreations
-    const oldPipeline = pipelineRef.current;
-    if (oldPipeline) {
-      pipeline.importHistory(oldPipeline.exportHistory());
-    } else {
-      // First pipeline creation: restore LLM history from AsyncStorage.
-      // Inject only the last N messages configured for LLM context.
-      ConversationStore.loadHistory(settings.conversationHistoryMaxMessages ?? 50).then(stored => {
-        if (stored.length > 0) {
-          pipeline.importHistory(
-            stored
-              .slice(-(settings.llmContextMaxMessages ?? 20))
-              .map(m => ({ role: m.role, content: m.text })),
-          );
-        }
-      }).catch(() => {});
-    }
+      // Preserve conversation history across pipeline recreations
+      const oldPipeline = pipelineRef.current;
+      if (oldPipeline) {
+        pipeline.importHistory(oldPipeline.exportHistory());
+      } else {
+        // First pipeline creation: restore LLM history from AsyncStorage.
+        // Inject only the last N messages configured for LLM context.
+        ConversationStore.loadHistory(settings.conversationHistoryMaxMessages ?? 50).then(stored => {
+          if (stored.length > 0) {
+            pipeline.importHistory(
+              stored
+                .slice(-(settings.llmContextMaxMessages ?? 20))
+                .map(m => ({ role: m.role, content: m.text })),
+            );
+          }
+        }).catch(() => {});
+      }
 
-    pipelineRef.current = pipeline;
+      pipelineRef.current = pipeline;
 
-    // Persist agent config so all headless sub-agents (scheduler, notifications, …) can use it
+      // Persist agent config so all headless sub-agents (scheduler, notifications, …) can use it
     const agentConfig = {
       apiKey: apiKey,
       provider: selectedProvider,
@@ -861,9 +862,10 @@ export default function App(): React.JSX.Element {
       maxSubAgentIterations: settings.maxSubAgentIterations ?? 8,
       maxAccessibilityIterations: settings.maxAccessibilityIterations ?? 12,
     };
-    const agentConfigJson = JSON.stringify(agentConfig);
-    SchedulerModule.saveAgentConfig(agentConfigJson).catch(() => {});
-    NotificationListenerModule?.saveAgentConfig(agentConfigJson).catch(() => {});
+      const agentConfigJson = JSON.stringify(agentConfig);
+      SchedulerModule.saveAgentConfig(agentConfigJson).catch(() => {});
+      NotificationListenerModule?.saveAgentConfig(agentConfigJson).catch(() => {});
+    })();
   }, [
     vaultUnlocked,
     settingsLoaded,
@@ -1341,7 +1343,7 @@ export default function App(): React.JSX.Element {
           ? new ClaudeProvider(apiKey, selectedModel)
           : new OpenAIProvider(apiKey, selectedModel);
 
-      const toolRegistry = createToolRegistry({
+      const toolRegistry = await createToolRegistry({
         credentialManager: credentialManager.current,
         skillLoader: skillLoader.current,
         includeTts: true,
@@ -1463,6 +1465,9 @@ export default function App(): React.JSX.Element {
             onDeleteSkill={handleDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
             onClearHistory={handleClearHistory}
+            onClearSkillSummary={(skillName) => {
+              skillLoader.current.clearSkillSummary(skillName);
+            }}
             maxIterations={settings.maxIterations ?? 10}
             onMaxIterationsChange={v => setSettings(s => ({ ...s, maxIterations: v }))}
             maxSubAgentIterations={settings.maxSubAgentIterations ?? 8}

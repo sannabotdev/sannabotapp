@@ -24,7 +24,6 @@ type DeviceAction =
   | 'get_volume'
   | 'set_volume'
   | 'get_wifi_status'
-  | 'encode_base64url'
   | 'get_date_timestamp';
 
 export class DeviceTool implements Tool {
@@ -42,16 +41,12 @@ export class DeviceTool implements Tool {
       properties: {
         action: {
           type: 'string',
-          enum: ['get_location', 'get_battery', 'get_time', 'get_volume', 'set_volume', 'get_wifi_status', 'encode_base64url', 'get_date_timestamp'],
-          description: 'Action to perform. set_volume: set media volume (0–100). encode_base64url: encode text as base64url (UTF-8) for the Gmail API. get_date_timestamp: calculate Unix timestamp for a date.',
+          enum: ['get_location', 'get_battery', 'get_time', 'get_volume', 'set_volume', 'get_wifi_status', 'get_date_timestamp'],
+          description: 'Action to perform. set_volume: set media volume (0–100). get_date_timestamp: calculate Unix timestamp for a date.',
         },
         volume: {
           type: 'number',
           description: 'Only for set_volume: desired volume in percent (0–100).',
-        },
-        text: {
-          type: 'string',
-          description: 'Only for encode_base64url: the text to encode (e.g. an RFC 2822 email).',
         },
         date: {
           type: 'string',
@@ -88,8 +83,6 @@ export class DeviceTool implements Tool {
           return this.setVolume(args.volume as number);
         case 'get_wifi_status':
           return await this.getWifiStatus();
-        case 'encode_base64url':
-          return this.encodeBase64url(args.text as string);
         case 'get_date_timestamp':
           return this.getDateTimestamp(
             args.date as string,
@@ -282,24 +275,6 @@ export class DeviceTool implements Tool {
       return errorResult(
         `Wi-Fi status query failed: ${err instanceof Error ? err.message : String(err)}`,
       );
-    }
-  }
-
-  private encodeBase64url(text: string): ToolResult {
-    if (typeof text !== 'string' || text.length === 0) {
-      return errorResult('encode_base64url: "text" parameter missing or empty.');
-    }
-    try {
-      // encodeURIComponent → percent-encodes every non-ASCII byte
-      // unescape converts %XX back to single-byte chars (latin-1 view of UTF-8 bytes)
-      // btoa can then safely base64-encode the byte string
-      // This is the standard Hermes/React-Native-safe UTF-8 → base64 trick
-      const utf8Bytes = unescape(encodeURIComponent(text));
-      const base64 = btoa(utf8Bytes);
-      const base64url = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      return successResult(base64url);
-    } catch (err) {
-      return errorResult(`base64url encoding failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

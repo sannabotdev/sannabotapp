@@ -10,19 +10,23 @@ credentials:
    label: Google Account
    type: oauth
    auth_provider: google
+exclusive_tool: gmail_send
 ---
 # Gmail Skill
 
 Read and send emails via the Gmail API.
 
+## Tool: gmail_send
+
+**✅ RECOMMENDED for sending emails** - Only available when Gmail is enabled and configured.
+
+The `gmail_send` tool automatically handles email formatting and encoding. Simply provide email parameters (to, subject, body, etc.) and the tool handles the rest. See the "Send email" section below for details.
+
 ## Tool: http
 
 All requests require `auth_provider: "google"`.
 
-**⚠️ IMPORTANT FOR SENDING EMAILS:**
-- The Gmail API **requires** the `raw` field in the request body when sending emails
-- You **MUST** use the 2-step workflow: first encode with `device` tool (`encode_base64url`), then use the result as `raw`
-- **NEVER** try to send an email in a single HTTP call without encoding first - it will fail
+**For sending emails:** Use the `gmail_send` tool (see above).
 
 ### Gmail categories (labels)
 
@@ -140,76 +144,57 @@ Use `device` tool with `get_date_timestamp` action to get Unix timestamps in loc
 
 ### Send email
 
-**⚠️ CRITICAL: The Gmail API REQUIRES the `raw` field in the request body. You MUST follow this 2-step workflow - sending without encoding will fail!**
+Use the `gmail_send` tool (only available when Gmail is enabled and configured).
 
-**NEVER attempt to send an email in a single step. You MUST:**
-1. First encode the email using the `device` tool with `encode_base64url`
-2. Then use the encoded result as the `raw` field value
-
-**Workflow to send an email (REQUIRED 2 steps):**
-
-**Step 1** - Encode the email text using `device` tool (each header on its own line, blank line before body):
+The `gmail_send` tool handles all email formatting and encoding automatically. Simply provide the email parameters:
 
 ```json
 {
-  "action": "encode_base64url",
-  "text": "To: recipient@example.com\nSubject: Subject here\n\nMessage body here"
+  "to": "recipient@example.com",
+  "subject": "Subject here",
+  "body": "Message body here",
+  "cc": "cc@example.com",
+  "bcc": "bcc@example.com"
 }
 ```
 
-**Step 2** - Use the returned encoded string as the `raw` field in the HTTP request:
+For replies, include thread information:
 
 ```json
 {
-  "method": "POST",
-  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-  "auth_provider": "google",
-  "body": {
-    "raw": "{RESULT_FROM_encode_base64url}"
-  }
+  "to": "sender@example.com",
+  "subject": "Re: Original subject",
+  "body": "Reply text here",
+  "threadId": "{THREAD_ID_OF_ORIGINAL_EMAIL}",
+  "inReplyTo": "<message-id@mail.gmail.com>",
+  "references": "<message-id@mail.gmail.com>"
 }
 ```
-
-**Important:**
-- The `raw` field is **mandatory** - Gmail will reject requests without it
-- **NEVER** base64url-encode the `raw` field yourself - always use the `device` tool with `encode_base64url`
-- The `device` tool ensures correct UTF-8 encoding and proper base64url format
-- The email format must be: headers (one per line), blank line, then body
 
 ### Reply to an email
 
-**⚠️ CRITICAL: Same 2-step workflow as sending - you MUST encode first using `device` tool with `encode_base64url`!**
+Use the `gmail_send` tool.
 
-When replying to an email you MUST:
-1. `To:` = **sender of the original email** (= value of the `From:` header of the received email). NOT the recipient.
-2. Subject = `Re: {ORIGINAL_SUBJECT}` (only prepend if not already starting with "Re:").
-3. Set thread headers: `In-Reply-To: {MESSAGE_ID}` and `References: {MESSAGE_ID}` (Message-ID from the header of the original email, including angle brackets, e.g. `<abc123@mail.gmail.com>`).
-4. Include `threadId` in the JSON body.
+When replying to an email using `gmail_send`:
+1. `to` = **sender of the original email** (= value of the `From:` header of the received email). NOT the recipient.
+2. `subject` = `Re: {ORIGINAL_SUBJECT}` (only prepend if not already starting with "Re:").
+3. Set `inReplyTo` and `references` to the Message-ID from the original email (including angle brackets, e.g. `<abc123@mail.gmail.com>`).
+4. Include `threadId` from the original email.
 
-**Step 1** - Encode reply text using `device` tool:
-
-```json
-{
-  "action": "encode_base64url",
-  "text": "To: sender@example.com\nSubject: Re: Original subject\nIn-Reply-To: <message-id@mail.gmail.com>\nReferences: <message-id@mail.gmail.com>\n\nReply text here."
-}
-```
-
-**Step 2** - Send with `raw` field (from Step 1) and `threadId`:
+Example:
 
 ```json
 {
-  "method": "POST",
-  "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-  "auth_provider": "google",
-  "body": {
-    "raw": "{RESULT_FROM_encode_base64url}",
-    "threadId": "{THREAD_ID_OF_ORIGINAL_EMAIL}"
-  }
+  "to": "sender@example.com",
+  "subject": "Re: Original subject",
+  "body": "Reply text here.",
+  "threadId": "{THREAD_ID_OF_ORIGINAL_EMAIL}",
+  "inReplyTo": "<message-id@mail.gmail.com>",
+  "references": "<message-id@mail.gmail.com>"
 }
 ```
 
-Find the `Message-ID` (for `In-Reply-To`/`References`) and `threadId` in the email details fetch (`format=full`) under `payload.headers` and `threadId` respectively.
+Find the `Message-ID` (for `inReplyTo`/`references`) and `threadId` in the email details fetch (`format=full`) under `payload.headers` and `threadId` respectively.
 
 ## Behavior rules for reading emails
 

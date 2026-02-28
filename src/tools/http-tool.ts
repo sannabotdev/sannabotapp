@@ -62,9 +62,8 @@ export class HttpTool implements Tool {
           },
         },
         body: {
-          type: 'object',
-          description: 'Request body for POST/PUT/PATCH requests',
-          additionalProperties: true,
+          type: 'string',
+          description: 'Request body for POST/PUT/PATCH requests. Can be a JSON string or will be automatically stringified if provided as an object.',
         },
         response_format: {
           type: 'string',
@@ -85,7 +84,7 @@ export class HttpTool implements Tool {
     for (const entry of (args.headers as { key: string; value: string }[]) ?? []) {
       if (entry.key) headers[entry.key] = entry.value;
     }
-    const body = args.body as Record<string, unknown> | undefined;
+    const bodyRaw = args.body;
     const responseFormat = (args.response_format as string) ?? 'json';
 
     if (!url) {
@@ -127,8 +126,16 @@ export class HttpTool implements Tool {
         },
       };
 
-      if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
-        requestInit.body = JSON.stringify(body);
+      if (bodyRaw !== undefined && bodyRaw !== null && ['POST', 'PUT', 'PATCH'].includes(method)) {
+        // Handle body: if it's already a string, use it directly; if it's an object, stringify it
+        if (typeof bodyRaw === 'string') {
+          requestInit.body = bodyRaw;
+        } else if (typeof bodyRaw === 'object') {
+          requestInit.body = JSON.stringify(bodyRaw);
+        } else {
+          // Fallback: convert to string
+          requestInit.body = String(bodyRaw);
+        }
       }
 
       const response = await fetch(url, requestInit);

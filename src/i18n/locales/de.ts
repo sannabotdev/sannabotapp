@@ -125,6 +125,14 @@ const de = {
   'settings.skills.disconnect.cancel': 'Abbrechen',
   'settings.skills.disconnect.confirm': 'Trennen',
   'settings.skills.connectError.title': 'Verbindung fehlgeschlagen',
+  'settings.skills.summary.title': 'Zusammenfassung',
+  'settings.skills.summary.empty': 'Keine Zusammenfassung vorhanden',
+  'settings.skills.summary.close': 'Schließen',
+  'settings.skills.summary.delete': 'Zusammenfassung löschen',
+  'settings.skills.summary.deleteConfirm.title': 'Zusammenfassung löschen?',
+  'settings.skills.summary.deleteConfirm.message': 'Möchten Sie die Zusammenfassung für "{name}" wirklich löschen?',
+  'settings.skills.summary.deleteConfirm.cancel': 'Abbrechen',
+  'settings.skills.summary.deleteConfirm.confirm': 'Löschen',
 
   // Skill-Kategorien
   'settings.skills.category.communication': 'Kommunikation',
