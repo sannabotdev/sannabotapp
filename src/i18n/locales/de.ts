@@ -225,6 +225,7 @@ const de = {
   // Scheduler-Screen
   'schedules.title': 'Zeitpläne',
   'schedules.empty': 'Keine Zeitpl\u00E4ne vorhanden.\nErstelle einen Eintrag indem du Sanna z.\u00A0B. sagst: \u201EErinnere mich morgen um 9\u00A0Uhr\u2026\u201C',
+  'schedules.detail.label': 'Bezeichnung',
   'schedules.detail.instruction': 'Anweisung',
   'schedules.detail.triggerAt': 'Ausf\u00FChrung',
   'schedules.detail.recurrence': 'Wiederholung',

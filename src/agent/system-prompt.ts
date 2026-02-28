@@ -120,7 +120,7 @@ Use this as durable user context (name, family, work, location, hobbies, favorit
 Also includes important personal dates/events (birthdays, namedays, all anniversaries, major life events).
 
 ${hasMemoryUpsertTool
-  ? 'When the user mentions a NEW stable personal fact, call `memory_personal_upsert` to save it as a concise fact.'
+  ? `**Memory-first rule:** Before doing anything else, scan the user's message for stable personal facts (name, family member, job, location, hobby, birthday, anniversary, important event, etc.). If you detect one or more, call \`memory_personal_upsert\` immediately as your very first tool call with an array of facts. Each fact can have its own category. Example: [{"fact": "Sister is Karla", "category": "family"}, {"fact": "Sister Karla's birthday is 6 April", "category": "anniversaries"}]. Only after that proceed with the actual request (skill lookup, tool execution, etc.).`
   : 'This context is read-only in this agent; do not attempt to modify it.'}
 
 ${trimmedMemory || '(No personal facts stored yet.)'}`);
@@ -145,7 +145,8 @@ The following skills extend your capabilities. Each skill has a summary that ind
 
 **How to use skills:**
 - Review the skill summaries below to identify which skill applies to the user's request.
-- **As your very first action, always call \`skill_detail\` with the chosen skill name** to read the full skill definition before doing anything else.
+- **If no personal fact was detected above**, call \`skill_detail\` as your very first action to read the full skill definition before doing anything else.
+- **If a personal fact was detected**, call \`memory_personal_upsert\` first, then \`skill_detail\`, then proceed.
 - Only after reading the full skill definition, proceed with the tools and parameters described in it.
 
 ${skillsSummary}`);

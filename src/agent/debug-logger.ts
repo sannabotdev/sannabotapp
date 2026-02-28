@@ -14,6 +14,8 @@ export interface LogEntry {
   id: number;
   timestamp: Date;
   level: LogLevel;
+  /** Additional categories this entry belongs to (for multi-category filtering) */
+  tags?: LogLevel[];
   tag: string;
   summary: string;
   detail?: string;
@@ -137,7 +139,15 @@ class DebugLoggerImpl {
   logToolResult(name: string, forLLM: string, forUser?: string, isError?: boolean): void {
     const prefix = isError ? '❌' : '✅';
     const userStr = forUser ? ` | forUser: "${forUser}"` : '';
-    this.add(isError ? 'error' : 'tool', `${prefix} ${name}`, `${forLLM.slice(0, 150)}${forLLM.length > 150 ? '…' : ''}${userStr}`, forLLM);
+    // Error results land under 'error' but are also tagged as 'tool' so they
+    // appear when filtering by either category.
+    this.add(
+      isError ? 'error' : 'tool',
+      `${prefix} ${name}`,
+      `${forLLM.slice(0, 150)}${forLLM.length > 150 ? '…' : ''}${userStr}`,
+      forLLM,
+      isError ? ['tool'] : undefined,
+    );
   }
 
   /** Log iteration count */
@@ -158,13 +168,14 @@ class DebugLoggerImpl {
   // ─── General purpose ────────────────────────────────────────────────
 
   /** Add a log entry (also used by non-agent subsystems like STT) */
-  add(level: LogLevel, tag: string, summary: string, detail?: string): void {
+  add(level: LogLevel, tag: string, summary: string, detail?: string, tags?: LogLevel[]): void {
     if (!this._enabled) return;
 
     const entry: LogEntry = {
       id: this.nextId++,
       timestamp: new Date(),
       level,
+      ...(tags && tags.length > 0 ? { tags } : {}),
       tag,
       summary,
       detail,

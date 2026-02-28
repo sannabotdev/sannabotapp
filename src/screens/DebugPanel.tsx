@@ -66,7 +66,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
   }, [entries.length, activeFilter]);
 
   const filteredEntries = activeFilter
-    ? entries.filter(e => e.level === activeFilter)
+    ? entries.filter(e => e.level === activeFilter || e.tags?.includes(activeFilter))
     : entries;
 
   const handleFilterToggle = useCallback((level: LogLevel) => {

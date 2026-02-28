@@ -156,7 +156,7 @@ export function SchedulesScreen({ onBack }: SchedulesScreenProps): React.JSX.Ele
                     <Text
                       className="text-label-primary text-sm font-semibold"
                       numberOfLines={2}>
-                      {schedule.instruction}
+                      {schedule.label || schedule.instruction}
                     </Text>
                     <Text className="text-label-secondary text-xs">
                       {formatDate(schedule.triggerAtMs)}
@@ -170,6 +170,9 @@ export function SchedulesScreen({ onBack }: SchedulesScreenProps): React.JSX.Ele
                 {/* Expanded content */}
                 {isExpanded && (
                   <View className="border-t border-surface px-4 py-3 gap-2">
+                    {schedule.label && (
+                      <DetailRow label={t('schedules.detail.label')} value={schedule.label} />
+                    )}
                     <DetailRow label={t('schedules.detail.instruction')} value={schedule.instruction} />
                     <DetailRow label={t('schedules.detail.triggerAt')} value={formatDate(schedule.triggerAtMs)} />
                     <DetailRow label={t('schedules.detail.recurrence')} value={formatRecurrence(schedule)} />

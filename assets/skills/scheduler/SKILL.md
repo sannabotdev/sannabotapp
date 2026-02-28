@@ -22,11 +22,14 @@ Schedule tasks for the future (minimum 1 minute ahead). At the scheduled time, a
 ```json
 {
   "action": "create",
+  "label": "{OPTIONAL_USER_FRIENDLY_HEADLINE}",
   "instruction": "{NATURAL_LANGUAGE_INSTRUCTION}",
   "trigger_at_ms": {TIMESTAMP_MS},
   "recurrence_type": "once"
 }
 ```
+
+The `label` is an optional user-friendly headline for the schedule (e.g. "Morning reminder", "Daily calendar check"). If provided, it will be displayed prominently in the UI instead of the instruction text.
 
 The `instruction` is the command the sub-agent will execute. Write it as if you were giving Sanna the command directly. The sub-agent has access to all tools (SMS, HTTP, TTS, beep, Intent, etc.).
 
@@ -98,6 +101,7 @@ Days of week: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
 {
   "action": "update",
   "schedule_id": "{ID}",
+  "label": "{NEW_LABEL}",
   "instruction": "{NEW_INSTRUCTION}",
   "trigger_at_ms": {NEW_TIMESTAMP}
 }

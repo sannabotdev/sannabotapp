@@ -225,6 +225,7 @@ const en = {
   // Schedules Screen
   'schedules.title': 'Schedules',
   'schedules.empty': 'No scheduled tasks found.\nCreate one by telling Sanna e.g. "Remind me tomorrow at 9 am…"',
+  'schedules.detail.label': 'Label',
   'schedules.detail.instruction': 'Instruction',
   'schedules.detail.triggerAt': 'Runs at',
   'schedules.detail.recurrence': 'Recurrence',

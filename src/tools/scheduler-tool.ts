@@ -27,6 +27,8 @@ export interface ScheduleRecurrence {
 
 export interface Schedule {
   id: string;
+  /** User-friendly headline/label for the schedule */
+  label?: string;
   /** Natural language instruction for the sub-agent */
   instruction: string;
   /** Next execution time (epoch ms) */
@@ -101,6 +103,10 @@ export class SchedulerTool implements Tool {
           items: { type: 'number' },
           description: 'For weekly: days of week (1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun)',
         },
+        label: {
+          type: 'string',
+          description: 'Optional user-friendly headline/label for the schedule (e.g. "Morning reminder", "Daily calendar check")',
+        },
       },
       required: ['action'],
     };
@@ -133,6 +139,7 @@ export class SchedulerTool implements Tool {
 
   private async createSchedule(args: Record<string, unknown>): Promise<ToolResult> {
     const instruction = args.instruction as string;
+    const label = args.label as string | undefined;
     const triggerAtMs = args.trigger_at_ms as number;
     const recurrenceType = (args.recurrence_type as ScheduleRecurrence['type']) ?? 'once';
 
@@ -193,6 +200,7 @@ export class SchedulerTool implements Tool {
 
     const schedule: Schedule = {
       id,
+      label,
       instruction,
       triggerAtMs,
       enabled: true,
@@ -275,6 +283,9 @@ export class SchedulerTool implements Tool {
       const schedule = JSON.parse(json) as Schedule;
 
       // Apply updates
+      if (args.label !== undefined) {
+        schedule.label = args.label as string | undefined;
+      }
       if (args.instruction !== undefined) {
         schedule.instruction = args.instruction as string;
       }
@@ -362,12 +373,17 @@ export class SchedulerTool implements Tool {
   private formatScheduleDetail(s: Schedule): string {
     const lines: string[] = [
       `ID: ${s.id}`,
+    ];
+    if (s.label) {
+      lines.push(`Label: "${s.label}"`);
+    }
+    lines.push(
       `Instruction: "${s.instruction}"`,
       `Next execution: ${this.formatDate(s.triggerAtMs)}`,
       `Status: ${s.enabled ? 'active' : 'disabled'}`,
       `Recurrence: ${this.formatRecurrence(s.recurrence)}`,
       `Created: ${this.formatDate(s.createdAt)}`,
-    ];
+    );
     if (s.lastExecutedAt) {
       lines.push(`Last executed: ${this.formatDate(s.lastExecutedAt)}`);
     }
@@ -383,7 +399,8 @@ export class SchedulerTool implements Tool {
       minute: '2-digit',
     });
     const recurrence = s.recurrence.type === 'once' ? 'one-time' : this.formatRecurrence(s.recurrence);
-    return `"${s.instruction}" at ${time} (${recurrence})`;
+    const displayText = s.label || s.instruction;
+    return `"${displayText}" at ${time} (${recurrence})`;
   }
 
   /**
@@ -394,7 +411,8 @@ export class SchedulerTool implements Tool {
     const status = s.enabled ? '✅' : '⏸️';
     const time = this.formatDate(s.triggerAtMs);
     const rec = this.formatRecurrence(s.recurrence);
-    return `${status} [${s.id}] "${s.instruction}" – ${time} (${rec})`;
+    const displayText = s.label || s.instruction;
+    return `${status} [${s.id}] "${displayText}" – ${time} (${rec})`;
   }
 
   private formatRecurrence(r: ScheduleRecurrence): string {
