@@ -25,7 +25,7 @@ Provides current weather conditions and forecasts using free services – no API
 }
 ```
 
-Returns GPS coordinates, e.g. `GPS: 48.208200, 16.373800 (Genauigkeit: 12m)`.
+Returns GPS coordinates, e.g. `GPS: 51.5074, -0.1278 (Accuracy: 12m)`.
 Use latitude/longitude directly with Open-Meteo, or as `{LAT},{LON}` with wttr.in.
 
 ---
@@ -95,7 +95,7 @@ Returns e.g. `London: ⛅️ +8°C`
 ### Location encoding rules
 
 - Replace spaces with `+`: `New+York`, `San+Francisco`
-- Airport codes work: `JFK`, `CDG`, `VIE`
+- Airport codes work: `JFK`, `CDG`, `LHR`
 - Units: append `&m` for metric (default) or `&u` for USCS/Fahrenheit
 - Umlauts can be used directly: `München`, `Zürich`
 
@@ -137,7 +137,7 @@ If you only have coordinates (e.g. from GPS or Open-Meteo) and need the place na
 ```json
 {
   "method": "GET",
-  "url": "https://nominatim.openstreetmap.org/reverse?lat={LAT}&lon={LON}&format=json&accept-language=de",
+  "url": "https://nominatim.openstreetmap.org/reverse?lat={LAT}&lon={LON}&format=json&accept-language=en",
   "headers": { "User-Agent": "SannaBot/1.0" }
 }
 ```
@@ -146,7 +146,7 @@ Returns JSON with `address.city` (or `address.town` / `address.village` for smal
 
 Use this when:
 - Open-Meteo returns only coordinates and you need to tell the user the location name
-- `device` → `get_location` gives GPS coords and you want to greet with "Das Wetter in **{city}**…"
+- `device` → `get_location` gives GPS coords and you want to greet with "The weather in **{city}**…"
 - The user asks "where am I?" and you need to resolve GPS coordinates to a place name
 
 ### Full workflow (Open-Meteo)
@@ -168,19 +168,19 @@ Use this when:
 
 ### "What's the weather?" (no location given)
 
-1. `device` → `get_location` → returns e.g. `48.2082, 16.3738`
-2. Reverse-geocode via Nominatim to get the city name: GET `https://nominatim.openstreetmap.org/reverse?lat=48.2082&lon=16.3738&format=json&accept-language=de` → use `address.city` for the response
-3. `http` → GET `https://wttr.in/48.2082,16.3738?format=%c+%t+%h+%w` with `response_format: "text"` (note: no `%l` – use the city name from Nominatim instead)
-4. Summarise: "In **Wien** ist es teilweise bewölkt, 14 Grad, 65 % Luftfeuchtigkeit."
+1. `device` → `get_location` → returns e.g. `51.5074, -0.1278`
+2. Reverse-geocode via Nominatim to get the city name: GET `https://nominatim.openstreetmap.org/reverse?lat=51.5074&lon=-0.1278&format=json&accept-language=en` → use `address.city` for the response
+3. `http` → GET `https://wttr.in/51.5074,-0.1278?format=%c+%t+%h+%w` with `response_format: "text"` (note: no `%l` – use the city name from Nominatim instead)
+4. Summarise: "In **London** it's partly cloudy, 14 degrees, 65% humidity."
 
 ### "What's the weather in London?"
 
 1. `http` → GET `https://wttr.in/London?format=%l:+%c+%t+%h+%w` with `response_format: "text"`
 2. Read the result and summarise: "In London it's partly cloudy, 8 degrees, 71% humidity, light wind from the south-west."
 
-### "Weather forecast for Berlin"
+### "Weather forecast for Paris"
 
-1. `http` → GET `https://wttr.in/Berlin?T` with `response_format: "text"`
+1. `http` → GET `https://wttr.in/Paris?T` with `response_format: "text"`
 2. Summarise the multi-day forecast for the user
 
 ### "Will it rain tomorrow in London?"
@@ -200,7 +200,7 @@ Use this when:
 
 - "What's the weather?" → `device` → `get_location`, then query wttr.in with coordinates
 - "Weather in Tokyo" → `wttr.in/Tokyo?format=%l:+%c+%t+%h+%w`
-- "Forecast for Munich" → `wttr.in/München?T`
+- "Forecast for Paris" → `wttr.in/Paris?T`
 - "Will it rain tomorrow?" → `wttr.in/{LOCATION}?1&T`, check for rain
 - "Temperature in Sydney" → `wttr.in/Sydney?format=%t`
 - "What's the moon phase?" → `wttr.in/?format=%m`

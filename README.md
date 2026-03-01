@@ -13,6 +13,8 @@ There are two ways to get a beta release of Sanna:
 1. **Build it yourself** – Configure and build the app following the instructions in [DEVELOP.md](DEVELOP.md). Note that this can be time-consuming as you'll need to create many API keys (OpenAI/Claude, Google, Spotify, Picovoice, Slack) for the app to be fully functional.
 2. **Request a Test APK** – Write to [sannabot@proton.me](mailto:sannabot@proton.me) and you'll receive a pre-built test APK for beta testing.
 
+If you encounter any issues during beta testing, see [Getting Help](#-getting-help) for instructions on how to report bugs with debug logs.
+
 ## 📸 Screenshots
 
 | Driving Mode | Agent Conversation | Scheduler |
@@ -162,7 +164,7 @@ Lists are stored locally on-device – no internet, no cloud, no account needed.
 |---------|-------------|
 | "Navigate to the airport" | Opens Google Maps turn-by-turn |
 | "Will it rain tomorrow?" | Weather forecast for current GPS location |
-| "What's the weather in Vienna?" | Weather for a specific city |
+| "What's the weather in London?" | Weather for a specific city |
 
 ### 🤖 UI Automation (Learning Accessibility)
 
@@ -293,6 +295,20 @@ description: What this skill does
 ```
 
 Both paths use the same `SKILL.md` format. The agent picks up the skill automatically – no code changes needed.
+
+## 🆘 Getting Help
+
+If you encounter a bug or issue, please help us debug it by providing a debug log:
+
+1. **Enable Debug Log**: Open **Settings → About → Debug Log** and toggle it on.
+2. **Reproduce the issue**: Perform the action that causes the problem while the debug log is enabled.
+3. **Export the debug log**: Open the **Debug Log** panel (from the main menu), then tap the export/share button to save or share the log.
+4. **Clean sensitive data**: The debug log may contain API keys, tokens, and other secrets. **Before sharing, carefully review the log and remove or redact any sensitive information** (API keys, access tokens, personal data, etc.).
+5. **Report the issue**:
+   - **Public**: Create a [GitHub Issue](https://github.com/your-repo/issues) and attach the cleaned debug log.
+   - **Private**: Email the cleaned debug log to [sannabot@proton.me](mailto:sannabot@proton.me).
+
+Please include a brief description of what you were trying to do and what went wrong.
 
 ## 📄 License
 

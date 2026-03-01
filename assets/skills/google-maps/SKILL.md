@@ -29,11 +29,11 @@ Use the `intent` tool to open Google Maps.
 ```
 
 Examples for the URI field:
-- `google.navigation:q=Vienna+Central+Station` → navigates to Vienna Central Station
-- `google.navigation:q=48.2082,16.3738` → navigates to GPS coordinates
-- `google.navigation:q=Graz&mode=d` → navigates to Graz (driving mode)
-- `google.navigation:q=Linz&mode=w` → navigates to Linz (walking mode)
-- `google.navigation:q=Salzburg&mode=b` → navigates to Salzburg (cycling mode)
+- `google.navigation:q=Grand+Central+Station` → navigates to Grand Central Station
+- `google.navigation:q=51.5074,-0.1278` → navigates to GPS coordinates
+- `google.navigation:q=Paris&mode=d` → navigates to Paris (driving mode)
+- `google.navigation:q=New+York&mode=w` → navigates to New York (walking mode)
+- `google.navigation:q=Los+Angeles&mode=b` → navigates to Los Angeles (cycling mode)
 
 ### Show location (without navigation)
 
@@ -104,19 +104,19 @@ For the origin, prefer `"latLng"` with coordinates from `device get_location` fo
 - `legs[].travelAdvisory.speedReadingIntervals[].speed`: `NORMAL` / `SLOW` / `TRAFFIC_JAM`
 
 **How to present the result – always natural language, no raw data:**
-- Convert seconds to "X Std. Y Min." (or "X h Y min" in English)
+- Convert seconds to "X h Y min" (or "X hours Y minutes" in English)
 - Convert meters to km (round to nearest km)
 - Never show GPS coordinates, field names, raw seconds, or JSON to the user
 - If `duration` < `staticDuration`: traffic is lighter than usual → mention it
 - If `duration` > `staticDuration` by more than 5 min: there is a delay → state how many minutes
 - If `TRAFFIC_JAM` segments exist: mention congestion on the route
-- Good: "Nach Graz sind es ca. 194 km, Fahrzeit etwa 2 Std. 14 Min. – aktuell kein Stau."
-- Bad: "duration: 8061s, staticDuration: 8475s, koordinaten: 48.076700, 16.014198"
+- Good: "To Paris it's about 350 km, travel time approximately 3 h 45 min – currently no traffic."
+- Bad: "duration: 13500s, staticDuration: 14000s, coordinates: 48.8566, 2.3522"
 
-**Full workflow – "Is there traffic on the way to Vienna?":**
+**Full workflow – "Is there traffic on the way to London?":**
 1. `check_credential("google_maps_api_key")` – if not configured, tell the user and stop
 2. `device` `get_location` to get current GPS coordinates (use as `origin.latLng`)
-3. `http` POST Routes API with destination as `"address": "Vienna"` → extract `duration`, `staticDuration`, `distanceMeters`, `speedReadingIntervals`
+3. `http` POST Routes API with destination as `"address": "London"` → extract `duration`, `staticDuration`, `distanceMeters`, `speedReadingIntervals`
 4. Count `TRAFFIC_JAM` segments; compare `duration` vs `staticDuration` to estimate delay
 5. Respond in plain natural language – distance in km, time in h/min, traffic in words
 
@@ -124,13 +124,13 @@ For the origin, prefer `"latLng"` with coordinates from `device get_location` fo
 
 ## Examples
 
-- "Navigate to the train station" → `google.navigation:q=Vienna+Central+Station`
-- "Drive to Graz" → `google.navigation:q=Graz`
-- "Show me where the park is" → `geo:0,0?q=Prater+Vienna`
+- "Navigate to the train station" → `google.navigation:q=Grand+Central+Station`
+- "Drive to Paris" → `google.navigation:q=Paris`
+- "Show me where the park is" → `geo:0,0?q=Central+Park+New+York`
 - "Navigate home" → `google.navigation:q=home`
 - "Stop navigation" → accessibility tool to tap stop button
-- "How long to Vienna?" → check_credential → get_location → Routes API (destination as address string) → tts
-- "Is there a traffic jam on the way to Graz?" → check_credential → get_location → Routes API → check speedReadingIntervals → tts
+- "How long to London?" → check_credential → get_location → Routes API (destination as address string) → tts
+- "Is there a traffic jam on the way to Paris?" → check_credential → get_location → Routes API → check speedReadingIntervals → tts
 - "Gas station nearby" → `geo:0,0?q=gas+station`
 
 ## Notes
