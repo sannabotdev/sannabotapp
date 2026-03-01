@@ -59,6 +59,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { ListsScreen } from './src/screens/ListsScreen';
 import { SchedulesScreen } from './src/screens/SchedulesScreen';
 import { NotificationListenersScreen } from './src/screens/NotificationListenersScreen';
+import { JournalScreen } from './src/screens/JournalScreen';
 import type { SkillInfo } from './src/agent/skill-loader';
 import { SannaAvatar } from './src/components/SannaAvatar';
 
@@ -442,7 +443,7 @@ export default function App(): React.JSX.Element {
   const [vaultError, setVaultError] = useState<string | undefined>();
   const [initializing, setInitializing] = useState(true);
 
-  const [screen, setScreen] = useState<'home' | 'settings' | 'lists' | 'schedules' | 'notificationListeners'>('home');
+  const [screen, setScreen] = useState<'home' | 'settings' | 'lists' | 'schedules' | 'notificationListeners' | 'journal'>('home');
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pipelineState, setPipelineState] = useState<PipelineState>('idle');
@@ -1433,6 +1434,16 @@ export default function App(): React.JSX.Element {
     );
   }
 
+  if (screen === 'journal') {
+    return (
+      <View style={[{ flex: 1 }, themeVars]}>
+        <SafeAreaProvider>
+          <JournalScreen visible={true} onClose={() => setScreen('home')} />
+        </SafeAreaProvider>
+      </View>
+    );
+  }
+
   if (screen === 'settings') {
     return (
       <View style={[{ flex: 1 }, themeVars]}>
@@ -1533,6 +1544,7 @@ export default function App(): React.JSX.Element {
           onListsPress={() => setScreen('lists')}
           onSchedulesPress={() => setScreen('schedules')}
           onNotificationListenersPress={() => setScreen('notificationListeners')}
+          onJournalPress={() => setScreen('journal')}
           messages={messages}
           isDark={isDark}
           onToggleDarkMode={handleToggleDarkMode}

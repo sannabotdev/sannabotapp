@@ -53,11 +53,16 @@ export interface NotificationPayload {
  *                    The LLM evaluates each rule's condition and executes
  *                    the first matching instruction.
  */
+export interface NotificationSubAgentResult {
+  content: string;
+  iterations: number;
+}
+
 export async function runNotificationSubAgent(
   config: NotificationSubAgentConfig,
   notification: NotificationPayload,
   rules: NotificationRule[],
-): Promise<string> {
+): Promise<NotificationSubAgentResult> {
   const { provider, credentialManager, enabledSkillNames, drivingMode, language, soul, personalMemory, maxIterations } = config;
 
   DebugLogger.add(
@@ -188,7 +193,10 @@ export async function runNotificationSubAgent(
       result.content,
     );
 
-    return result.content;
+    return {
+      content: result.content,
+      iterations: result.iterations,
+    };
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     DebugLogger.add('error', TAG, `Sub-agent failed: ${errMsg}`);

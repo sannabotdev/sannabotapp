@@ -216,6 +216,7 @@ const en = {
   'menu.lists': 'Lists',
   'menu.scheduler': 'Schedules',
   'menu.notificationListeners': 'App Rules',
+  'menu.journal': 'Journal',
 
   // Lists Screen
   'lists.title': 'Lists',
@@ -301,6 +302,23 @@ const en = {
   'settings.services.slack.instructions': 'Create a Slack app at api.slack.com/apps, enable OAuth & Permissions, and copy the Client ID from the "Basic Information" page.',
   'settings.services.googleMaps.label': 'Google Maps API Key',
   'settings.services.googleMaps.instructions': 'Go to the Google Cloud Console (console.cloud.google.com), create an API key under "APIs & Services → Credentials → Create Credentials → API key".\n\nEnable these APIs under "APIs & Services → Library":\n• Routes API (for route/traffic information)\n• Geocoding API (for address lookup)\n\nOptional: Restrict the key to these APIs for security.',
+
+  // Journal Screen
+  'journal.title': 'Journal',
+  'journal.empty': 'No journal entries found.\nCreate an entry by telling Sanna e.g. "Make an entry in the journal that I went jogging today"',
+  'journal.filter.all': 'All',
+  'journal.filter.empty': 'No entries in category "{category}"',
+  'journal.tapForMore': 'Tap again for full content',
+  'journal.deleteButton': 'Delete entry',
+  'journal.delete.title': 'Delete entry?',
+  'journal.delete.message': 'Really delete this journal entry?',
+  'journal.delete.cancel': 'Cancel',
+  'journal.delete.confirm': 'Delete',
+  'journal.dateFrom': 'From',
+  'journal.dateTo': 'To',
+  'journal.pagination.previous': '← Previous',
+  'journal.pagination.next': 'Next →',
+  'journal.pagination.page': 'Page {current} of {total} ({count} entries)',
 } as const;
 
 export default en;

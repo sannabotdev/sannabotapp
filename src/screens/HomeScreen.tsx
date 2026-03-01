@@ -40,6 +40,7 @@ interface HomeScreenProps {
   onListsPress: () => void;
   onSchedulesPress: () => void;
   onNotificationListenersPress: () => void;
+  onJournalPress: () => void;
   messages: Message[];
   isDark: boolean;
   onToggleDarkMode: () => void;
@@ -75,6 +76,7 @@ export function HomeScreen({
   onListsPress,
   onSchedulesPress,
   onNotificationListenersPress,
+  onJournalPress,
   messages,
   isDark,
   onToggleDarkMode,
@@ -200,6 +202,7 @@ export function HomeScreen({
         onListsPress={onListsPress}
         onSchedulesPress={onSchedulesPress}
         onNotificationListenersPress={onNotificationListenersPress}
+        onJournalPress={onJournalPress}
         debugLogEnabled={debugLogEnabled}
       />
 

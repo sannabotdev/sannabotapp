@@ -25,6 +25,7 @@ import { DebugLogger } from './debug-logger';
 import { ConversationStore } from './conversation-store';
 import { SoulStore } from './soul-store';
 import { PersonalMemoryStore } from './personal-memory-store';
+import { addEntry } from './journal-store';
 import { loadRules, getRulesForApp } from './notification-rules-store';
 import type { NotificationRule } from './notification-rules-store';
 import IntentModule from '../native/IntentModule';
@@ -226,7 +227,7 @@ export default async function notificationHeadlessTask(
     const personalMemory = await PersonalMemoryStore.getMemory();
     DebugLogger.add('info', TAG, `Running sub-agent for: "${appName} – ${payload.sender}"`);
 
-    const resultText = await runNotificationSubAgent(
+    const result = await runNotificationSubAgent(
       {
         provider,
         credentialManager,
@@ -241,14 +242,44 @@ export default async function notificationHeadlessTask(
       rules,
     );
 
+    const resultText = result.content;
+    const isMaxIterationsReached = result.iterations >= (config.maxSubAgentIterations ?? 8);
+
     if (resultText && !resultText.includes('__NO_MATCH__')) {
-      // 8. Write result to pending queue first, then restore foreground.
+      // 8. Check if max iterations reached and format message accordingly
+      let messageToShow = resultText;
+      if (isMaxIterationsReached || !messageToShow) {
+        const rawError = isMaxIterationsReached
+          ? `Notification processing reached iteration limit (${result.iterations} iterations) and could not be completed. You can increase the iteration limit in Settings → Agent Iterations → Sub-Agent (App Rules & Scheduler).`
+          : `Notification processing for "${packageName}" completed, but no output was generated.`;
+        messageToShow = await formulateError({
+          provider,
+          instruction: `Process notification from ${packageName}`,
+          rawError,
+          drivingMode,
+          language: lang,
+        });
+      }
+
+      // 9. Write result to pending queue first, then restore foreground.
       //    (appendPending must complete before bringToForeground so drainPending
       //    finds the message when AppState fires 'active')
-      await ConversationStore.appendPending('assistant', resultText).catch(() => {});
+      await ConversationStore.appendPending('assistant', messageToShow).catch(() => {});
       DebugLogger.add('info', TAG, `✅ Sub-agent done, result written to pending queue`);
 
-      // 9. Bring app to foreground – drainPending() will display + speak the result
+      // 10. Create journal entry (always, even on errors/max iterations)
+      try {
+        await addEntry({
+          category: 'Notifications',
+          title: `${appName} – ${payload.sender}`,
+          details: messageToShow,
+        });
+      } catch (err) {
+        // Non-fatal: journal entry creation failed
+        DebugLogger.add('error', TAG, `Failed to create journal entry: ${err}`);
+      }
+
+      // 11. Bring app to foreground – drainPending() will display + speak the result
       await bringToForeground();
     } else if (resultText && resultText.includes('__NO_MATCH__')) {
       // No condition matched - don't show anything (this is expected behavior)
@@ -265,6 +296,19 @@ export default async function notificationHeadlessTask(
         language: lang,
       });
       await ConversationStore.appendPending('assistant', formattedError).catch(() => {});
+      
+      // Create journal entry for error case
+      try {
+        await addEntry({
+          category: 'Notifications',
+          title: `${appName} – ${payload.sender}`,
+          details: formattedError,
+        });
+      } catch (err) {
+        // Non-fatal: journal entry creation failed
+        DebugLogger.add('error', TAG, `Failed to create journal entry: ${err}`);
+      }
+      
       await bringToForeground();
     }
   } catch (err) {
@@ -278,6 +322,19 @@ export default async function notificationHeadlessTask(
       language: lang,
     });
     await ConversationStore.appendPending('assistant', formattedError).catch(() => {});
+    
+    // Create journal entry for error case
+    try {
+      await addEntry({
+        category: 'Notifications',
+        title: `${appName} – ${payload.sender}`,
+        details: formattedError,
+      });
+    } catch (journalErr) {
+      // Non-fatal: journal entry creation failed
+      DebugLogger.add('error', TAG, `Failed to create journal entry: ${journalErr}`);
+    }
+    
     await bringToForeground();
   }
 }

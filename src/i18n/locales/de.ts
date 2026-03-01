@@ -216,6 +216,7 @@ const de = {
   'menu.lists': 'Listen',
   'menu.scheduler': 'Zeitpläne',
   'menu.notificationListeners': 'App-Regeln',
+  'menu.journal': 'Journal',
 
   // Listen-Screen
   'lists.title': 'Listen',
@@ -301,6 +302,23 @@ const de = {
   'settings.services.slack.instructions': 'Erstelle eine Slack-App unter api.slack.com/apps, aktiviere OAuth & Permissions und kopiere die Client-ID von der Seite "Basic Information".',
   'settings.services.googleMaps.label': 'Google Maps API Key',
   'settings.services.googleMaps.instructions': 'Öffne die Google Cloud Console (console.cloud.google.com) und erstelle einen API-Schlüssel unter "APIs & Dienste → Anmeldedaten → Anmeldedaten erstellen → API-Schlüssel".\n\nAktiviere diese APIs unter "APIs & Dienste → Bibliothek":\n• Routes API (für Routen- und Verkehrsinformationen)\n• Geocoding API (für Adresssuche)\n\nOptional: Schränke den Schlüssel auf diese APIs ein.',
+
+  // Journal-Screen
+  'journal.title': 'Journal',
+  'journal.empty': 'Keine Journal-Einträge vorhanden.\nErstelle einen Eintrag indem du Sanna z.\u00A0B. sagst: \u201EMach einen Eintrag ins Journal dass ich heute joggen war\u201C',
+  'journal.filter.all': 'Alle',
+  'journal.filter.empty': 'Keine Einträge in Kategorie "{category}"',
+  'journal.tapForMore': 'Nochmal tippen für vollständigen Inhalt',
+  'journal.deleteButton': 'Eintrag löschen',
+  'journal.delete.title': 'Eintrag löschen?',
+  'journal.delete.message': 'Diesen Journal-Eintrag wirklich löschen?',
+  'journal.delete.cancel': 'Abbrechen',
+  'journal.delete.confirm': 'Löschen',
+  'journal.dateFrom': 'Von',
+  'journal.dateTo': 'Bis',
+  'journal.pagination.previous': '← Zurück',
+  'journal.pagination.next': 'Weiter →',
+  'journal.pagination.page': 'Seite {current} von {total} ({count} Einträge)',
 } as const;
 
 export default de;

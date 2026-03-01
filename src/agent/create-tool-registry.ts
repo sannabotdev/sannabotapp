@@ -27,6 +27,7 @@ import { SkillDetailTool } from '../tools/skill-detail-tool';
 import { CheckCredentialTool } from '../tools/check-credential-tool';
 import { PersonalMemoryTool } from '../tools/personal-memory-tool';
 import { GmailSendTool } from '../tools/gmail-send-tool';
+import { JournalTool } from '../tools/journal-tool';
 
 export interface CreateToolRegistryOptions {
   credentialManager: CredentialManager;
@@ -86,6 +87,7 @@ export async function createToolRegistry(opts: CreateToolRegistryOptions): Promi
   registry.register(new BeepTool());
   registry.register(new SkillDetailTool(opts.skillLoader));
   registry.register(new CheckCredentialTool(opts.credentialManager));
+  registry.register(new JournalTool());
   if (opts.includePersonalMemoryTool !== false) {
     registry.register(new PersonalMemoryTool(opts.provider));
   }

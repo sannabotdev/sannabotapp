@@ -22,6 +22,7 @@ import type { LLMProvider, Message } from '../llm/types';
 import { DebugLogger } from './debug-logger';
 import { ConversationStore } from './conversation-store';
 import { PersonalMemoryStore } from './personal-memory-store';
+import { addEntry } from './journal-store';
 
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
@@ -230,10 +231,13 @@ export default async function schedulerHeadlessTask(
     // then bring the app to the foreground so the user sees it immediately.
     // ALWAYS write something, even if content is empty (e.g., max iterations reached)
     let messageToShow = result.content;
+    const isMaxIterationsReached = result.iterations >= (config.maxSubAgentIterations ?? 8);
     
-    // If content is empty (max iterations reached), format it via LLM for consistency
-    if (!messageToShow) {
-      const rawError = `Scheduled task reached iteration limit (${result.iterations} iterations) and could not be completed.`;
+    // If content is empty or max iterations reached, format it via LLM for consistency
+    if (!messageToShow || isMaxIterationsReached) {
+      const rawError = isMaxIterationsReached
+        ? `Scheduled task reached iteration limit (${result.iterations} iterations) and could not be completed. You can increase the iteration limit in Settings → Agent Iterations → Sub-Agent (App Rules & Scheduler).`
+        : `Scheduled task completed but no output was generated.`;
       messageToShow = await formulateError({
         provider,
         instruction: instruction,
@@ -246,10 +250,22 @@ export default async function schedulerHeadlessTask(
     await ConversationStore.appendPending('assistant', messageToShow).catch(() => {});
     await bringToForeground();
 
-    // 8. Mark as executed
+    // 8. Create journal entry (always, even on errors/max iterations)
+    try {
+      await addEntry({
+        category: 'Scheduler',
+        title: instruction,
+        details: messageToShow,
+      });
+    } catch (err) {
+      // Non-fatal: journal entry creation failed
+      DebugLogger.add('error', TAG, `Failed to create journal entry: ${err}`);
+    }
+
+    // 9. Mark as executed
     await SchedulerModule.markExecuted(scheduleId);
 
-    // 9. Handle recurrence
+    // 10. Handle recurrence
     const nextTrigger = calculateNextTrigger(schedule);
     if (nextTrigger !== null) {
       // Recurring: set next trigger
@@ -266,19 +282,33 @@ export default async function schedulerHeadlessTask(
     DebugLogger.add('error', TAG, `Schedule ${scheduleId} failed: ${errMsg}`);
 
     // If we have a provider, ask the LLM to formulate a user-friendly error
+    let userMessage: string;
     if (provider) {
-      const userMessage = await formulateError({
+      userMessage = await formulateError({
         provider,
         instruction: instruction || scheduleId,
         rawError: errMsg,
         drivingMode,
         language: lang,
       });
-      await ConversationStore.appendPending('assistant', userMessage).catch(() => {});
     } else {
       // No provider available (config/key error) – write raw error to pending
-      await ConversationStore.appendPending('assistant', `Scheduled task failed: ${errMsg}`).catch(() => {});
+      userMessage = `Scheduled task failed: ${errMsg}`;
     }
+    await ConversationStore.appendPending('assistant', userMessage).catch(() => {});
+    
+    // Create journal entry for error case
+    try {
+      await addEntry({
+        category: 'Scheduler',
+        title: instruction || scheduleId,
+        details: userMessage,
+      });
+    } catch (journalErr) {
+      // Non-fatal: journal entry creation failed
+      DebugLogger.add('error', TAG, `Failed to create journal entry: ${journalErr}`);
+    }
+    
     // Bring app to foreground so user sees the error result
     await bringToForeground();
   }

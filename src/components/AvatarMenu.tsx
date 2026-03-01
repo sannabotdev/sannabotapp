@@ -28,6 +28,7 @@ export interface AvatarMenuProps {
   onListsPress: () => void;
   onSchedulesPress: () => void;
   onNotificationListenersPress: () => void;
+  onJournalPress: () => void;
   debugLogEnabled: boolean;
 }
 
@@ -41,6 +42,7 @@ export function AvatarMenu({
   onListsPress,
   onSchedulesPress,
   onNotificationListenersPress,
+  onJournalPress,
   debugLogEnabled,
 }: AvatarMenuProps): React.JSX.Element {
   const handleSettings = () => {
@@ -67,6 +69,11 @@ export function AvatarMenu({
   const handleNotificationListeners = () => {
     onClose();
     setTimeout(onNotificationListenersPress, 150);
+  };
+
+  const handleJournal = () => {
+    onClose();
+    setTimeout(onJournalPress, 150);
   };
 
   return (
@@ -125,6 +132,15 @@ export function AvatarMenu({
                   className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
                   <Text className="text-2xl">🔔</Text>
                   <Text className="text-label-primary text-base font-medium">{t('menu.notificationListeners')}</Text>
+                </TouchableOpacity>
+
+                {/* Journal */}
+                <TouchableOpacity
+                  onPress={handleJournal}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
+                  <Text className="text-2xl">📔</Text>
+                  <Text className="text-label-primary text-base font-medium">{t('menu.journal')}</Text>
                 </TouchableOpacity>
 
                 {/* Settings */}
