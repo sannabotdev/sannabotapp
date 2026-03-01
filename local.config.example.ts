@@ -43,6 +43,9 @@ const LOCAL_DEV_CONFIG = {
 
   /** Google Maps API Key for local development */
   googleMapsApiKey: '',
+
+  /** Enable debug logging by default (optional, default: false) */
+  debugLogEnabled: false,
 };
 
 export default LOCAL_DEV_CONFIG;

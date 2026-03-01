@@ -131,6 +131,7 @@ export function SkillSummaryModal({
             </View>
           ) : (
             <ScrollView 
+              style={{ maxHeight: 400 }}
               contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
               showsVerticalScrollIndicator={true}>
               <Text className="text-label-primary text-sm leading-relaxed">

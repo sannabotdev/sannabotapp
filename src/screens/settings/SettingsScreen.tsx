@@ -93,6 +93,8 @@ interface SettingsScreenProps {
   onPersonalMemoryTextChange: (value: string) => void;
   onClearPersonalMemory: () => void;
   onClearSkillSummary?: (skillName: string) => void;
+  debugLogEnabled: boolean;
+  onDebugLogEnabledChange: (enabled: boolean) => void;
 }
 
 export function SettingsScreen({
@@ -154,6 +156,8 @@ export function SettingsScreen({
   onPersonalMemoryTextChange,
   onClearPersonalMemory,
   onClearSkillSummary,
+  debugLogEnabled,
+  onDebugLogEnabledChange,
 }: SettingsScreenProps): React.JSX.Element {
   const { skillCredentialStatus, checkSkillCredentials } = useSkillCredentials(
     allSkills,
@@ -329,7 +333,10 @@ export function SettingsScreen({
           title={t('settings.section.about')}
           expanded={openSection === 'about'}
           onToggle={() => handleSectionToggle('about')}>
-          <AboutSection />
+          <AboutSection
+            debugLogEnabled={debugLogEnabled}
+            onDebugLogEnabledChange={onDebugLogEnabledChange}
+          />
         </CollapsibleSection>
       </ScrollView>
 

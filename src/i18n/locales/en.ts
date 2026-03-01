@@ -56,6 +56,7 @@ const en = {
   'settings.section.soul': 'Persona',
   'settings.section.skills': 'Skills',
   'settings.section.about': 'About',
+  'settings.about.debugLog': 'Debug Log',
 
   // Data management
   'settings.clearHistory.button': 'Clear Conversation History',

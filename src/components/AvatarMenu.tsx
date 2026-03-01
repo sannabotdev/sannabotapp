@@ -28,6 +28,7 @@ export interface AvatarMenuProps {
   onListsPress: () => void;
   onSchedulesPress: () => void;
   onNotificationListenersPress: () => void;
+  debugLogEnabled: boolean;
 }
 
 export function AvatarMenu({
@@ -40,6 +41,7 @@ export function AvatarMenu({
   onListsPress,
   onSchedulesPress,
   onNotificationListenersPress,
+  debugLogEnabled,
 }: AvatarMenuProps): React.JSX.Element {
   const handleSettings = () => {
     onClose();
@@ -148,14 +150,16 @@ export function AvatarMenu({
                   />
                 </View>
 
-                {/* Debug */}
-                <TouchableOpacity
-                  onPress={handleDebug}
-                  activeOpacity={0.7}
-                  className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
-                  <Text className="text-2xl">🪲</Text>
-                  <Text className="text-label-primary text-base font-medium">{t('menu.debug')}</Text>
-                </TouchableOpacity>
+                {/* Debug - only show if enabled */}
+                {debugLogEnabled && (
+                  <TouchableOpacity
+                    onPress={handleDebug}
+                    activeOpacity={0.7}
+                    className="flex-row items-center gap-4 px-5 py-4 border-b border-surface-elevated">
+                    <Text className="text-2xl">🪲</Text>
+                    <Text className="text-label-primary text-base font-medium">{t('menu.debug')}</Text>
+                  </TouchableOpacity>
+                )}
 
               </View>
             </View>

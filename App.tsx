@@ -64,7 +64,7 @@ import { SannaAvatar } from './src/components/SannaAvatar';
 
 // Local dev config (gitignored – never shipped to production)
 // If the file is missing (e.g. in CI/Production), empty defaults are used.
-let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string } = {
+let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string; debugLogEnabled?: boolean } = {
   openAIApiKey: '',
   claudeApiKey: '',
   selectedProvider: 'openai',
@@ -76,6 +76,7 @@ let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider
   slackClientId: '',
   slackRedirectUrl: '',
   googleMapsApiKey: '',
+  debugLogEnabled: false,
 };
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -166,6 +167,8 @@ interface AppPreferences {
   llmContextMaxMessages?: number;
   /** Max messages kept in persisted/UI conversation history. */
   conversationHistoryMaxMessages?: number;
+  /** Enable debug logging (default: false) */
+  debugLogEnabled?: boolean;
 }
 
 /** Full app settings (preferences + secure keys loaded from Keychain) */
@@ -195,6 +198,7 @@ const DEFAULT_PREFS: AppPreferences = {
   maxAccessibilityIterations: 12,
   llmContextMaxMessages: 20,
   conversationHistoryMaxMessages: 50,
+  debugLogEnabled: LOCAL_CONFIG.debugLogEnabled ?? false,
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -268,6 +272,7 @@ async function savePreferences(store: TokenStore, s: AppPreferences): Promise<vo
       maxAccessibilityIterations: s.maxAccessibilityIterations,
       llmContextMaxMessages: s.llmContextMaxMessages,
       conversationHistoryMaxMessages: s.conversationHistoryMaxMessages,
+      debugLogEnabled: s.debugLogEnabled,
     };
     await store.saveApiKey(SECURE_KEY_IDS.preferences, JSON.stringify(toSave));
   } catch {
@@ -475,6 +480,13 @@ export default function App(): React.JSX.Element {
     setLocale(settings.appLanguage);
   }, [settings.appLanguage]);
 
+  // ─── Debug Logger: update enabled state whenever debugLogEnabled changes ───
+  useEffect(() => {
+    if (settingsLoaded) {
+      DebugLogger.enabled = settings.debugLogEnabled ?? false;
+    }
+  }, [settings.debugLogEnabled, settingsLoaded]);
+
   // ─── Biometric unlock ───────────────────────────────────────────────────
 
   const attemptUnlock = useCallback(async () => {
@@ -650,6 +662,7 @@ export default function App(): React.JSX.Element {
     settings.appLanguage,
     settings.llmContextMaxMessages,
     settings.conversationHistoryMaxMessages,
+    settings.debugLogEnabled,
     settingsLoaded,
     vaultUnlocked,
   ]);
@@ -1495,6 +1508,8 @@ export default function App(): React.JSX.Element {
               setPersonalMemoryText('');
               PersonalMemoryStore.clearMemory().catch(() => {});
             }}
+            debugLogEnabled={settings.debugLogEnabled ?? false}
+            onDebugLogEnabledChange={v => setSettings(s => ({ ...s, debugLogEnabled: v }))}
           />
         </SafeAreaProvider>
       </View>
@@ -1523,6 +1538,7 @@ export default function App(): React.JSX.Element {
           onToggleDarkMode={handleToggleDarkMode}
           historyLoading={historyLoading}
           language={resolvedLanguage}
+          debugLogEnabled={settings.debugLogEnabled ?? false}
         />
       </SafeAreaProvider>
     </View>

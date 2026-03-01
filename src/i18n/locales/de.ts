@@ -56,6 +56,7 @@ const de = {
   'settings.section.soul': 'Persona',
   'settings.section.skills': 'Skills',
   'settings.section.about': 'Über Sanna',
+  'settings.about.debugLog': 'Debug-Log',
 
   // Datenverwaltung
   'settings.clearHistory.button': 'Gesprächsverlauf löschen',

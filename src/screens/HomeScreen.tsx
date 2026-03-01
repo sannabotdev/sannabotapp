@@ -46,6 +46,7 @@ interface HomeScreenProps {
   historyLoading?: boolean;
   /** BCP-47 language tag for time formatting (e.g. 'de-AT', 'en-US') */
   language: string;
+  debugLogEnabled: boolean;
 }
 
 const STATE_COLORS: Record<PipelineState, string> = {
@@ -79,6 +80,7 @@ export function HomeScreen({
   onToggleDarkMode,
   historyLoading,
   language,
+  debugLogEnabled,
 }: HomeScreenProps): React.JSX.Element {
   const scrollRef = useRef<ScrollView>(null);
   const isBusy = pipelineState !== 'idle';
@@ -198,6 +200,7 @@ export function HomeScreen({
         onListsPress={onListsPress}
         onSchedulesPress={onSchedulesPress}
         onNotificationListenersPress={onNotificationListenersPress}
+        debugLogEnabled={debugLogEnabled}
       />
 
       {drivingMode ? (
