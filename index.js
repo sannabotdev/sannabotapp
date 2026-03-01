@@ -38,3 +38,11 @@ AppRegistry.registerHeadlessTask(
   'SannaNotificationTask',
   () => require('./src/agent/notification-headless').default,
 );
+
+// Register the headless task for timer expiration message formatting.
+// When a timer expires, TimerReceiver starts this task to format a user-friendly
+// message via LLM using formulateResponse.
+AppRegistry.registerHeadlessTask(
+  'SannaTimerTask',
+  () => require('./src/agent/timer-headless').default,
+);

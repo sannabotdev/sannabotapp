@@ -549,6 +549,37 @@ export default function App(): React.JSX.Element {
       );
     }
 
+    // Drain any pending messages from background tasks (e.g. timer expiration)
+    ConversationStore.drainPending().then(pending => {
+      if (pending.length === 0) return;
+      setMessages(prev => {
+        const updated = [
+          ...prev,
+          ...pending.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
+        ];
+        ConversationStore.saveHistory(
+          updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+          prefs.conversationHistoryMaxMessages ?? 50,
+        ).catch(() => {});
+        return updated;
+      });
+      if (pipelineRef.current) {
+        pipelineRef.current.appendToHistory(
+          pending.map(m => ({ role: m.role, content: m.text })),
+        );
+      }
+      // In driving mode, speak assistant messages aloud.
+      if (prefs.drivingMode) {
+        const lang = prefs.appLanguage === 'system' ? getSystemLocale() : prefs.appLanguage;
+        pending
+          .filter(m => m.role === 'assistant')
+          .forEach(m => {
+            const plain = m.text.replace(/[*_`#]/g, '').trim();
+            ttsService.current.speak(plain, lang).catch(() => {});
+          });
+      }
+    }).catch(() => {});
+
     // On very first start, show onboarding hint about enabling skills
     if (isFirstRun && storedMessages.length === 0) {
       setMessages([{

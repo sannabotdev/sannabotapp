@@ -605,7 +605,7 @@ function makeMdStyles(isDark: boolean) {
   const divColor = isDark ? '#636366' : '#C7C7CC';
   return StyleSheet.create({
     body: { color: textColor, fontSize: 15, lineHeight: 21, backgroundColor: 'transparent' },
-    paragraph: { marginTop: 0, marginBottom: 4 },
+    paragraph: { marginTop: 0, marginBottom: 4, width: 'auto' },
     strong: { fontWeight: '700' },
     em: { fontStyle: 'italic' },
     heading1: { fontSize: 20, fontWeight: '700', color: textColor, marginTop: 8, marginBottom: 4 },
@@ -613,7 +613,9 @@ function makeMdStyles(isDark: boolean) {
     heading3: { fontSize: 16, fontWeight: '700', color: textColor, marginTop: 4, marginBottom: 2 },
     bullet_list: { marginTop: 2, marginBottom: 2 },
     ordered_list: { marginTop: 2, marginBottom: 2 },
-    list_item: { marginTop: 1, marginBottom: 1 },
+    list_item: { marginTop: 1, marginBottom: 1, flexDirection: 'row', alignItems: 'flex-start' },
+    bullet_list_content: { flex: 1 },
+    ordered_list_content: { flex: 1 },
     code_inline: {
       backgroundColor: codeBg,
       color: '#5AC8FA',
@@ -702,12 +704,7 @@ function MessageBubble({
           {message.text}
         </Text>
       ) : (
-        // react-native-markdown-display underreports its height for bullet
-        // lists, so the timestamp overlaps the last line.  pb-5 adds enough
-        // internal padding to prevent that; mb-0 keeps external spacing tight.
-        <View className="pb-5 mb-0">
-          <Markdown style={mdStyles}>{message.text}</Markdown>
-        </View>
+        <Markdown style={mdStyles}>{message.text}</Markdown>
       )}
       <Text className="text-[10px] text-label-quaternary self-end">{time}</Text>
     </View>

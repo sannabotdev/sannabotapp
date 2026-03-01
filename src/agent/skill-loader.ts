@@ -269,10 +269,13 @@ export class SkillLoader {
   /**
    * Return names of skills that work out-of-the-box: no runtime permissions
    * and no OAuth/API-key credentials required.
-   * Install-time permissions (e.g. INTERNET) don't count as "required".
+   * Install-time permissions (e.g. INTERNET, SCHEDULE_EXACT_ALARM) don't count as "required".
    */
   getPermissionFreeSkillNames(): string[] {
-    const INSTALL_TIME = new Set(['android.permission.INTERNET']);
+    const INSTALL_TIME = new Set([
+      'android.permission.INTERNET',
+      'android.permission.SCHEDULE_EXACT_ALARM',
+    ]);
     return Array.from(this.skills.values())
       .filter(s =>
         s.permissions.every(p => INSTALL_TIME.has(p)) &&

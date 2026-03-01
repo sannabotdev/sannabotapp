@@ -19,6 +19,7 @@ class SannaPackage : ReactPackage {
             SpeechModule(reactContext),
             SmsModule(reactContext),
             SchedulerModule(reactContext),
+            TimerModule(reactContext),
             NotificationListenerModule(reactContext),
             KeepAwakeModule(reactContext),
             AccessibilityModule(reactContext),

@@ -100,6 +100,18 @@
         android:enabled="true"
         android:exported="false" />
 
+      <!-- Timer: BroadcastReceiver for countdown timer expiration -->
+      <receiver
+        android:name=".native.TimerReceiver"
+        android:enabled="true"
+        android:exported="false" />
+
+      <!-- Timer: HeadlessJS service for background message formatting -->
+      <service
+        android:name=".native.TimerHeadlessService"
+        android:enabled="true"
+        android:exported="false" />
+
       <!-- Re-schedule alarms after device reboot or app update -->
       <receiver
         android:name=".native.BootReceiver"

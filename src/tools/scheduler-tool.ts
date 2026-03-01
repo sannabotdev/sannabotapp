@@ -61,6 +61,8 @@ export class SchedulerTool implements Tool {
       'Actions: create, list, get, update, delete, enable, disable.',
       'IMPORTANT: Schedule IDs are internal – NEVER show them to the user.',
       'When reporting schedules to the user, describe them by their instruction and time.',
+      'DO NOT use this tool for simple countdown timers (especially "Eieruhr" or durations in seconds).',
+      'Use the timer tool instead for short countdown timers that just need a beep when time is up.',
     ].join(' ');
   }
 
@@ -161,10 +163,12 @@ export class SchedulerTool implements Tool {
       );
     }
     if (triggerAtMs - now < MIN_LEAD_TIME_MS) {
+      const secondsFromNow = Math.round((triggerAtMs - now) / 1000);
       return errorResult(
         `Trigger time must be at least 15 seconds in the future. ` +
-        `Provided: ${triggerAtMs} (${Math.round((triggerAtMs - now) / 1000)}s from now). ` +
-        `For immediate alerts use the beep tool instead.`,
+        `Provided: ${triggerAtMs} (${secondsFromNow}s from now). ` +
+        `For short countdown timers (especially "egg timer" or durations in seconds), use the timer tool instead. ` +
+        `The scheduler is for complex tasks that need a sub-agent to execute instructions.`,
       );
     }
 
