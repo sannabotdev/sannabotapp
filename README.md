@@ -38,7 +38,7 @@ There are two ways to get a beta release of Sanna:
 - **🚗 Driving mode** – Short spoken responses, auto-reads incoming notifications, optimized for hands-free use.
 - **🔒 No backend needed** – OAuth flows use PKCE. All data stays on your device.
 
-## 📦 14 Built-in Skills
+## 📦 16 Built-in Skills
 
 | Skill | What it does |
 |-------|-------------|
@@ -54,6 +54,8 @@ There are two ways to get a beta release of Sanna:
 | 🗺️ Google Maps | Start navigation |
 | 🔔 Notifications | Rule-based notification handling with LLM sub-agents |
 | ⏰ Scheduler | Autonomous scheduled tasks with sub-agents |
+| ⏱️ Timer | Countdown timers and stopwatches with acoustic alarms |
+| 📝 Journal | Create and manage journal entries to track activities, events, and notes |
 | 📋 Lists | Manage local lists (shopping, to-do, packing) – fully offline |
 | 🌤️ Weather | Current weather & forecasts via wttr.in / Open-Meteo – no API key |
 
@@ -117,6 +119,14 @@ Notification rules tell Sanna what to do when a notification arrives from a spec
 6. The main conversation pipeline stays free the entire time
 
 > Conditions are evaluated **semantically** by the LLM – "The sender is my boss" works even without specifying an exact name. Multiple rules can exist for the same app, with the most specific (conditional) rule taking priority.
+
+### ⏱️ Timer
+
+Simple countdown timers and stopwatches with acoustic alarms. Examples: "Egg timer 20 seconds", "Set a timer for 3 minutes", "Start stopwatch for running", "What timers are running?"
+
+### 📝 Journal
+
+Create and manage journal entries to track activities, events, and notes. Stored locally on-device. Examples: "Make an entry in the journal that I went jogging today", "Show me my journal entries", "What journal entries are in the Work category?"
 
 ### 📋 Lists
 
@@ -220,7 +230,8 @@ Wake Word (Picovoice) → STT → LLM Agent Loop → Tool Execution → TTS
                            SKILL.md files (auto-discovered)
                                     ↕
                          Tools: intent, http, tts, device, file_storage,
-                         sms, query, scheduler, notifications, accessibility
+                         sms, query, scheduler, notifications, accessibility,
+                         timer, journal, app_search, beep, personal_memory
 ```
 
 **Sub-agent architecture:** Both the scheduler and notification system spawn independent LLM sub-agents. These run in their own tool loop with full tool access, completely separate from the main conversation pipeline. The main pipeline stays free for user interaction at all times.

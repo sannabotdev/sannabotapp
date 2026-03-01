@@ -54,15 +54,13 @@ export class SchedulerTool implements Tool {
 
   description(): string {
     return [
-      'Schedule and manage time-based tasks (minimum 1 minute in the future).',
-      'Each scheduled task is executed at the specified time by a sub-agent (mini AI)',
-      'that can use any available tools (send SMS, HTTP requests, TTS, etc.).',
+      'Schedule complex tasks for the future. At the scheduled time, a sub-agent (mini AI) runs in the background',
+      'and executes the stored instruction with all available tools (SMS, HTTP, TTS, beep, Intent, etc.).',
       'Supports one-time and recurring schedules (interval, daily, weekly).',
+      'Use this tool when the user wants a complex task executed. For simple countdown timers that only need an acoustic alarm, use the timer tool instead.',
       'Actions: create, list, get, update, delete, enable, disable.',
       'IMPORTANT: Schedule IDs are internal – NEVER show them to the user.',
       'When reporting schedules to the user, describe them by their instruction and time.',
-      'DO NOT use this tool for simple countdown timers (especially "Eieruhr" or durations in seconds).',
-      'Use the timer tool instead for short countdown timers that just need a beep when time is up.',
     ].join(' ');
   }
 

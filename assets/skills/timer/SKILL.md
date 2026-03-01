@@ -8,16 +8,15 @@ permissions:
 ---
 # Timer Skill
 
-Manage simple countdown timers and stopwatches. Unlike the scheduler (minimum 1 minute, sub-agent based), timers are designed for short durations (seconds to minutes) and use direct beep notifications.
+Simple countdown timers and stopwatches. When a timer expires, it plays an acoustic alarm (beep). That's it – no complex tasks, no sub-agents, just a beep.
 
 **Use the timer tool for**:
-- Short countdown timers (seconds, minutes) - e.g. "egg timer 20 seconds", "timer 3 minutes"
+- Countdown timers that need an acoustic alarm when time is up
 - Stopwatches for tracking elapsed time
-- Simple reminders that just need a beep when time is up
 
-**Examples**: "egg timer 20 seconds", "Set a timer for 3 minutes", "Start stopwatch for running", "timer 5 minutes"
+**Examples**: "egg timer 20 seconds", "Set a timer for 3 minutes", "Start stopwatch for running"
 
-**NOT suitable for**: Complex scheduled tasks or tasks longer than a few minutes (use the `scheduler` tool instead). The scheduler requires a minimum of 1 minute and uses a sub-agent to execute instructions.
+**NOT suitable for**: Complex tasks that need execution (e.g. sending SMS, making HTTP requests, running TTS). Use the `scheduler` tool instead for tasks that require a sub-agent to execute instructions.
 
 ## Tool: timer
 
@@ -98,9 +97,9 @@ Cancels and removes a timer or stopwatch from the list.
 
 ## Workflow: Set a timer
 
-Examples: "egg timer 20 seconds", "Set a timer for 3 minutes" / "Timer for 5 minutes"
+Examples: "egg timer 20 seconds", "Set a timer for 3 minutes"
 
-**IMPORTANT**: When the user asks for a timer (especially with "egg timer" or short durations in seconds), ALWAYS use the `timer` tool, NOT the `scheduler` tool. The scheduler is for complex tasks with a minimum of 1 minute.
+**IMPORTANT**: Use the `timer` tool when the user wants an acoustic alarm. Use the `scheduler` tool only when the user wants a complex task executed (e.g. "send SMS", "remind me to call", "check calendar").
 
 **Time calculation**: Use `device` tool with `get_time` action to get the current time (`now_ms`) for any time-related calculations. Do NOT calculate timestamps manually.
 
@@ -201,7 +200,7 @@ Examples: "Cancel the timer" / "Delete the timer"
 
 ## Important rules
 
-- **ALWAYS use timer tool for short durations**: When the user asks for a timer (especially "egg timer" or durations in seconds), use the `timer` tool, NOT the `scheduler` tool. The scheduler requires a minimum of 1 minute and is for complex tasks.
+- **Timer = acoustic alarm only**: The timer tool only plays a beep when time is up. For complex tasks (SMS, HTTP, TTS, etc.), use the `scheduler` tool instead.
 - **Time calculations**: Use `device` tool with `get_time` action to get the current time (`now_ms`) for any time-related calculations. Do NOT calculate timestamps manually.
 - **Timer IDs are internal**: Never show timer IDs to the user. Describe timers by their label and time.
 - **Auto-removal**: Timers are automatically removed when they expire. Stopwatches are removed when stopped.

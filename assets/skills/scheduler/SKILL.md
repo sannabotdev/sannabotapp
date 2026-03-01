@@ -9,11 +9,15 @@ permissions:
 ---
 # Scheduler Skill
 
-Schedule tasks for the future (minimum 1 minute ahead). At the scheduled time, a sub-agent (mini AI) runs in the background and executes the stored instruction with all available tools.
+Schedule complex tasks for the future. At the scheduled time, a sub-agent (mini AI) runs in the background and executes the stored instruction with all available tools (SMS, HTTP, TTS, beep, Intent, etc.).
 
-**Examples**: Send SMS at a scheduled time, reminders, recurring queries, repeating tasks.
+**Use the scheduler tool for**:
+- Tasks that need execution (e.g. "send SMS", "remind me to call", "check calendar", "play alarm and speak")
+- Recurring tasks (daily, weekly, interval)
 
-**NOT suitable for**: Short timers under 1 minute (use the `beep` tool directly instead).
+**Examples**: "Remind me in 10 minutes to call Peter", "Send SMS tomorrow at 9 AM", "Check calendar every day at 8 AM"
+
+**NOT suitable for**: Simple countdown timers that only need an acoustic alarm. Use the `timer` tool instead for timers that just play a beep when time is up.
 
 ## Tool: scheduler
 
