@@ -684,10 +684,10 @@ function MessageBubble({
 
   return (
     <View
-      className={`max-w-[85%] p-3 rounded-2xl gap-1 ${
+      className={`p-3 rounded-2xl gap-1 ${
         isUser
-          ? 'self-end bg-accent rounded-br-sm'
-          : 'self-start bg-surface-elevated rounded-bl-sm'
+          ? 'max-w-[85%] self-end bg-accent rounded-br-sm'
+          : 'w-[85%] self-start bg-surface-elevated rounded-bl-sm'
       }`}>
       <View className="flex-row items-center gap-1.5 mb-0.5">
         {isUser ? null : <SannaAvatar size={16} />}
