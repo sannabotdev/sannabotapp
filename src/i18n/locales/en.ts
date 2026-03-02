@@ -71,6 +71,7 @@ const en = {
   'settings.provider.claudeModel': 'Claude Model',
   'settings.provider.openaiModel': 'OpenAI Model',
   'settings.provider.loadingModels': 'Loading models…',
+  'settings.provider.claudeComingSoon': '🧠 Claude: Coming Soon',
 
   // Wake Word
   'settings.wakeWord.label': "Activate 'Hey Sanna'",
