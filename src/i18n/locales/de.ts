@@ -291,6 +291,7 @@ const de = {
   'accessibilityHints.title': 'Accessibility-Hints',
   'accessibilityHints.empty': 'Keine Hints gespeichert.\nHints werden automatisch nach App-Automatisierungen angelegt.',
   'accessibilityHints.close': 'Schlie\u00DFen',
+  'accessibilityHints.help': 'Du kannst zus\u00E4tzliche Hints hinzuf\u00FCgen, indem du im Chat sagst: "Um in WhatsApp eine Nachricht zu senden, musst du zuerst auf das Suchsymbol tippen, dann den Kontaktnamen eingeben und auf den Kontakt tippen".',
   'accessibilityHints.deleteButton': 'Hints l\u00F6schen',
   'accessibilityHints.delete.title': 'Hints l\u00F6schen?',
   'accessibilityHints.delete.message': 'Die gespeicherten Hints f\u00FCr diese App wirklich l\u00F6schen?',

@@ -126,6 +126,13 @@ export function AccessibilityHintsModal({
             </TouchableOpacity>
           </View>
 
+          {/* Help text */}
+          <View className="px-5 py-3 border-b border-surface-elevated bg-surface-elevated/50">
+            <Text className="text-label-secondary text-xs leading-relaxed">
+              {t('accessibilityHints.help')}
+            </Text>
+          </View>
+
           {/* Content */}
           {loading ? (
             <View className="py-10 items-center">
@@ -167,14 +174,15 @@ export function AccessibilityHintsModal({
                         <Text className="text-label-secondary text-xs leading-relaxed">
                           {entry.hint || '—'}
                         </Text>
-                        <TouchableOpacity
-                          onPress={() => handleDelete(entry)}
-                          activeOpacity={0.7}
-                          className="py-2 rounded-xl bg-accent-red items-center">
-                          <Text className="text-white text-xs font-semibold">
-                            {t('accessibilityHints.deleteButton')}
-                          </Text>
-                        </TouchableOpacity>
+                        <View className="flex-row justify-end">
+                          <TouchableOpacity
+                            onPress={() => handleDelete(entry)}
+                            activeOpacity={0.7}
+                            style={{ width: 28, height: 28 }}
+                            className="rounded-full bg-red-500/15 items-center justify-center">
+                            <Text className="text-red-400 text-[13px] leading-none">🗑️</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     )}
                   </View>

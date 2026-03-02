@@ -291,6 +291,7 @@ const en = {
   'accessibilityHints.title': 'Accessibility Hints',
   'accessibilityHints.empty': 'No hints stored yet.\nHints are created automatically after app automations.',
   'accessibilityHints.close': 'Close',
+  'accessibilityHints.help': 'You can add additional hints by saying in the chat: "To send a message in WhatsApp, you need to first tap the search icon, then type the contact name and tap on the contact".',
   'accessibilityHints.deleteButton': 'Delete hints',
   'accessibilityHints.delete.title': 'Delete hints?',
   'accessibilityHints.delete.message': 'Really delete the stored hints for this app?',

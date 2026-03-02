@@ -26,6 +26,7 @@ import { AppSearchTool } from '../tools/app-search-tool';
 import { SkillDetailTool } from '../tools/skill-detail-tool';
 import { CheckCredentialTool } from '../tools/check-credential-tool';
 import { PersonalMemoryTool } from '../tools/personal-memory-tool';
+import { AccessibilityHintTool } from '../tools/accessibility-hint-tool';
 import { GmailSendTool } from '../tools/gmail-send-tool';
 import { JournalTool } from '../tools/journal-tool';
 import { TimerTool } from '../tools/timer-tool';
@@ -94,6 +95,9 @@ export async function createToolRegistry(opts: CreateToolRegistryOptions): Promi
   registry.register(new JournalTool());
   if (opts.includePersonalMemoryTool !== false) {
     registry.register(new PersonalMemoryTool(opts.provider));
+  }
+  if (opts.provider) {
+    registry.register(new AccessibilityHintTool(opts.provider));
   }
 
   // Conditionally register GmailSendTool if Gmail skill is enabled and configured
