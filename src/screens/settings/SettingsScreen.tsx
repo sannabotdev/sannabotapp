@@ -59,6 +59,8 @@ interface SettingsScreenProps {
   onSlackClientIdChange: (id: string) => void;
   googleMapsApiKey: string;
   onGoogleMapsApiKeyChange: (key: string) => void;
+  braveSearchApiKey: string;
+  onBraveSearchApiKeyChange: (key: string) => void;
   onTestSkill?: (skillName: string) => Promise<{
     success: boolean;
     message: string;
@@ -132,6 +134,8 @@ export function SettingsScreen({
   onSlackClientIdChange,
   googleMapsApiKey,
   onGoogleMapsApiKeyChange,
+  braveSearchApiKey,
+  onBraveSearchApiKeyChange,
   onTestSkill,
   ttsService,
   onAddSkill,
@@ -279,6 +283,8 @@ export function SettingsScreen({
             onSlackClientIdChange={onSlackClientIdChange}
             googleMapsApiKey={googleMapsApiKey}
             onGoogleMapsApiKeyChange={onGoogleMapsApiKeyChange}
+            braveSearchApiKey={braveSearchApiKey}
+            onBraveSearchApiKeyChange={onBraveSearchApiKeyChange}
           />
         </CollapsibleSection>
 

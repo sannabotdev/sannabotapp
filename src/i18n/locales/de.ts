@@ -314,6 +314,8 @@ const de = {
   'settings.services.slack.instructions': 'Erstelle eine Slack-App unter api.slack.com/apps, aktiviere OAuth & Permissions und kopiere die Client-ID von der Seite "Basic Information".',
   'settings.services.googleMaps.label': 'Google Maps API Key',
   'settings.services.googleMaps.instructions': 'Öffne die Google Cloud Console (console.cloud.google.com) und erstelle einen API-Schlüssel unter "APIs & Dienste → Anmeldedaten → Anmeldedaten erstellen → API-Schlüssel".\n\nAktiviere diese APIs unter "APIs & Dienste → Bibliothek":\n• Routes API (für Routen- und Verkehrsinformationen)\n• Geocoding API (für Adresssuche)\n\nOptional: Schränke den Schlüssel auf diese APIs ein.',
+  'settings.services.braveSearch.label': 'Brave Search API Key',
+  'settings.services.braveSearch.instructions': 'Gehe auf brave.com/search/api, erstelle ein kostenloses Konto und erzeuge einen API-Schlüssel. Der kostenlose Plan umfasst 2.000 Abfragen pro Monat.\n\nWird vom Web-Recherche-Skill für Websuche, Nachrichtensuche und allgemeine Informationsrecherche verwendet.',
 
   // Journal-Screen
   'journal.title': 'Journal',

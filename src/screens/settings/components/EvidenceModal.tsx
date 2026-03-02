@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import type { TTSService } from '../../../audio/tts-service';
 import { t } from '../../../i18n';
 
@@ -11,12 +11,17 @@ interface EvidenceModalProps {
   ttsService?: TTSService;
 }
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export function EvidenceModal({
   visible,
   title,
   text,
   onClose,
 }: EvidenceModalProps): React.JSX.Element {
+  // Use 70% of screen height for the scrollable content area
+  const maxScrollHeight = SCREEN_HEIGHT * 0.7;
+
   return (
     <Modal
       visible={visible}
@@ -34,18 +39,21 @@ export function EvidenceModal({
           <View className="p-4 border-b border-surface-tertiary">
             <Text className="text-label-primary text-lg font-bold">{title || t('evidence.noDetails')}</Text>
           </View>
-          <ScrollView className="max-h-[500px] p-4">
+          <ScrollView
+            style={{ maxHeight: maxScrollHeight }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+            showsVerticalScrollIndicator={true}>
             <Text className="text-label-secondary text-sm font-mono">
               {text || t('evidence.noDetails')}
-              </Text>
+            </Text>
           </ScrollView>
           <View className="p-3 border-t border-surface-tertiary">
-          <TouchableOpacity
+            <TouchableOpacity
               className="py-2 items-center"
-            onPress={onClose}>
+              onPress={onClose}>
               <Text className="text-accent font-medium">{t('evidence.close')}</Text>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>

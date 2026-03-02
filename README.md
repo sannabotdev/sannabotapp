@@ -65,6 +65,7 @@ If you encounter any issues during beta testing, see [Getting Help](#-getting-he
 | 📋 Lists | Manage local lists (shopping, to-do, packing) – fully offline |
 | 🌤️ Weather | Current weather & forecasts via wttr.in / Open-Meteo – no API key |
 | 🗞️ Headlines | Top news headlines from 40+ RSS feeds across 10 countries – no API key |
+| 🔍 Web Research | Web search, fact lookup, and information retrieval via Brave Search (API key) or Wikipedia/DuckDuckGo (free) |
 
 ## 💡 Usage Examples
 

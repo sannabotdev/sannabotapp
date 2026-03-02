@@ -58,7 +58,7 @@ export async function runSkillTest(
       {
         provider,
         tools: silentRegistry,
-        maxIterations: 3,
+        maxIterations: 6,
       },
       messages,
     );
@@ -82,7 +82,8 @@ export async function runSkillTest(
         );
         const toolName = assistantMsg?.toolCalls?.find(tc => tc.id === msg.toolCallId)?.name || 'unknown';
         
-        const isError = msg.content.toLowerCase().includes('error');
+        // Check if this is an error: errorResult() always starts with "Error: "
+        const isError = msg.content.trim().toLowerCase().startsWith('error:');
         toolResults.push({
           toolName,
           result: msg.content.substring(0, 500), // Limit length for display
@@ -103,7 +104,8 @@ export async function runSkillTest(
     if (result.iterations > 0 && result.content) {
       const hasErrors = result.newMessages.some(msg => {
         if (msg.role === 'tool') {
-          return msg.content.toLowerCase().includes('error');
+          // Check if this is an error: errorResult() always starts with "Error: "
+          return msg.content.trim().toLowerCase().startsWith('error:');
         }
         return false;
       });
@@ -204,6 +206,8 @@ ${toolSummaries.join('\n')}
 
 ## Skill Definition
 
+The full skill definition is provided below. You do NOT need to call skill_detail - the complete skill documentation is already available here:
+
 ### Skill: ${skill.name}
 
 ${skill.content}
@@ -211,7 +215,8 @@ ${skill.content}
 ## Instructions
 
 Execute the test instruction. Use the appropriate tools to fulfil the request.
-Do NOT use the tts tool. Never speak results aloud – just return them as text.`);
+Do NOT use the tts tool. Never speak results aloud – just return them as text.
+If the skill requires credentials (like API keys), check them first using check_credential, and if not configured, use the fallback methods described in the skill definition.`);
 
   return parts.join('\n\n');
 }

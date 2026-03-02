@@ -64,7 +64,7 @@ import { SannaAvatar } from './src/components/SannaAvatar';
 
 // Local dev config (gitignored – never shipped to production)
 // If the file is missing (e.g. in CI/Production), empty defaults are used.
-let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string; debugLogEnabled?: boolean } = {
+let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string; braveSearchApiKey: string; debugLogEnabled?: boolean } = {
   openAIApiKey: '',
   claudeApiKey: '',
   selectedProvider: 'openai',
@@ -76,6 +76,7 @@ let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider
   slackClientId: '',
   slackRedirectUrl: '',
   googleMapsApiKey: '',
+  braveSearchApiKey: '',
   debugLogEnabled: false,
 };
 try {
@@ -182,6 +183,7 @@ interface AppSettings extends AppPreferences {
   spotifyClientId: string;
   slackClientId: string;
   googleMapsApiKey: string;
+  braveSearchApiKey: string;
 }
 
 const DEFAULT_PREFS: AppPreferences = {
@@ -212,6 +214,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   spotifyClientId: '',
   slackClientId: '',
   googleMapsApiKey: '',
+  braveSearchApiKey: '',
 };
 
 // Keychain IDs for secure key storage
@@ -226,6 +229,7 @@ const SECURE_KEY_IDS = {
   spotifyClientId: 'svc_spotify_client_id',
   slackClientId: 'svc_slack_client_id',
   googleMapsApiKey: 'google_maps_api_key',
+  braveSearchApiKey: 'brave_search_api_key',
 } as const;
 
 /** AsyncStorage key for dark-mode preference – readable without biometric unlock */
@@ -291,8 +295,9 @@ async function loadSecureKeys(store: TokenStore): Promise<{
   spotifyClientId: string;
   slackClientId: string;
   googleMapsApiKey: string;
+  braveSearchApiKey: string;
 }> {
-  const [claude, openai, wakeWord, openAIModel, claudeModel, googleWebClientId, spotifyClientId, slackClientId, googleMapsApiKey] = await Promise.all([
+  const [claude, openai, wakeWord, openAIModel, claudeModel, googleWebClientId, spotifyClientId, slackClientId, googleMapsApiKey, braveSearchApiKey] = await Promise.all([
     store.getApiKey(SECURE_KEY_IDS.claudeApiKey).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.openAIApiKey).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.wakeWordKey).catch(() => null),
@@ -302,6 +307,7 @@ async function loadSecureKeys(store: TokenStore): Promise<{
     store.getApiKey(SECURE_KEY_IDS.spotifyClientId).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.slackClientId).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.googleMapsApiKey).catch(() => null),
+    store.getApiKey(SECURE_KEY_IDS.braveSearchApiKey).catch(() => null),
   ]);
   return {
     claudeApiKey: claude ?? '',
@@ -313,6 +319,7 @@ async function loadSecureKeys(store: TokenStore): Promise<{
     spotifyClientId: spotifyClientId ?? '',
     slackClientId: slackClientId ?? '',
     googleMapsApiKey: googleMapsApiKey ?? '',
+    braveSearchApiKey: braveSearchApiKey ?? '',
   };
 }
 
@@ -387,6 +394,12 @@ async function seedLocalConfigKeys(store: TokenStore): Promise<void> {
     const existing = await store.getApiKey(SECURE_KEY_IDS.googleMapsApiKey).catch(() => null);
     if (!existing) {
       await store.saveApiKey(SECURE_KEY_IDS.googleMapsApiKey, LOCAL_CONFIG.googleMapsApiKey);
+    }
+  }
+  if (LOCAL_CONFIG.braveSearchApiKey) {
+    const existing = await store.getApiKey(SECURE_KEY_IDS.braveSearchApiKey).catch(() => null);
+    if (!existing) {
+      await store.saveApiKey(SECURE_KEY_IDS.braveSearchApiKey, LOCAL_CONFIG.braveSearchApiKey);
     }
   }
 }
@@ -1267,7 +1280,7 @@ export default function App(): React.JSX.Element {
 
   /** Save a secure key to Keychain AND update local state */
   const updateSecureKey = useCallback(
-    async (field: 'claudeApiKey' | 'openAIApiKey' | 'wakeWordKey' | 'selectedOpenAIModel' | 'selectedClaudeModel' | 'googleWebClientId' | 'spotifyClientId' | 'slackClientId' | 'googleMapsApiKey', value: string) => {
+    async (field: 'claudeApiKey' | 'openAIApiKey' | 'wakeWordKey' | 'selectedOpenAIModel' | 'selectedClaudeModel' | 'googleWebClientId' | 'spotifyClientId' | 'slackClientId' | 'googleMapsApiKey' | 'braveSearchApiKey', value: string) => {
       setSettings(s => ({ ...s, [field]: value }));
       const keychainId = field === 'selectedOpenAIModel' ? SECURE_KEY_IDS.openAIModel
         : field === 'selectedClaudeModel' ? SECURE_KEY_IDS.claudeModel
@@ -1291,6 +1304,17 @@ export default function App(): React.JSX.Element {
       // SECURE_KEY_IDS.googleMapsApiKey === 'google_maps_api_key' – same Keychain entry
       // that CredentialManager.getApiKey uses, so no separate sync needed.
       await saveSecureKey(tokenStore.current, SECURE_KEY_IDS.googleMapsApiKey, key);
+    },
+    [],
+  );
+
+  /** Handle Brave Search API Key changes – persist to TokenStore and CredentialManager */
+  const handleBraveSearchApiKeyChange = useCallback(
+    async (key: string) => {
+      setSettings(s => ({ ...s, braveSearchApiKey: key }));
+      // SECURE_KEY_IDS.braveSearchApiKey === 'brave_search_api_key' – same Keychain entry
+      // that CredentialManager.getApiKey uses, so no separate sync needed.
+      await saveSecureKey(tokenStore.current, SECURE_KEY_IDS.braveSearchApiKey, key);
     },
     [],
   );
@@ -1588,6 +1612,8 @@ export default function App(): React.JSX.Element {
             onSlackClientIdChange={id => changeServiceClientId('slackClientId', 'slack', id)}
             googleMapsApiKey={settings.googleMapsApiKey}
             onGoogleMapsApiKeyChange={handleGoogleMapsApiKeyChange}
+            braveSearchApiKey={settings.braveSearchApiKey}
+            onBraveSearchApiKeyChange={handleBraveSearchApiKeyChange}
             onTestSkill={handleTestSkill}
             ttsService={ttsService.current}
             onAddSkill={handleAddSkill}

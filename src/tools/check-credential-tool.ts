@@ -26,7 +26,7 @@ export class CheckCredentialTool implements Tool {
       'Check whether a credential (OAuth token, API key, or password) is currently configured. ' +
       'Returns { "configured": true/false }. ' +
       'Use this before calling services that require authentication to avoid failing mid-task. ' +
-      'Example credential IDs: "google" (Google OAuth), "spotify", "slack", "google_maps_api_key".'
+      'Example credential IDs: "google" (Google OAuth), "spotify", "slack", "google_maps_api_key", "brave_search_api_key".'
     );
   }
 
@@ -39,7 +39,7 @@ export class CheckCredentialTool implements Tool {
           description:
             'The credential ID to check. ' +
             'OAuth providers: "google", "spotify", "slack". ' +
-            'API keys: "google_maps_api_key".',
+            'API keys: "google_maps_api_key", "brave_search_api_key".',
         },
       },
       required: ['credential_id'],

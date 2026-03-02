@@ -79,6 +79,8 @@ interface ServicesSectionProps {
   onSlackClientIdChange: (id: string) => void;
   googleMapsApiKey: string;
   onGoogleMapsApiKeyChange: (key: string) => void;
+  braveSearchApiKey: string;
+  onBraveSearchApiKeyChange: (key: string) => void;
 }
 
 export function ServicesSection({
@@ -92,6 +94,8 @@ export function ServicesSection({
   onSlackClientIdChange,
   googleMapsApiKey,
   onGoogleMapsApiKeyChange,
+  braveSearchApiKey,
+  onBraveSearchApiKeyChange,
 }: ServicesSectionProps): React.JSX.Element {
   return (
     <View>
@@ -140,6 +144,14 @@ export function ServicesSection({
         value={googleMapsApiKey}
         onChange={onGoogleMapsApiKeyChange}
         placeholder="AIzaSy…"
+      />
+
+      <ServiceItem
+        label={t('settings.services.braveSearch.label')}
+        instructions={t('settings.services.braveSearch.instructions')}
+        value={braveSearchApiKey}
+        onChange={onBraveSearchApiKeyChange}
+        placeholder="BSA…"
       />
     </View>
   );

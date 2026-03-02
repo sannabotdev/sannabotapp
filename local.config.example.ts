@@ -44,6 +44,9 @@ const LOCAL_DEV_CONFIG = {
   /** Google Maps API Key for local development */
   googleMapsApiKey: '',
 
+  /** Brave Search API Key for local development */
+  braveSearchApiKey: '',
+
   /** Enable debug logging by default (optional, default: false) */
   debugLogEnabled: false,
 };

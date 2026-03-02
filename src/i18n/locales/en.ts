@@ -314,6 +314,8 @@ const en = {
   'settings.services.slack.instructions': 'Create a Slack app at api.slack.com/apps, enable OAuth & Permissions, and copy the Client ID from the "Basic Information" page.',
   'settings.services.googleMaps.label': 'Google Maps API Key',
   'settings.services.googleMaps.instructions': 'Go to the Google Cloud Console (console.cloud.google.com), create an API key under "APIs & Services → Credentials → Create Credentials → API key".\n\nEnable these APIs under "APIs & Services → Library":\n• Routes API (for route/traffic information)\n• Geocoding API (for address lookup)\n\nOptional: Restrict the key to these APIs for security.',
+  'settings.services.braveSearch.label': 'Brave Search API Key',
+  'settings.services.braveSearch.instructions': 'Go to brave.com/search/api, sign up for a free account, and create an API key. The free plan includes 2,000 queries per month.\n\nUsed by the Web Research skill for web search, news search, and general information retrieval.',
 
   // Journal Screen
   'journal.title': 'Journal',
