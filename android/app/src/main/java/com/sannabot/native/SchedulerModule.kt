@@ -43,21 +43,37 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             val context = reactApplicationContext
             val schedule = JSONObject(scheduleJson)
             val id = schedule.getString("id")
-            val enabled = schedule.optBoolean("enabled", true)
-            val triggerAtMs = schedule.optLong("triggerAtMs", 0)
+            var enabled = schedule.optBoolean("enabled", true)
+            var triggerAtMs = schedule.optLong("triggerAtMs", 0)
+            val now = System.currentTimeMillis()
 
-            // Persist the schedule
+            // If schedule is enabled and trigger time has passed, calculate next trigger for recurring schedules
+            if (enabled && triggerAtMs <= now) {
+                val nextTrigger = SchedulerUtils.calculateNextTrigger(schedule, now)
+                if (nextTrigger != null) {
+                    // Recurring schedule: update trigger time
+                    triggerAtMs = nextTrigger
+                    schedule.put("triggerAtMs", triggerAtMs)
+                } else {
+                    // One-time schedule that expired: keep it disabled
+                    schedule.put("enabled", false)
+                    enabled = false
+                }
+            }
+
+            // Persist the schedule (with updated triggerAtMs or enabled status)
             saveScheduleToPrefs(context, schedule)
 
             // Set alarm only if enabled and trigger is in the future
-            if (enabled && triggerAtMs > System.currentTimeMillis()) {
+            if (enabled && triggerAtMs > now) {
                 setAlarm(context, id, triggerAtMs)
             } else {
                 // Cancel any existing alarm for this schedule
                 cancelAlarm(context, id)
             }
 
-            promise.resolve("ok")
+            // Return the updated schedule JSON so callers know the actual state
+            promise.resolve(schedule.toString())
         } catch (e: Exception) {
             promise.reject("SCHEDULE_ERROR", e.message ?: "setSchedule failed", e)
         }
@@ -181,6 +197,54 @@ class SchedulerModule(reactContext: ReactApplicationContext) :
             promise.resolve(config)
         } catch (e: Exception) {
             promise.reject("CONFIG_ERROR", e.message ?: "getAgentConfig failed", e)
+        }
+    }
+
+    /**
+     * Check for overdue enabled schedules and advance them to their next trigger time.
+     * Called on app startup to catch schedules that were missed while app was killed.
+     * Returns the count of schedules that were updated.
+     */
+    @ReactMethod
+    fun checkOverdueSchedules(promise: Promise) {
+        try {
+            val context = reactApplicationContext
+            val schedules = loadAllSchedules(context)
+            val now = System.currentTimeMillis()
+            var updatedCount = 0
+
+            for (i in 0 until schedules.length()) {
+                val schedule = schedules.getJSONObject(i)
+                val id = schedule.getString("id")
+                val enabled = schedule.optBoolean("enabled", true)
+                val triggerAtMs = schedule.optLong("triggerAtMs", 0)
+
+                // Only check enabled schedules that are overdue
+                if (!enabled || triggerAtMs > now) {
+                    continue
+                }
+
+                // Calculate next trigger for recurring schedules
+                val nextTrigger = SchedulerUtils.calculateNextTrigger(schedule, now)
+                if (nextTrigger != null) {
+                    // Recurring schedule: update trigger time and persist
+                    schedule.put("triggerAtMs", nextTrigger)
+                    saveScheduleToPrefs(context, schedule)
+                    // Set alarm for the new trigger time
+                    setAlarm(context, id, nextTrigger)
+                    updatedCount++
+                } else {
+                    // One-time schedule that expired: disable it
+                    schedule.put("enabled", false)
+                    saveScheduleToPrefs(context, schedule)
+                    cancelAlarm(context, id)
+                    updatedCount++
+                }
+            }
+
+            promise.resolve(updatedCount)
+        } catch (e: Exception) {
+            promise.reject("CHECK_ERROR", e.message ?: "checkOverdueSchedules failed", e)
         }
     }
 

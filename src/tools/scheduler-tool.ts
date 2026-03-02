@@ -107,6 +107,10 @@ export class SchedulerTool implements Tool {
           type: 'string',
           description: 'Optional user-friendly headline/label for the schedule (e.g. "Morning reminder", "Daily calendar check")',
         },
+        enabled: {
+          type: 'boolean',
+          description: 'For update: whether the schedule should be enabled (true) or disabled (false). Disabled schedules are not executed.',
+        },
       },
       required: ['action'],
     };
@@ -306,11 +310,17 @@ export class SchedulerTool implements Tool {
       if (args.recurrence_days_of_week !== undefined) {
         schedule.recurrence.daysOfWeek = args.recurrence_days_of_week as number[];
       }
+      if (args.enabled !== undefined) {
+        schedule.enabled = args.enabled as boolean;
+      }
 
-      await SchedulerModule.setSchedule(JSON.stringify(schedule));
+      // Native setSchedule handles overdue detection and advancement
+      const updatedJson = await SchedulerModule.setSchedule(JSON.stringify(schedule));
+      const updated = JSON.parse(updatedJson) as Schedule;
+      const statusText = updated.enabled ? 'enabled' : 'disabled';
       return successResult(
-        `Schedule updated: ${this.formatScheduleDetail(schedule)}`,
-        'Schedule updated',
+        `Schedule updated (${statusText}): ${this.formatScheduleDetail(updated)}`,
+        `Schedule ${statusText}`,
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -354,8 +364,10 @@ export class SchedulerTool implements Tool {
       const schedule = JSON.parse(json) as Schedule;
       schedule.enabled = enabled;
 
-      await SchedulerModule.setSchedule(JSON.stringify(schedule));
-      const label = enabled ? 'enabled' : 'disabled';
+      // Native setSchedule handles overdue detection and advancement
+      const updatedJson = await SchedulerModule.setSchedule(JSON.stringify(schedule));
+      const updated = JSON.parse(updatedJson) as Schedule;
+      const label = updated.enabled ? 'enabled' : 'disabled';
       return successResult(
         `Schedule "${id}" ${label}.`,
         `Schedule ${label}`,

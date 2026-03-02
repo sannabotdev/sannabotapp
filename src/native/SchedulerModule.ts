@@ -32,6 +32,9 @@ export interface SchedulerModuleType {
 
   /** Get saved agent config. Returns JSON string or null. */
   getAgentConfig(): Promise<string | null>;
+
+  /** Check for overdue enabled schedules and advance them to their next trigger time. Returns count of updated schedules. */
+  checkOverdueSchedules(): Promise<number>;
 }
 
 export default SchedulerModule as SchedulerModuleType;

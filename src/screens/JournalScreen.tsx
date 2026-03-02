@@ -118,13 +118,11 @@ export function JournalScreen({ visible, onClose }: JournalScreenProps): React.J
       onRequestClose={onClose}>
       <View className="flex-1 bg-surface">
         {/* Header */}
-        <View className="flex-row justify-between items-center px-4 pt-12 pb-3 border-b border-surface-elevated">
-          <Text className="text-lg font-bold text-label-primary">{t('journal.title')}</Text>
-          <TouchableOpacity
-            onPress={onClose}
-            className="w-10 h-10 items-center justify-center bg-surface-elevated rounded-lg">
-            <Text className="text-lg text-label-primary">✕</Text>
+        <View className="flex-row items-center px-4 py-3 border-b border-surface-elevated gap-3">
+          <TouchableOpacity onPress={onClose} className="p-1">
+            <Text className="text-accent text-base">{t('settings.back')}</Text>
           </TouchableOpacity>
+          <Text className="text-label-primary text-lg font-bold">{t('journal.title')}</Text>
         </View>
 
         {/* Category Filter */}

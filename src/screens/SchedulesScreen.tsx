@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -104,6 +105,12 @@ export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: Schedules
     setExpandedId(prev => (prev === id ? null : id));
   };
 
+  const handleToggleEnabled = async (schedule: Schedule) => {
+    schedule.enabled = !schedule.enabled;
+    await SchedulerModule.setSchedule(JSON.stringify(schedule));
+    await loadSchedules();
+  };
+
   const handleDelete = (schedule: Schedule) => {
     Alert.alert(
       t('schedules.delete.title'),
@@ -156,27 +163,39 @@ export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: Schedules
             return (
               <View key={schedule.id} className="bg-surface-elevated rounded-xl overflow-hidden">
                 {/* Schedule header row */}
-                <TouchableOpacity
-                  onPress={() => handleToggle(schedule.id)}
-                  activeOpacity={0.7}
-                  className="flex-row items-center px-4 py-3 gap-3">
-                  <Text className="text-label-secondary text-lg">
-                    {isExpanded ? '▾' : '▸'}
-                  </Text>
-                  <View className="flex-1 gap-0.5">
-                    <Text
-                      className="text-label-primary text-sm font-semibold"
-                      numberOfLines={2}>
-                      {schedule.label || schedule.instruction}
+                <View className="flex-row items-center px-4 py-3 gap-3">
+                  <TouchableOpacity
+                    onPress={() => handleToggle(schedule.id)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center flex-1 gap-3">
+                    <Text className="text-label-secondary text-lg">
+                      {isExpanded ? '▾' : '▸'}
                     </Text>
-                    <Text className="text-label-secondary text-xs">
-                      {formatDate(schedule.triggerAtMs)}
-                    </Text>
-                  </View>
-                  <View
-                    className={`w-2 h-2 rounded-full ${schedule.enabled ? 'bg-accent-green' : 'bg-label-quaternary'}`}
+                    <View className="flex-1 gap-0.5">
+                      <Text
+                        className="text-label-primary text-sm font-semibold"
+                        numberOfLines={2}>
+                        {schedule.label || schedule.instruction}
+                      </Text>
+                      <Text className="text-label-secondary text-xs">
+                        {formatDate(schedule.triggerAtMs)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(schedule)}
+                    activeOpacity={0.7}
+                    style={{ width: 28, height: 28 }}
+                    className="rounded-full bg-red-500/15 items-center justify-center">
+                    <Text className="text-red-400 text-[13px] leading-none">🗑️</Text>
+                  </TouchableOpacity>
+                  <Switch
+                    value={schedule.enabled}
+                    onValueChange={() => handleToggleEnabled(schedule)}
+                    trackColor={{ false: '#3A3A3C', true: '#007AFF' }}
+                    thumbColor="#FFFFFF"
                   />
-                </TouchableOpacity>
+                </View>
 
                 {/* Expanded content */}
                 {isExpanded && (
@@ -198,15 +217,6 @@ export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: Schedules
                         value={formatDate(schedule.lastExecutedAt)}
                       />
                     )}
-
-                    <TouchableOpacity
-                      onPress={() => handleDelete(schedule)}
-                      activeOpacity={0.7}
-                      className="mt-2 py-2.5 rounded-xl bg-accent-red items-center">
-                      <Text className="text-white text-sm font-semibold">
-                        {t('schedules.deleteButton')}
-                      </Text>
-                    </TouchableOpacity>
                   </View>
                 )}
               </View>

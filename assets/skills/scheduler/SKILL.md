@@ -113,6 +113,18 @@ Days of week: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
 
 Only the specified fields are changed; the rest remains the same.
 
+### Enable or disable a schedule
+
+```json
+{
+  "action": "update",
+  "schedule_id": "{ID}",
+  "enabled": true
+}
+```
+
+Set `enabled: false` to temporarily disable a schedule without deleting it. Disabled schedules are not executed.
+
 ### Delete a schedule
 
 ```json

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -16,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { MarkdownText } from '../components/MarkdownText';
-import { deleteRule, loadRules, type NotificationRule } from '../agent/notification-rules-store';
+import { deleteRule, loadRules, updateRule, type NotificationRule } from '../agent/notification-rules-store';
 
 interface NotificationListenersScreenProps {
   onBack: () => void;
@@ -72,6 +73,11 @@ export function NotificationListenersScreen({
     setExpandedId(prev => (prev === id ? null : id));
   };
 
+  const handleToggleEnabled = async (rule: NotificationRule) => {
+    await updateRule(rule.id, { enabled: !rule.enabled });
+    await loadData();
+  };
+
   const handleDelete = (rule: NotificationRule) => {
     Alert.alert(
       t('notifListeners.delete.title'),
@@ -124,27 +130,39 @@ export function NotificationListenersScreen({
             return (
               <View key={rule.id} className="bg-surface-elevated rounded-xl overflow-hidden">
                 {/* Rule header row */}
-                <TouchableOpacity
-                  onPress={() => handleToggle(rule.id)}
-                  activeOpacity={0.7}
-                  className="flex-row items-center px-4 py-3 gap-3">
-                  <Text className="text-label-secondary text-lg">
-                    {isExpanded ? '▾' : '▸'}
-                  </Text>
-                  <View className="flex-1 gap-0.5">
-                    <Text className="text-label-primary text-sm font-semibold">
-                      {rule.appLabel}
+                <View className="flex-row items-center px-4 py-3 gap-3">
+                  <TouchableOpacity
+                    onPress={() => handleToggle(rule.id)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center flex-1 gap-3">
+                    <Text className="text-label-secondary text-lg">
+                      {isExpanded ? '▾' : '▸'}
                     </Text>
-                    <Text
-                      className="text-label-secondary text-xs"
-                      numberOfLines={1}>
-                      {rule.instruction}
-                    </Text>
-                  </View>
-                  <View
-                    className={`w-2 h-2 rounded-full ${rule.enabled ? 'bg-accent-green' : 'bg-label-quaternary'}`}
+                    <View className="flex-1 gap-0.5">
+                      <Text className="text-label-primary text-sm font-semibold">
+                        {rule.appLabel}
+                      </Text>
+                      <Text
+                        className="text-label-secondary text-xs"
+                        numberOfLines={1}>
+                        {rule.instruction}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(rule)}
+                    activeOpacity={0.7}
+                    style={{ width: 28, height: 28 }}
+                    className="rounded-full bg-red-500/15 items-center justify-center">
+                    <Text className="text-red-400 text-[13px] leading-none">🗑️</Text>
+                  </TouchableOpacity>
+                  <Switch
+                    value={rule.enabled}
+                    onValueChange={() => handleToggleEnabled(rule)}
+                    trackColor={{ false: '#3A3A3C', true: '#007AFF' }}
+                    thumbColor="#FFFFFF"
                   />
-                </TouchableOpacity>
+                </View>
 
                 {/* Expanded content */}
                 {isExpanded && (
@@ -160,15 +178,6 @@ export function NotificationListenersScreen({
                       value={rule.enabled ? t('notifListeners.status.active') : t('notifListeners.status.disabled')}
                     />
                     <DetailRow label={t('notifListeners.detail.createdAt')} value={formatDate(rule.created_at)} />
-
-                    <TouchableOpacity
-                      onPress={() => handleDelete(rule)}
-                      activeOpacity={0.7}
-                      className="mt-2 py-2.5 rounded-xl bg-accent-red items-center">
-                      <Text className="text-white text-sm font-semibold">
-                        {t('notifListeners.deleteButton')}
-                      </Text>
-                    </TouchableOpacity>
                   </View>
                 )}
               </View>

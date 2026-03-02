@@ -135,6 +135,12 @@ export class NotificationListenerTool implements Tool {
             'Leave empty for a catch-all rule that applies to every notification from this app. ' +
             'Example: "The sender is my team lead", "The message mentions a meeting".',
         },
+        enabled: {
+          type: 'boolean',
+          description:
+            'For update_rule: whether the rule should be enabled (true) or disabled (false). ' +
+            'Disabled rules are not evaluated when notifications arrive.',
+        },
         rule_id: {
           type: 'string',
           description:
@@ -250,16 +256,18 @@ export class NotificationListenerTool implements Tool {
     const updates: Partial<Pick<NotificationRule, 'instruction' | 'condition' | 'enabled'>> = {};
     if (args.instruction !== undefined) { updates.instruction = args.instruction as string; }
     if (args.condition !== undefined) { updates.condition = args.condition as string; }
+    if (args.enabled !== undefined) { updates.enabled = args.enabled as boolean; }
 
     const updated = await updateRule(ruleId, updates);
     if (!updated) {
       return errorResult(`Rule ${ruleId} not found.`);
     }
 
+    const statusText = updated.enabled ? 'enabled' : 'disabled';
     return successResult(
-      `Rule ${ruleId} updated.\nInstruction: ${updated.instruction}` +
+      `Rule ${ruleId} updated (${statusText}).\nInstruction: ${updated.instruction}` +
       (updated.condition ? `\nCondition: ${updated.condition}` : ''),
-      `Rule updated`,
+      `Rule ${statusText}`,
     );
   }
 

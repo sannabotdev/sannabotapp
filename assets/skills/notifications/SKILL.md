@@ -116,6 +116,18 @@ This removes ALL rules for that app.
 
 You can update `instruction`, `condition`, or `enabled` status. Get IDs via `list_subscriptions`.
 
+### Enable or disable a rule
+
+```json
+{
+  "action": "update_rule",
+  "rule_id": "{ID}",
+  "enabled": true
+}
+```
+
+Set `enabled: false` to temporarily disable a rule without deleting it. Disabled rules are not evaluated when notifications arrive.
+
 ### Delete a specific rule
 
 ```json

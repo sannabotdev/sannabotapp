@@ -541,6 +541,11 @@ export default function App(): React.JSX.Element {
     // after backup restore, app update, or reinstall)
     syncNotificationRules().catch(() => {});
 
+    // Check for overdue schedules and advance them to their next trigger time
+    if (prefs.enabledSkillNames.includes('scheduler')) {
+      SchedulerModule.checkOverdueSchedules().catch(() => {});
+    }
+
     // Restore persisted conversation history into the UI
     const storedMessages = await ConversationStore.loadHistory(prefs.conversationHistoryMaxMessages ?? 50);
     if (storedMessages.length > 0) {
