@@ -6,6 +6,10 @@ An open-source AI assistant that runs on Android and actually *controls* your ph
 
 > "Hey Sanna, read my last 3 emails, summarize them, and text the summary to Sarah" — just works.
 
+## 🎬 Demo
+
+<div style="position:relative; width:100%; height:0px; padding-bottom:205.788%"><iframe allow="fullscreen" allowfullscreen height="100%" src="https://streamable.com/e/b69qq7?" width="100%" style="border:none; width:100%; height:100%; position:absolute; left:0px; top:0px; overflow:hidden;"></iframe></div>
+
 ## 🎯 Beta Testing
 
 There are two ways to get a beta release of Sanna:
