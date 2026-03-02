@@ -61,6 +61,7 @@ export class SchedulerTool implements Tool {
       'Actions: create, list, get, update, delete, enable, disable.',
       'IMPORTANT: Schedule IDs are internal – NEVER show them to the user.',
       'When reporting schedules to the user, describe them by their instruction and time.',
+      'CRITICAL: For trigger_at_ms, ALWAYS use datetime.add(base: "now", amount: N, unit: "minute|hour|...") to calculate the start time. For interval recurrence, also use datetime.interval() for recurrence_interval_ms. For recurring schedules, trigger_at_ms is optional and will be auto-calculated if omitted.',
     ].join(' ');
   }
 
@@ -83,7 +84,7 @@ export class SchedulerTool implements Tool {
         },
         trigger_at_ms: {
           type: 'number',
-          description: 'Next execution time as Unix timestamp in milliseconds',
+          description: 'Next execution time as Unix timestamp in milliseconds. Required for "once" schedules. Optional for recurring schedules (interval/daily/weekly) - if omitted, will be auto-calculated based on recurrence settings. If provided, use datetime.add(base: "now", amount: N, unit: "minute|hour|...") to calculate it.',
         },
         recurrence_type: {
           type: 'string',
@@ -144,35 +145,15 @@ export class SchedulerTool implements Tool {
   private async createSchedule(args: Record<string, unknown>): Promise<ToolResult> {
     const instruction = args.instruction as string;
     const label = args.label as string | undefined;
-    const triggerAtMs = args.trigger_at_ms as number;
+    let triggerAtMs = args.trigger_at_ms as number | undefined;
     const recurrenceType = (args.recurrence_type as ScheduleRecurrence['type']) ?? 'once';
 
     if (!instruction) {
       return errorResult('Missing instruction parameter – what should the sub-agent do?');
     }
-    if (!triggerAtMs) {
-      return errorResult('Missing trigger_at_ms parameter – when should it be executed?');
-    }
 
     const now = Date.now();
-    // 15 seconds hard minimum – accounts for LLM latency between timestamp
-    // calculation and validation.  The tool description still says "~1 minute"
-    // so the LLM targets 60 s+, but we don't reject if a few seconds were lost.
     const MIN_LEAD_TIME_MS = 15_000;
-    if (triggerAtMs <= now) {
-      return errorResult(
-        `Trigger time is in the past. Current: ${now}, Provided: ${triggerAtMs}`,
-      );
-    }
-    if (triggerAtMs - now < MIN_LEAD_TIME_MS) {
-      const secondsFromNow = Math.round((triggerAtMs - now) / 1000);
-      return errorResult(
-        `Trigger time must be at least 15 seconds in the future. ` +
-        `Provided: ${triggerAtMs} (${secondsFromNow}s from now). ` +
-        `For short countdown timers (especially "egg timer" or durations in seconds), use the timer tool instead. ` +
-        `The scheduler is for complex tasks that need a sub-agent to execute instructions.`,
-      );
-    }
 
     const recurrence: ScheduleRecurrence = {
       type: recurrenceType,
@@ -184,6 +165,11 @@ export class SchedulerTool implements Tool {
         return errorResult('recurrence_interval_ms missing or too small (min. 60000 ms = 1 minute)');
       }
       recurrence.intervalMs = intervalMs;
+
+      // Auto-calculate trigger_at_ms if not provided
+      if (!triggerAtMs) {
+        triggerAtMs = now + intervalMs;
+      }
     }
 
     if (recurrenceType === 'daily' || recurrenceType === 'weekly') {
@@ -192,14 +178,50 @@ export class SchedulerTool implements Tool {
         return errorResult('recurrence_time missing or invalid format (expected: "HH:mm")');
       }
       recurrence.time = time;
+
+      if (recurrenceType === 'weekly') {
+        const days = args.recurrence_days_of_week as number[];
+        if (!days || days.length === 0) {
+          return errorResult('recurrence_days_of_week missing (e.g. [1,3,5] for Mon/Wed/Fri)');
+        }
+        recurrence.daysOfWeek = days;
+      }
+
+      // Auto-calculate trigger_at_ms if not provided
+      if (!triggerAtMs) {
+        if (recurrenceType === 'daily') {
+          triggerAtMs = getNextDailyTrigger(time, now);
+        } else {
+          // recurrence.daysOfWeek is already set above
+          triggerAtMs = getNextWeeklyTrigger(time, recurrence.daysOfWeek!, now);
+        }
+      }
     }
 
-    if (recurrenceType === 'weekly') {
-      const days = args.recurrence_days_of_week as number[];
-      if (!days || days.length === 0) {
-        return errorResult('recurrence_days_of_week missing (e.g. [1,3,5] for Mon/Wed/Fri)');
+    // For 'once' schedules, trigger_at_ms is required
+    if (recurrenceType === 'once' && !triggerAtMs) {
+      return errorResult('Missing trigger_at_ms parameter – required for one-time schedules. Use datetime.add(base: "now", amount: N, unit: "minute|hour|...") to calculate it.');
+    }
+
+    // Validate trigger_at_ms if provided
+    if (triggerAtMs) {
+      if (triggerAtMs <= now) {
+        return errorResult(
+          `Trigger time is in the past. Current: ${now}, Provided: ${triggerAtMs}`,
+        );
       }
-      recurrence.daysOfWeek = days;
+      if (triggerAtMs - now < MIN_LEAD_TIME_MS) {
+        const secondsFromNow = Math.round((triggerAtMs - now) / 1000);
+        return errorResult(
+          `Trigger time must be at least 15 seconds in the future. ` +
+          `Provided: ${triggerAtMs} (${secondsFromNow}s from now). ` +
+          `For short countdown timers (especially "egg timer" or durations in seconds), use the timer tool instead. ` +
+          `The scheduler is for complex tasks that need a sub-agent to execute instructions.`,
+        );
+      }
+    } else {
+      // This should not happen, but just in case
+      return errorResult('trigger_at_ms could not be calculated. Please provide it explicitly.');
     }
 
     const id = `sched_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -498,7 +520,7 @@ export function calculateNextTrigger(schedule: Schedule): number | null {
 /**
  * Get the next occurrence of a daily time (HH:mm) after `after` timestamp.
  */
-function getNextDailyTrigger(time: string, after: number): number {
+export function getNextDailyTrigger(time: string, after: number): number {
   const [hours, minutes] = time.split(':').map(Number);
   const next = new Date(after);
   next.setHours(hours, minutes, 0, 0);
@@ -515,7 +537,7 @@ function getNextDailyTrigger(time: string, after: number): number {
  * Get the next occurrence of a weekly schedule after `after` timestamp.
  * daysOfWeek: 1=Mon, 2=Tue, ..., 7=Sun
  */
-function getNextWeeklyTrigger(time: string, daysOfWeek: number[], after: number): number {
+export function getNextWeeklyTrigger(time: string, daysOfWeek: number[], after: number): number {
   const [hours, minutes] = time.split(':').map(Number);
 
   // Try the next 8 days to find the next matching day
