@@ -14,7 +14,7 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PipelineState } from '../agent/conversation-pipeline';
 import { DebugPanel } from './DebugPanel';
@@ -84,6 +84,7 @@ export function HomeScreen({
   language,
   debugLogEnabled,
 }: HomeScreenProps): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const isBusy = pipelineState !== 'idle';
   const [debugVisible, setDebugVisible] = useState(false);
@@ -200,7 +201,7 @@ export function HomeScreen({
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={isDark ? '#1C1C1E' : '#F2F2F7'}
@@ -390,7 +391,7 @@ export function HomeScreen({
         visible={debugVisible} 
         onClose={() => setDebugVisible(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

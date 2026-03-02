@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { MarkdownText } from '../components/MarkdownText';
 import { deleteRule, loadRules, updateRule, type NotificationRule } from '../agent/notification-rules-store';
@@ -41,6 +41,7 @@ export function NotificationListenersScreen({
   enabledSkillNames,
   isDark,
 }: NotificationListenersScreenProps): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const [rules, setRules] = useState<NotificationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export function NotificationListenersScreen({
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-surface-elevated gap-3">
         <TouchableOpacity onPress={onBack} className="p-1">
@@ -185,7 +186,7 @@ export function NotificationListenersScreen({
           })}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

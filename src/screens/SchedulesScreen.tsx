@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { MarkdownText } from '../components/MarkdownText';
 import SchedulerModule from '../native/SchedulerModule';
@@ -72,6 +72,7 @@ function formatRecurrence(s: Schedule): string {
 }
 
 export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: SchedulesScreenProps): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -131,7 +132,7 @@ export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: Schedules
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-surface-elevated gap-3">
         <TouchableOpacity onPress={onBack} className="p-1">
@@ -224,7 +225,7 @@ export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: Schedules
           })}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

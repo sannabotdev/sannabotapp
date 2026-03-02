@@ -449,6 +449,21 @@ function LockScreen({
   );
 }
 
+// ─── Loading Screen ───────────────────────────────────────────────────────────
+
+function LoadingScreenInner(): React.JSX.Element {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      className="flex-1 bg-surface items-center justify-center"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <SannaAvatar size={96} />
+      <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 24 }} />
+      <Text className="text-label-secondary text-sm mt-4">{t('app.loading')}</Text>
+    </View>
+  );
+}
+
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 export default function App(): React.JSX.Element {
@@ -1462,11 +1477,7 @@ export default function App(): React.JSX.Element {
     return (
       <View style={[{ flex: 1 }, DARK_THEME]}>
         <SafeAreaProvider>
-          <SafeAreaView className="flex-1 bg-surface items-center justify-center">
-            <SannaAvatar size={96} />
-            <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 24 }} />
-            <Text className="text-label-secondary text-sm mt-4">{t('app.loading')}</Text>
-          </SafeAreaView>
+          <LoadingScreenInner />
         </SafeAreaProvider>
       </View>
     );

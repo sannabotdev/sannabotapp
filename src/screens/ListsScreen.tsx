@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 
 const FILE_KEY_PREFIX = 'sanna_file_';
@@ -30,6 +30,7 @@ interface ListsScreenProps {
 }
 
 export function ListsScreen({ onBack }: ListsScreenProps): React.JSX.Element {
+  const insets = useSafeAreaInsets();
   const [lists, setLists] = useState<ListEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedList, setExpandedList] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export function ListsScreen({ onBack }: ListsScreenProps): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-surface-elevated gap-3">
         <TouchableOpacity onPress={onBack} className="p-1">
@@ -201,6 +202,6 @@ export function ListsScreen({ onBack }: ListsScreenProps): React.JSX.Element {
           })}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }

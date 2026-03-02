@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CredentialManager } from '../../permissions/credential-manager';
 import type { SkillInfo } from '../../agent/skill-loader';
 import type { TTSService } from '../../audio/tts-service';
@@ -174,6 +174,8 @@ export function SettingsScreen({
     handleCloseEvidenceModal,
   } = useSkillTesting(onTestSkill);
 
+  const insets = useSafeAreaInsets();
+
   // Accordion: Only one section open at a time
   const [openSection, setOpenSection] = useState<SectionId | null>(null);
 
@@ -182,7 +184,7 @@ export function SettingsScreen({
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-surface-elevated gap-3">
         <TouchableOpacity onPress={onBack} className="p-1">
@@ -350,6 +352,6 @@ export function SettingsScreen({
           ttsService={ttsService}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
