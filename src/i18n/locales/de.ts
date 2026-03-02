@@ -81,6 +81,7 @@ const de = {
   'settings.wakeWord.label': "'Hey Sanna' aktivieren",
   'settings.wakeWord.description': 'Hört permanent auf das Wake Word',
   'settings.wakeWord.keyLabel': 'Picovoice Access Key',
+  'wakeWord.greeting': 'Ja?',
 
   // Language / Speech
   'settings.language.label': 'App-Sprache',

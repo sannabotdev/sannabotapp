@@ -124,38 +124,37 @@ Or for individual tracks:
 }
 ```
 
-## Tool: accessibility (ONLY for starting playback when nothing is playing)
+## Tool: accessibility (ONLY for NO_ACTIVE_DEVICE errors)
 
-**IMPORTANT**: Use accessibility ONLY to start playback when Spotify is not playing. All other actions (pause, next, previous, volume, search, play specific tracks) MUST be done via the Web API.
+**IMPORTANT**: Use accessibility ONLY when the Web API returns a `NO_ACTIVE_DEVICE` error (HTTP 404 with `"reason": "NO_ACTIVE_DEVICE"`). All other actions (pause, next, previous, volume, search, play specific tracks) MUST be done via the Web API.
 
+### When to use: NO_ACTIVE_DEVICE
 
-When Spotify is not playing and the Web API play endpoint fails, use accessibility to open the app and click the "Play" button:
+If any playback API call returns `HTTP 404 / NO_ACTIVE_DEVICE`, Spotify has no active player on any device. Fix this by opening Spotify and selecting this phone as the active device:
 
 ```json
 {
   "package_name": "com.spotify.music",
-  "goal": "Open the Spotify app and click the play button to start playback"
+  "goal": "Open Spotify. In the mini-player bar at the bottom of the screen, tap the devices/connect icon (the monitor icon to the left of the + button). A bottom sheet titled 'Connect' will appear. In that sheet, tap the first row that shows a smartphone icon – it represents this phone (labeled 'Dieses Smartphone' in German or 'This phone' / 'This device' in English). Tap it to activate playback on this device."
 }
 ```
+
+After the accessibility tool completes, **immediately retry** the original API play call (with the same URI/body as before).
+
+**Note**: Once this phone is selected as the active device, all further control (pause, next, previous, volume) should be done via the Web API, NOT via accessibility.
 
 ## Workflow: Play music
 
 1. Search for artist/song using `http`
 2. Get context URI or track URI from search results
 3. Call play endpoint with the URI
-4. Confirm with `tts`: "Now playing {Artist} - {Track}"
+   - If response is `HTTP 404 / NO_ACTIVE_DEVICE`: use the `accessibility` tool (see above) to activate this phone, then **retry** the play call
+4. Confirm with spoken response: "Now playing {Artist} - {Track}"
 
-## Workflow: Resume playback when nothing is playing
+## Workflow: Resume playback
 
-If Spotify is currently not playing anything:
-
-1. Check current playback status using `GET /me/player/currently-playing`
-2. If the API returns 204 No Content or an empty response (nothing is playing):
-   - Use the `accessibility` tool with `package_name: "com.spotify.music"` and `goal: "Open the Spotify app and click the play button to start playback"`
-3. The accessibility tool will open the app and click the "Play" button automatically
-
-**Note**: Once playback is started, all further control (pause, next, previous, volume) should be done via the Web API, NOT via accessibility.
-
+1. Call `PUT /me/player/play` (no body) to resume
+   - If `HTTP 404 / NO_ACTIVE_DEVICE`: use the `accessibility` tool to activate this phone, then retry
 
 ## Examples
 
@@ -164,4 +163,4 @@ If Spotify is currently not playing anything:
 - "Pause" → PUT /me/player/pause (via API)
 - "What's playing?" → GET /me/player/currently-playing + TTS (via API)
 - "Louder" → Get current volume + increase + set volume (via API)
-- "Resume playback" / "Continue playing" → Check currently-playing → If nothing playing: accessibility tool to open app and click play (ONLY use accessibility for starting playback when nothing is playing)
+- "Resume playback" / "Continue playing" → PUT /me/player/play → if NO_ACTIVE_DEVICE: accessibility tool to select this phone, then retry

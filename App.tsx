@@ -1067,8 +1067,17 @@ export default function App(): React.JSX.Element {
   }, [settings.sttLanguage, settings.sttMode]);
 
   const handleWakeWordDetected = useCallback(async (_keyword: string) => {
-    if (!pipelineRef.current || pipelineRef.current.getState() !== 'idle') return;
-    await ttsService.current.speak('Yes?', settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage);
+    if (!pipelineRef.current) return;
+    const state = pipelineRef.current.getState();
+    // Erlaubt nur idle oder speaking (nicht processing/listening)
+    if (state !== 'idle' && state !== 'speaking') return;
+    // TTS unterbrechen falls Sanna gerade spricht
+    if (state === 'speaking') {
+      await pipelineRef.current.stopSpeaking();
+    }
+    const lang = settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
+    console.log('[WakeWord] Speaking greeting in language:', lang);
+    await ttsService.current.speak(t('wakeWord.greeting'), lang);
     handleMicPress();
   }, [handleMicPress, settings.appLanguage]);
 

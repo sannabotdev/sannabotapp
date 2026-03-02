@@ -192,7 +192,7 @@ class WakeWordService : Service() {
                 val builder = PorcupineManager.Builder()
                     .setAccessKey(accessKey)
                     .setKeywordPath(assetKeyword)
-                    .setSensitivity(0.65f)
+                    .setSensitivity(0.8f)  // Erhöht von 0.65f auf 0.8f für bessere Erkennung während TTS
                     .setErrorCallback(errorCallback)
 
                 if (assetModel != null) {
@@ -210,7 +210,7 @@ class WakeWordService : Service() {
                     PorcupineManager.Builder()
                         .setAccessKey(accessKey)
                         .setKeyword(builtIn)
-                        .setSensitivity(0.7f)
+                        .setSensitivity(0.85f)  // Erhöht von 0.7f auf 0.85f für bessere Erkennung während TTS
                         .setErrorCallback(errorCallback)
                         .build(applicationContext, callback)
                 } else {
@@ -219,7 +219,7 @@ class WakeWordService : Service() {
                     val builder = PorcupineManager.Builder()
                         .setAccessKey(accessKey)
                         .setKeywordPath(keywordPath)
-                        .setSensitivity(0.7f)
+                        .setSensitivity(0.85f)  // Erhöht von 0.7f auf 0.85f für bessere Erkennung während TTS
                         .setErrorCallback(errorCallback)
 
                     if (assetModel != null) {
