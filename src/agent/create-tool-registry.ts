@@ -29,6 +29,7 @@ import { PersonalMemoryTool } from '../tools/personal-memory-tool';
 import { GmailSendTool } from '../tools/gmail-send-tool';
 import { JournalTool } from '../tools/journal-tool';
 import { TimerTool } from '../tools/timer-tool';
+import { DateTimeTool } from '../tools/datetime-tool';
 
 export interface CreateToolRegistryOptions {
   credentialManager: CredentialManager;
@@ -77,6 +78,7 @@ export async function createToolRegistry(opts: CreateToolRegistryOptions): Promi
   registry.register(new HttpTool(opts.credentialManager));
   registry.register(new QueryTool());
   registry.register(new DeviceTool());
+  registry.register(new DateTimeTool());
   registry.register(new SmsTool());
   if (opts.includeScheduler !== false) {
     registry.register(new SchedulerTool());

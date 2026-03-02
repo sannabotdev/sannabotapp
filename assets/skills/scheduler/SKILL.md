@@ -53,7 +53,7 @@ The `instruction` is the command the sub-agent will execute. Write it as if you 
 }
 ```
 
-Example "every 30 minutes": `recurrence_interval_ms: 1800000`
+Example "every 30 minutes": Use `datetime` tool with `action: "interval"`, `amount: 30`, `interval_unit: "minute"` → returns `1800000` (use as `recurrence_interval_ms`)
 
 #### Daily
 
@@ -146,32 +146,36 @@ Only the specified fields are changed; the rest remains the same.
 
 ### Workflow for time calculation
 
-**For relative times** ("in 5 minutes", "in an hour"):
-1. Get current time with `device` tool (`get_time`) — this returns `now_ms`
-2. Compute `now_ms + offset_in_ms`
-   - "in 5 minutes": `now_ms + 300000`
-   - "in an hour": `now_ms + 3600000`
+**For relative times** ("in 5 minutes", "in an hour", "in 2 weeks"):
+1. Use `datetime` tool with `action: "add"`, `base: "now"`, `amount: {N}`, `unit: "{unit}"`
+   - "in 5 minutes": `datetime add` with `base: "now"`, `amount: 5`, `unit: "minute"`
+   - "in an hour": `datetime add` with `base: "now"`, `amount: 1`, `unit: "hour"`
+   - "in 2 weeks": `datetime add` with `base: "now"`, `amount: 2`, `unit: "week"`
 
-**For absolute times** ("next Tuesday at 8 PM", "tomorrow at 9", "on March 5 at 14:00"):
-1. Use `device` tool with `get_date_timestamp` — this returns the **exact** Unix timestamp. **Do NOT calculate manually.**
+**For absolute times** ("tomorrow at 9", "next Tuesday at 8 PM", "next January", "on 2024-03-15"):
+1. Use `datetime` tool with `action: "absolute"` — this returns the **exact** Unix timestamp. **Do NOT calculate manually.**
 2. Parameters:
-   - `date`: `"today"`, `"tomorrow"`, `"next_monday"`–`"next_sunday"`, `"in_2_weeks"`–`"in_4_weeks"`, `"next_month"`, `"next_year"`, or `"YYYY-MM-DD"`
-   - `time`: `"HH:MM"` (e.g. `"20:00"`)
-   - `unit`: `"milliseconds"`
+   - `base`: Enum value (`"today"`, `"tomorrow"`, `"yesterday"`, `"next_monday"`–`"next_sunday"`, `"next_january"`–`"next_december"`), Unix timestamp in milliseconds (number), or ISO date/datetime string (e.g. `"2024-03-15"`, `"2024-03-15T14:00:00"`, `"2024-03-15T14:00:00Z"`)
+   - `time` (optional): `"HH:MM"` or `"HH:MM:SS"` (e.g. `"09:00"`, `"20:00"`)
+   - `anchor` (optional): `"beginofday"`, `"endofday"`, `"beginofweek"`, `"endofweek"`, `"beginofmonth"`, `"endofmonth"`
+   - `output_unit`: `"milliseconds"` (default) or `"seconds"`
 3. Use the returned timestamp directly as `trigger_at_ms`.
+
+**For interval calculations** (for `recurrence_interval_ms`):
+1. Use `datetime` tool with `action: "interval"`, `amount: {N}`, `interval_unit: "{unit}"`
+   - Returns milliseconds (use directly as `recurrence_interval_ms`)
+   - Units: `"millisecond"`/`"ms"`, `"second"`, `"minute"`, `"hour"`, `"day"`, `"week"`, `"month"`, `"year"`
 
 ### Examples
 
-- "in 5 minutes" → `device` `get_time`, then `now_ms + 300000`
-- "tomorrow at 9" → `device` `get_date_timestamp` with `date: "tomorrow"`, `time: "09:00"`, `unit: "milliseconds"`
-- "next Tuesday at 8 PM" → `device` `get_date_timestamp` with `date: "next_tuesday"`, `time: "20:00"`, `unit: "milliseconds"`
-- "in two weeks at noon" → `device` `get_date_timestamp` with `date: "in_2_weeks"`, `time: "12:00"`, `unit: "milliseconds"`
-- "in three weeks" → `device` `get_date_timestamp` with `date: "in_3_weeks"`, `time: "09:00"`, `unit: "milliseconds"`
-- "next month at 10 AM" → `device` `get_date_timestamp` with `date: "next_month"`, `time: "10:00"`, `unit: "milliseconds"`
-- "next year" → `device` `get_date_timestamp` with `date: "next_year"`, `time: "09:00"`, `unit: "milliseconds"`
-- "on March 5 at 2 PM" → `device` `get_date_timestamp` with `date: "2026-03-05"`, `time: "14:00"`, `unit: "milliseconds"`
+- "in 5 minutes" → `datetime add` with `base: "now"`, `amount: 5`, `unit: "minute"` → use returned timestamp as `trigger_at_ms`
+- "tomorrow at 9" → `datetime absolute` with `base: "tomorrow"`, `time: "09:00"`, `output_unit: "milliseconds"`
+- "next Tuesday at 8 PM" → `datetime absolute` with `base: "next_tuesday"`, `time: "20:00"`, `output_unit: "milliseconds"`
+- "in two weeks at noon" → `datetime add` with `base: "now"`, `amount: 2`, `unit: "week"`, then `datetime absolute` with `base: {result}`, `time: "12:00"` OR use `datetime add` with `base: "now"`, `amount: 2`, `unit: "week"`, `time: "12:00"`
+- "next month at 10 AM" → `datetime absolute` with `base: "next_january"` (or current month + 1), `time: "10:00"`, `output_unit: "milliseconds"`
+- "every 30 minutes" → `datetime interval` with `amount: 30`, `interval_unit: "minute"` → returns `1800000` → use as `recurrence_interval_ms`
 
-**CRITICAL**: For any date/weekday-based scheduling, ALWAYS use `get_date_timestamp`. Do NOT compute day offsets or timestamps manually — this causes calculation errors.
+**CRITICAL**: For any date/time calculations, ALWAYS use the `datetime` tool. Do NOT compute timestamps manually — this causes calculation errors.
 
 ## Writing instructions
 
@@ -193,18 +197,17 @@ For contacts: Look up the number first with the `query` tool and include it dire
 
 ### "Remind me in 5 minutes about the roast"
 
-1. `device`: `get_time` → current time
-2. Calculate: `now + 5 * 60 * 1000`
-3. `scheduler`: `create` with:
+1. `datetime`: `add` with `base: "now"`, `amount: 5`, `unit: "minute"` → get timestamp
+2. `scheduler`: `create` with:
    - `instruction`: `"Use the beep tool (tone: alarm, count: 5). Then speak via TTS: The roast needs to come out of the oven!"`
-   - `trigger_at_ms`: calculated timestamp
+   - `trigger_at_ms`: timestamp from step 1
    - `recurrence_type`: `"once"`
-4. Confirm to the user: "I'll remind you in 5 minutes."
+3. Confirm to the user: "I'll remind you in 5 minutes."
 
 ### "Send an SMS to Peter at 2 PM: on my way"
 
 1. `query`: Look up contact "Peter" → get number
-2. `device`: `get_date_timestamp` with `date: "today"`, `time: "14:00"`, `unit: "milliseconds"` → get exact timestamp
+2. `datetime`: `absolute` with `base: "today"`, `time: "14:00"`, `output_unit: "milliseconds"` → get exact timestamp
 3. `scheduler`: `create` with:
    - `instruction`: `"Send an SMS to +4366012345678 with the text: On my way"`
    - `trigger_at_ms`: timestamp from step 2
@@ -212,12 +215,23 @@ For contacts: Look up the number first with the `query` tool and include it dire
 
 ### "Read my appointments every morning at 8"
 
-1. `device`: `get_date_timestamp` with `date: "tomorrow"`, `time: "08:00"`, `unit: "milliseconds"` → get exact timestamp
+1. `datetime`: `absolute` with `base: "tomorrow"`, `time: "08:00"`, `output_unit: "milliseconds"` → get exact timestamp
 2. `scheduler`: `create` with:
    - `instruction`: `"Fetch my Google Calendar events for today and read them via TTS"`
    - `trigger_at_ms`: timestamp from step 1
    - `recurrence_type`: `"daily"`
    - `recurrence_time`: `"08:00"`
+
+### "Announce the time every minute"
+
+1. `datetime`: `add` with `base: "now"`, `amount: 1`, `unit: "minute"` → get first trigger timestamp
+2. `datetime`: `interval` with `amount: 1`, `interval_unit: "minute"` → get interval in ms (60000)
+3. `scheduler`: `create` with:
+   - `instruction`: `"Speak via TTS: The current time is [current time]"`
+   - `trigger_at_ms`: timestamp from step 1
+   - `recurrence_type`: `"interval"`
+   - `recurrence_interval_ms`: interval from step 2
+4. Confirm to the user: "I'll announce the time every minute, starting in 1 minute."
 
 ### "What do I have scheduled?"
 

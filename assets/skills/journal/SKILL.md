@@ -32,20 +32,22 @@ Examples: "Make an entry in the journal that I went jogging today" / "Journal en
    - `date_to` (optional): End date as Unix timestamp in milliseconds
 2. Confirm: "Journal entry created: {title}"
 
-**Important:** When the user mentions a date or time, use the `device` tool to calculate the Unix timestamp (milliseconds). Do NOT calculate dates manually.
+**Important:** When the user mentions a date or time, use the `datetime` tool to calculate the Unix timestamp (milliseconds). Do NOT calculate dates manually.
 
 **For date calculations:**
-- Use `device` tool with `get_time` to get current time (`now_ms` and `ISO-Date`)
-- Use `device` tool with `get_date_timestamp` for absolute dates:
-  - `date`: `"today"`, `"tomorrow"`, `"yesterday"`, `"next_monday"`–`"next_sunday"`, `"in_2_weeks"`–`"in_4_weeks"`, `"next_month"`, `"next_year"`, or `"YYYY-MM-DD"`
-  - `time` (optional): `"HH:MM"` format (e.g. `"09:00"`, default: `"00:00:00"`)
-  - `unit`: `"milliseconds"` (required for journal entries)
+- Use `datetime` tool with `action: "now"` to get current time (Unix timestamp in milliseconds)
+- Use `datetime` tool with `action: "absolute"` for absolute dates:
+  - `base`: Enum value (`"today"`, `"tomorrow"`, `"yesterday"`, `"next_monday"`–`"next_sunday"`, `"next_january"`–`"next_december"`), Unix timestamp in milliseconds (number), or ISO date/datetime string (e.g. `"2024-03-15"`, `"2024-03-15T14:00:00"`)
+  - `time` (optional): `"HH:MM"` or `"HH:MM:SS"` format (e.g. `"09:00"`)
+  - `anchor` (optional): `"beginofday"`, `"endofday"`, `"beginofweek"`, `"endofweek"`, `"beginofmonth"`, `"endofmonth"`
+  - `output_unit`: `"milliseconds"` (required for journal entries)
+- Use `datetime` tool with `action: "add"` or `action: "subtract"` for relative dates (base can also be ISO string or timestamp)
 
 **Examples:**
-- "today" → `device` `get_date_timestamp` with `date: "today"`, `unit: "milliseconds"`
-- "yesterday" → `device` `get_date_timestamp` with `date: "yesterday"`, `unit: "milliseconds"`
-- "last week" → Calculate date range using `device` `get_date_timestamp` for start and end dates
-- "from Monday to Friday" → Use `device` `get_date_timestamp` for both dates
+- "today" → `datetime absolute` with `base: "today"`, `output_unit: "milliseconds"`
+- "yesterday" → `datetime absolute` with `base: "yesterday"`, `output_unit: "milliseconds"`
+- "last week" → Calculate date range using `datetime subtract` with `base: "today"`, `amount: 7`, `unit: "day"` for start, and `datetime absolute` with `base: "today"` for end
+- "from Monday to Friday" → Use `datetime absolute` with `base: "next_monday"` and `base: "next_friday"` for both dates
 
 ---
 

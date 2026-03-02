@@ -101,7 +101,7 @@ Examples: "egg timer 20 seconds", "Set a timer for 3 minutes"
 
 **IMPORTANT**: Use the `timer` tool when the user wants an acoustic alarm. Use the `scheduler` tool only when the user wants a complex task executed (e.g. "send SMS", "remind me to call", "check calendar").
 
-**Time calculation**: Use `device` tool with `get_time` action to get the current time (`now_ms`) for any time-related calculations. Do NOT calculate timestamps manually.
+**Time calculation**: Use `datetime` tool with `action: "now"` to get the current time (Unix timestamp in milliseconds) for any time-related calculations. Do NOT calculate timestamps manually.
 
 1. Calculate duration in milliseconds (e.g. 20 seconds = 20000 ms, 3 minutes = 180000 ms)
 2. `timer` → `start_timer` with:

@@ -157,12 +157,22 @@ To update, move or delete an event you need its `eventId`. Get it by fetching ev
 
 ## Generating ISO dates
 
-Current time: Use the `device` tool with `get_time` to get the current time, then calculate.
+Use the `datetime` tool with `output_format` parameter to generate ISO date/datetime strings directly.
 
-Examples:
-- "Today at 2 PM" → `2024-01-15T14:00:00+01:00`
-- "Tomorrow at 9:00" → tomorrow's date + T09:00:00+01:00
-- Germany/Central Europe: timezone is `Europe/Berlin` (UTC+1 / UTC+2 in summer)
+**Available output formats:**
+- `"iso_date"` - YYYY-MM-DD (date only)
+- `"iso_datetime"` - YYYY-MM-DDTHH:mm:ss with timezone offset (e.g. `2024-01-15T14:00:00+01:00`)
+- `"iso_datetime_utc"` - YYYY-MM-DDTHH:mm:ssZ (UTC, e.g. `2024-01-15T14:00:00Z`)
+- `"iso_datetime_utc_ms"` - YYYY-MM-DDTHH:mm:ss.SSSZ (UTC with milliseconds, e.g. `2024-01-15T14:00:00.000Z`)
+
+**Examples:**
+- "Today at 2 PM" → `datetime absolute` with `base: "today"`, `time: "14:00"`, `output_format: "iso_datetime"` → returns `2024-01-15T14:00:00+01:00`
+- "Tomorrow at 9:00" → `datetime absolute` with `base: "tomorrow"`, `time: "09:00"`, `output_format: "iso_datetime_utc"` → returns `2024-01-16T09:00:00Z`
+- "On March 15 at 2 PM" → `datetime absolute` with `base: "2024-03-15"`, `time: "14:00"`, `output_format: "iso_datetime"` → returns `2024-03-15T14:00:00+01:00`
+- For `timeMin` queries: Use `datetime now` with `output_format: "iso_datetime_utc"` → returns `2024-01-15T00:00:00Z`
+- Germany/Central Europe: timezone is `Europe/Berlin` (UTC+1 / UTC+2 in summer). Use `iso_datetime` for local timezone or `iso_datetime_utc` for UTC.
+
+**Note:** The `base` parameter accepts enum values (`"today"`, `"tomorrow"`, etc.), Unix timestamps (number), or ISO date/datetime strings (`"2024-03-15"`, `"2024-03-15T14:00:00"`, etc.).
 
 ## Workflows
 
@@ -174,7 +184,7 @@ Examples:
 
 ### Move an event to a different time
 
-1. `device`: `get_time` → current time
+1. `datetime`: `now` → current time (Unix timestamp in milliseconds)
 2. Fetch events with GET to find the target event
 3. Identify the correct event by name/time → extract `id`
 4. Calculate the new start/end timestamps
@@ -196,7 +206,7 @@ Examples:
 
 ### Reschedule by a relative amount ("push meeting 1 hour later")
 
-1. `device`: `get_time` → current time
+1. `datetime`: `now` → current time (Unix timestamp in milliseconds)
 2. Fetch the event to get current `start.dateTime` and `end.dateTime`
 3. Add the offset (e.g. +1 hour) to both start and end
 4. PATCH with the new times

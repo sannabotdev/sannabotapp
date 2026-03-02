@@ -129,16 +129,19 @@ Status values: `"needsAction"` (open), `"completed"` (done)
 
 ## Due dates
 
-Current time: Use `device` tool with `get_time` to get the current time and ISO date (YYYY-MM-DD), then calculate.
+Use the `datetime` tool with `output_format` parameter to generate ISO date/datetime strings directly.
 
 ### Setting due dates
-- "by tomorrow" → tomorrow's date + T00:00:00.000Z
-- "by Friday" → calculate next Friday + T00:00:00.000Z
-- Format always: `YYYY-MM-DDT00:00:00.000Z`
+- "by tomorrow" → `datetime absolute` with `base: "tomorrow"`, `output_format: "iso_datetime_utc_ms"` → returns `YYYY-MM-DDT00:00:00.000Z`
+- "by Friday" → `datetime absolute` with `base: "next_friday"`, `output_format: "iso_datetime_utc_ms"` → returns `YYYY-MM-DDT00:00:00.000Z`
+- "on 2024-03-15" → `datetime absolute` with `base: "2024-03-15"`, `output_format: "iso_datetime_utc_ms"` → returns `2024-03-15T00:00:00.000Z`
+- Format always: `YYYY-MM-DDT00:00:00.000Z` (use `output_format: "iso_datetime_utc_ms"`)
+
+**Note:** The `base` parameter accepts enum values (`"today"`, `"tomorrow"`, etc.), Unix timestamps (number), or ISO date/datetime strings (`"2024-03-15"`, `"2024-03-15T14:00:00"`, etc.).
 
 ### Interpreting due dates (IMPORTANT)
 When reading tasks aloud and expressing the due date relatively:
-1. Get today's ISO date via `device` → `get_time` (field "ISO-Date", format YYYY-MM-DD)
+1. Get today's ISO date via `datetime absolute` with `base: "today"`, `output_format: "iso_date"` → returns `YYYY-MM-DD`
 2. Compare ONLY the date part (YYYY-MM-DD) of the `due` field with today's ISO date
 3. Calculation: `due` date (YYYY-MM-DD) minus today (YYYY-MM-DD) = days until due
 
