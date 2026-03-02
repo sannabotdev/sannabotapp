@@ -84,6 +84,13 @@ const en = {
   'settings.provider.openaiModel': 'OpenAI Model',
   'settings.provider.loadingModels': 'Loading models…',
   'settings.provider.claudeComingSoon': '🧠 Claude: Coming Soon',
+  'settings.provider.custom': 'Custom (OpenAI-compatible)',
+  'settings.provider.customApiKey': 'Custom API Key',
+  'settings.provider.customBaseUrl': 'Base URL',
+  'settings.provider.customModel': 'Model Name',
+  'settings.provider.customDescription': 'Use your own OpenAI-compatible API endpoint',
+  'settings.provider.manualModelInput': 'Enter model name manually',
+
 
   // Wake Word
   'settings.wakeWord.label': "Activate 'Hey Sanna'",

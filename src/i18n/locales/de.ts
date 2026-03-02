@@ -84,6 +84,13 @@ const de = {
   'settings.provider.openaiModel': 'OpenAI Modell',
   'settings.provider.loadingModels': 'Lade Modelle…',
   'settings.provider.claudeComingSoon': '🧠 Claude: Coming Soon',
+  'settings.provider.custom': 'Benutzerdefiniert (OpenAI-kompatibel)',
+  'settings.provider.customApiKey': 'Benutzerdefinierter API-Schlüssel',
+  'settings.provider.customBaseUrl': 'Basis-URL',
+  'settings.provider.customModel': 'Modellname',
+  'settings.provider.customDescription': 'Verwende deinen eigenen OpenAI-kompatiblen API-Endpunkt',
+  'settings.provider.manualModelInput': 'Modellnamen manuell eingeben',
+
 
   // Wake Word
   'settings.wakeWord.label': "'Hey Sanna' aktivieren",

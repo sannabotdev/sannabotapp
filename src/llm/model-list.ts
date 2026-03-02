@@ -18,7 +18,7 @@ export async function fetchOpenAIModels(apiKey: string): Promise<string[]> {
     const response = await fetch(OPENAI_MODELS_URL, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
     });
 
@@ -26,7 +26,7 @@ export async function fetchOpenAIModels(apiKey: string): Promise<string[]> {
       return [];
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       data: Array<{ id: string; object: string }>;
     };
 
@@ -34,10 +34,7 @@ export async function fetchOpenAIModels(apiKey: string): Promise<string[]> {
     const chatModels = data.data
       .filter(model => {
         const id = model.id.toLowerCase();
-        return (
-          id.startsWith('gpt-4') ||
-          id.startsWith('gpt-5')
-        );
+        return id.startsWith('gpt-4') || id.startsWith('gpt-5');
       })
       .map(model => model.id)
       .sort();
@@ -70,14 +67,52 @@ export async function fetchClaudeModels(apiKey: string): Promise<string[]> {
       return [];
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       models: Array<{ id: string }>;
     };
 
     // Extract model IDs and sort
-    const models = data.models
-      .map(model => model.id)
-      .sort();
+    const models = data.models.map(model => model.id).sort();
+
+    return models;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch available models from a custom OpenAI-compatible API endpoint
+ * Returns empty array on error (triggers manual input fallback in UI)
+ */
+export async function fetchCustomModels(
+  apiKey: string,
+  baseUrl: string,
+): Promise<string[]> {
+  if (!apiKey || apiKey.trim() === '' || !baseUrl || baseUrl.trim() === '') {
+    return [];
+  }
+
+  // Strip trailing slash and append /models endpoint
+  const modelsUrl = baseUrl.replace(/\/$/, '') + '/models';
+
+  try {
+    const response = await fetch(modelsUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      data: Array<{ id: string }>;
+    };
+
+    // Extract model IDs and sort
+    const models = data.data.map(model => model.id).sort();
 
     return models;
   } catch {
