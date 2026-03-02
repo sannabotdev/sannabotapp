@@ -300,7 +300,7 @@ export class NotificationListenerTool implements Tool {
     }
 
     const lines = rules.map((r, i) => {
-      const status = r.enabled ? '✅' : '⏸️';
+      const status = r.enabled ? '[active]' : '[paused]';
       const condStr = r.condition ? `\n   Condition: ${r.condition}` : ' (catch-all)';
       return `${i + 1}. ${status} ${r.appLabel}${condStr}\n   Instruction: ${r.instruction}\n   ID: ${r.id}`;
     });

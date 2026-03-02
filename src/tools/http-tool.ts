@@ -186,7 +186,7 @@ export class HttpTool implements Tool {
           return `  ${k}: ${masked}`;
         })
         .join('\n');
-      const requestSummary = `→ ${method} ${url}\n${headerLines}\n\n`;
+      const requestSummary = `Request: ${method} ${url}\n${headerLines}\n\n`;
 
       return successResult(requestSummary + truncated);
     } catch (err) {

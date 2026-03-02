@@ -22,7 +22,8 @@ type DeviceAction =
   | 'get_battery'
   | 'get_volume'
   | 'set_volume'
-  | 'get_wifi_status';
+  | 'get_wifi_status'
+  | 'calculate_distance';
 
 export class DeviceTool implements Tool {
   name(): string {
@@ -30,7 +31,7 @@ export class DeviceTool implements Tool {
   }
 
   description(): string {
-    return 'Query and control device state: GPS location, battery level, volume (read/set), Wi-Fi status.';
+    return 'Query and control device state: GPS location, battery level, volume (read/set), Wi-Fi status. Also calculates straight-line distance between two GPS coordinates using the Haversine formula.';
   }
 
   parameters(): Record<string, unknown> {
@@ -39,12 +40,28 @@ export class DeviceTool implements Tool {
       properties: {
         action: {
           type: 'string',
-          enum: ['get_location', 'get_battery', 'get_volume', 'set_volume', 'get_wifi_status'],
-          description: 'Action to perform. set_volume: set media volume (0–100).',
+          enum: ['get_location', 'get_battery', 'get_volume', 'set_volume', 'get_wifi_status', 'calculate_distance'],
+          description: 'Action to perform. set_volume: set media volume (0–100). calculate_distance: calculate straight-line distance between two GPS coordinates.',
         },
         volume: {
           type: 'number',
           description: 'Only for set_volume: desired volume in percent (0–100).',
+        },
+        latitude1: {
+          type: 'number',
+          description: 'Only for calculate_distance: latitude of first point (e.g., 48.1234).',
+        },
+        longitude1: {
+          type: 'number',
+          description: 'Only for calculate_distance: longitude of first point (e.g., 16.5678).',
+        },
+        latitude2: {
+          type: 'number',
+          description: 'Only for calculate_distance: latitude of second point (e.g., 48.0600).',
+        },
+        longitude2: {
+          type: 'number',
+          description: 'Only for calculate_distance: longitude of second point (e.g., 16.0840).',
         },
       },
       required: ['action'],
@@ -66,6 +83,13 @@ export class DeviceTool implements Tool {
           return this.setVolume(args.volume as number);
         case 'get_wifi_status':
           return await this.getWifiStatus();
+        case 'calculate_distance':
+          return this.calculateDistance(
+            args.latitude1 as number,
+            args.longitude1 as number,
+            args.latitude2 as number,
+            args.longitude2 as number,
+          );
         default:
           return errorResult(`Unknown action: ${action}`);
       }
@@ -230,5 +254,62 @@ export class DeviceTool implements Tool {
         `Wi-Fi status query failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
+  }
+
+  /**
+   * Calculate straight-line distance between two GPS coordinates using Haversine formula.
+   * Returns distance in kilometers.
+   */
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): ToolResult {
+    if (
+      typeof lat1 !== 'number' ||
+      typeof lon1 !== 'number' ||
+      typeof lat2 !== 'number' ||
+      typeof lon2 !== 'number' ||
+      isNaN(lat1) ||
+      isNaN(lon1) ||
+      isNaN(lat2) ||
+      isNaN(lon2)
+    ) {
+      return errorResult(
+        'calculate_distance: All four parameters (latitude1, longitude1, latitude2, longitude2) are required and must be valid numbers.',
+      );
+    }
+
+    // Validate latitude range [-90, 90]
+    if (lat1 < -90 || lat1 > 90 || lat2 < -90 || lat2 > 90) {
+      return errorResult('calculate_distance: Latitude must be between -90 and 90 degrees.');
+    }
+
+    // Validate longitude range [-180, 180]
+    if (lon1 < -180 || lon1 > 180 || lon2 < -180 || lon2 > 180) {
+      return errorResult('calculate_distance: Longitude must be between -180 and 180 degrees.');
+    }
+
+    // Haversine formula
+    const R = 6371; // Earth radius in kilometers
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in kilometers
+
+    const distanceKm = distance.toFixed(2);
+    const distanceMeters = Math.round(distance * 1000);
+
+    return successResult(
+      `Distance: ${distanceKm} km (${distanceMeters} m)`,
+      `${distanceKm} km`,
+    );
   }
 }

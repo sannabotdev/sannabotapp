@@ -203,25 +203,27 @@ export class SchedulerTool implements Tool {
       return errorResult('Missing trigger_at_ms parameter – required for one-time schedules. Use datetime.add(base: "now", amount: N, unit: "minute|hour|...") to calculate it.');
     }
 
-    // Validate trigger_at_ms if provided
-    if (triggerAtMs) {
-      if (triggerAtMs <= now) {
-        return errorResult(
-          `Trigger time is in the past. Current: ${now}, Provided: ${triggerAtMs}`,
-        );
-      }
-      if (triggerAtMs - now < MIN_LEAD_TIME_MS) {
-        const secondsFromNow = Math.round((triggerAtMs - now) / 1000);
-        return errorResult(
-          `Trigger time must be at least 15 seconds in the future. ` +
-          `Provided: ${triggerAtMs} (${secondsFromNow}s from now). ` +
-          `For short countdown timers (especially "egg timer" or durations in seconds), use the timer tool instead. ` +
-          `The scheduler is for complex tasks that need a sub-agent to execute instructions.`,
-        );
-      }
-    } else {
-      // This should not happen, but just in case
+    // At this point, triggerAtMs should be set (either provided or auto-calculated)
+    // For 'once' schedules, it's required and validated above
+    // For recurring schedules, it's auto-calculated if not provided
+    if (!triggerAtMs) {
       return errorResult('trigger_at_ms could not be calculated. Please provide it explicitly.');
+    }
+
+    // Validate trigger_at_ms
+    if (triggerAtMs <= now) {
+      return errorResult(
+        `Trigger time is in the past. Current: ${now}, Provided: ${triggerAtMs}`,
+      );
+    }
+    if (triggerAtMs - now < MIN_LEAD_TIME_MS) {
+      const secondsFromNow = Math.round((triggerAtMs - now) / 1000);
+      return errorResult(
+        `Trigger time must be at least 15 seconds in the future. ` +
+        `Provided: ${triggerAtMs} (${secondsFromNow}s from now). ` +
+        `For short countdown timers (especially "egg timer" or durations in seconds), use the timer tool instead. ` +
+        `The scheduler is for complex tasks that need a sub-agent to execute instructions.`,
+      );
     }
 
     const id = `sched_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -444,11 +446,11 @@ export class SchedulerTool implements Tool {
    * in update/delete calls, but the LLM should NOT relay the ID to the user).
    */
   private formatScheduleListItem(s: Schedule): string {
-    const status = s.enabled ? '✅' : '⏸️';
+    const status = s.enabled ? '[active]' : '[paused]';
     const time = this.formatDate(s.triggerAtMs);
     const rec = this.formatRecurrence(s.recurrence);
     const displayText = s.label || s.instruction;
-    return `${status} [${s.id}] "${displayText}" – ${time} (${rec})`;
+    return `${status} [${s.id}] "${displayText}" at ${time} (${rec})`;
   }
 
   private formatRecurrence(r: ScheduleRecurrence): string {

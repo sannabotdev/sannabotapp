@@ -68,7 +68,7 @@ export class IntentTool implements Tool {
 
     try {
       await IntentModule.sendIntent(action, uri, pkg, extras);
-      const description = uri ? `${action} → ${uri}` : action;
+      const description = uri ? `${action} to ${uri}` : action;
       return successResult(
         `Intent executed: ${description}`,
         undefined, // Don't speak "Intent executed" – LLM will say what happened

@@ -308,11 +308,11 @@ export class TimerTool implements Tool {
    * in get_status/stop/cancel calls, but the LLM should NOT relay the ID to the user).
    */
   private formatTimerListItem(t: Timer): string {
-    const status = t.enabled ? '✅' : '⏸️';
+    const status = t.enabled ? '[active]' : '[paused]';
     const displayText = t.label || (t.type === 'timer' ? 'Timer' : 'Stopwatch');
     if (t.type === 'timer' && t.durationMs) {
       const durationStr = this.formatDuration(t.durationMs);
-      return `${status} [${t.id}] ${displayText} – ${durationStr}`;
+      return `${status} [${t.id}] ${displayText} - ${durationStr}`;
     } else {
       return `${status} [${t.id}] ${displayText}`;
     }
