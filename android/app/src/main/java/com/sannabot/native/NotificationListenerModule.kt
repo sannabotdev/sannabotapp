@@ -42,6 +42,13 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
 
     override fun getName(): String = "NotificationListenerModule"
 
+    // Required by NativeEventEmitter on the JS side
+    @ReactMethod
+    fun addListener(eventName: String) {}
+
+    @ReactMethod
+    fun removeListeners(count: Int) {}
+
     /**
      * Check if notification access is granted for this app.
      */
@@ -167,6 +174,29 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
             promise.resolve("ok")
         } catch (e: Exception) {
             promise.reject("CONFIG_ERROR", e.message ?: "saveAgentConfig failed", e)
+        }
+    }
+
+    /**
+     * Request Android to rebind the NotificationListenerService.
+     * Use this as a health-check / recovery call whenever you suspect the
+     * listener may have been silently disconnected (e.g. Battery Optimisation,
+     * Doze, OEM task-killers).
+     *
+     * Safe to call at any time – Android ignores the request if the service
+     * is already connected.
+     */
+    @ReactMethod
+    fun ensureListenerActive(promise: Promise) {
+        try {
+            val cn = ComponentName(
+                reactApplicationContext,
+                SannaNotificationListenerService::class.java
+            )
+            android.service.notification.NotificationListenerService.requestRebind(cn)
+            promise.resolve("rebind_requested")
+        } catch (e: Exception) {
+            promise.reject("REBIND_ERROR", e.message ?: "ensureListenerActive failed", e)
         }
     }
 

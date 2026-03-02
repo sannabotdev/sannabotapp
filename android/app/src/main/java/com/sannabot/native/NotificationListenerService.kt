@@ -1,11 +1,14 @@
 package com.sannabot.native
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.facebook.react.HeadlessJsTaskService
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import org.json.JSONArray
 
 /**
@@ -73,6 +76,37 @@ class SannaNotificationListenerService : NotificationListenerService() {
                 Log.e(TAG, "Failed to add notification to buffer: ${e.message}", e)
             }
         }
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        Log.i(TAG, "✅ NotificationListener CONNECTED")
+        emitDebugLog("info", "✅ NotificationListener connected")
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        Log.w(TAG, "⚠️ NotificationListener DISCONNECTED – requesting rebind")
+        emitDebugLog("error", "⚠️ NotificationListener disconnected – requesting rebind")
+        // Ask Android to rebind the service so notifications resume as soon as possible.
+        requestRebind(ComponentName(this, SannaNotificationListenerService::class.java))
+    }
+
+    /**
+     * Forward a log message to the JS DebugLogger via DeviceEventEmitter.
+     * No-op if the React JS runtime is not active.
+     */
+    private fun emitDebugLog(level: String, message: String) {
+        val ctx = NotificationListenerModule.getReactContext() ?: return
+        try {
+            val params = Arguments.createMap().apply {
+                putString("level", level)
+                putString("tag", TAG)
+                putString("message", message)
+            }
+            ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                .emit("notification_listener_log", params)
+        } catch (_: Exception) { /* JS runtime not active – ignore */ }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {

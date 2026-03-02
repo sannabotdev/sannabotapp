@@ -9,8 +9,7 @@ import { vars } from 'nativewind';
 
 // Suppress LogBox warning banner – it overlays the input row in dev mode
 LogBox.ignoreAllLogs(true);
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // i18n
 import { t, setLocale } from './src/i18n';
@@ -39,7 +38,7 @@ import { PermissionManager } from './src/permissions/permission-manager';
 import { SpotifyAuth } from './src/permissions/spotify-auth';
 import { GoogleAuth } from './src/permissions/google-auth';
 import { SlackAuth } from './src/permissions/slack-auth';
-import NotificationListenerModule from './src/native/NotificationListenerModule';
+import NotificationListenerModule, { createNotificationEventEmitter } from './src/native/NotificationListenerModule';
 
 // Scheduler config persistence
 import SchedulerModule from './src/native/SchedulerModule';
@@ -400,6 +399,42 @@ interface ConversationMessage {
 
 // ─── Lock Screen ──────────────────────────────────────────────────────────────
 
+function LockScreenInner({
+  onUnlock,
+  error,
+}: {
+  onUnlock: () => void;
+  error?: string;
+}): React.JSX.Element {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      className="flex-1 bg-surface items-center justify-center px-8"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <View style={{ marginBottom: 16 }}>
+        <SannaAvatar size={96} />
+      </View>
+      <Text className="text-label-primary text-xl font-bold mb-2">
+        {t('app.locked.title')}
+      </Text>
+      <Text className="text-label-secondary text-sm text-center mb-8">
+        {t('app.locked.subtitle')}
+      </Text>
+
+      {error ? (
+        <Text className="text-red-500 text-sm text-center mb-4">{error}</Text>
+      ) : null}
+
+      <TouchableOpacity
+        className="bg-accent px-8 py-4 rounded-2xl"
+        onPress={onUnlock}
+        activeOpacity={0.7}>
+        <Text className="text-white text-base font-semibold">{t('app.locked.button')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function LockScreen({
   onUnlock,
   error,
@@ -409,28 +444,7 @@ function LockScreen({
 }): React.JSX.Element {
   return (
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-surface items-center justify-center px-8">
-        <View style={{ marginBottom: 16 }}>
-          <SannaAvatar size={96} />
-        </View>
-        <Text className="text-label-primary text-xl font-bold mb-2">
-          {t('app.locked.title')}
-        </Text>
-        <Text className="text-label-secondary text-sm text-center mb-8">
-          {t('app.locked.subtitle')}
-        </Text>
-
-        {error ? (
-          <Text className="text-red-500 text-sm text-center mb-4">{error}</Text>
-        ) : null}
-
-        <TouchableOpacity
-          className="bg-accent px-8 py-4 rounded-2xl"
-          onPress={onUnlock}
-          activeOpacity={0.7}>
-          <Text className="text-white text-base font-semibold">{t('app.locked.button')}</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <LockScreenInner onUnlock={onUnlock} error={error} />
     </SafeAreaProvider>
   );
 }
@@ -638,6 +652,21 @@ export default function App(): React.JSX.Element {
 
     return () => backHandler.remove();
   }, [screen]);
+
+  // Forward native NotificationListener lifecycle events to the in-app DebugLogger.
+  // onListenerConnected / onListenerDisconnected are emitted by SannaNotificationListenerService.
+  useEffect(() => {
+    const emitter = createNotificationEventEmitter();
+    if (!emitter) return;
+    const sub = emitter.addListener(
+      'notification_listener_log',
+      (event: { level: string; tag: string; message: string }) => {
+        const level = (event.level === 'error' ? 'error' : 'info') as import('./src/agent/debug-logger').LogLevel;
+        DebugLogger.add(level, event.tag, event.message);
+      },
+    );
+    return () => sub.remove();
+  }, []);
 
   // Lock when app goes to background for more than LOCK_GRACE_MS.
   // Short background trips (e.g. OAuth browser redirect, permission dialogs)

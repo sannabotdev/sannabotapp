@@ -38,6 +38,14 @@ export interface NotificationListenerModuleType {
 
   /** Get saved agent config. Returns JSON string or null. */
   getAgentConfig(): Promise<string | null>;
+
+  /**
+   * Request Android to rebind the NotificationListenerService.
+   * Safe to call at any time – Android ignores the request if the service is
+   * already connected. Use as a periodic health-check or after detecting that
+   * notifications have stopped arriving.
+   */
+  ensureListenerActive(): Promise<string>;
 }
 
 export interface NotificationData {
