@@ -79,13 +79,13 @@ export async function runNotificationSubAgent(
     ].join('\n'),
   );
 
-  // 1. Create tool registry (no TTS – result is passed to foreground; no scheduler to prevent recursion)
+  // 1. Create tool registry (TTS available, but only use if explicitly requested; no scheduler to prevent recursion)
   DebugLogger.add('info', TAG, 'Creating tool registry…');
   const skillLoader = new SkillLoader();
   const toolRegistry = await createToolRegistry({
     credentialManager,
     skillLoader,
-    includeTts: false,
+    includeTts: true, // TTS available, but only use if explicitly requested by user
     includeScheduler: false,
     includePersonalMemoryTool: false,
   });
@@ -137,6 +137,7 @@ export async function runNotificationSubAgent(
     ``,
     `You are a background sub-agent processing a single notification.`,
     `There is no direct user interaction — do not ask questions.`,
+    `IMPORTANT: Do NOT use TTS (text-to-speech) unless the user explicitly requests it in the rule instruction (e.g., "speak", "say aloud", "read out", "announce").`,
     ``,
     rules.length === 1 && !rules[0].condition
       // Single catch-all rule: just execute it

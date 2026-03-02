@@ -15,12 +15,12 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Markdown from 'react-native-markdown-display';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PipelineState } from '../agent/conversation-pipeline';
 import { DebugPanel } from './DebugPanel';
 import { SannaAvatar } from '../components/SannaAvatar';
 import { AvatarMenu } from '../components/AvatarMenu';
+import { MarkdownText } from '../components/MarkdownText';
 import KeepAwakeModule from '../native/KeepAwakeModule';
 import { t } from '../i18n';
 
@@ -89,11 +89,51 @@ export function HomeScreen({
   const [debugVisible, setDebugVisible] = useState(false);
   const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
   
+  // Track previous message state to detect new messages
+  const prevMessageCountRef = useRef(messages.length);
+  const prevLastMessageRef = useRef<string | null>(null);
+  const isInitialMountRef = useRef(true);
+  
   // Animation for large microphone button when listening
   const drivingMicScaleAnim = useRef(new Animated.Value(1)).current;
 
+  // Scroll to end when new messages are added (by count or last message change)
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: !historyLoading });
+    const currentCount = messages.length;
+    const prevCount = prevMessageCountRef.current;
+    
+    // Get last message identifier (timestamp + text snippet) for comparison
+    const lastMessage = messages.length > 0 
+      ? `${messages[messages.length - 1].timestamp.getTime()}-${messages[messages.length - 1].text.slice(0, 50)}`
+      : null;
+    const prevLastMessage = prevLastMessageRef.current;
+    
+    // On initial mount or when history loading completes, scroll without animation
+    if (isInitialMountRef.current || historyLoading) {
+      isInitialMountRef.current = false;
+      // Use requestAnimationFrame to ensure layout is complete
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd({ animated: false });
+      });
+      prevMessageCountRef.current = currentCount;
+      prevLastMessageRef.current = lastMessage;
+      return;
+    }
+    
+    // Scroll if:
+    // 1. New messages were added (count increased), OR
+    // 2. Last message changed (new message appended, e.g. from drainPending/scheduler/notifications)
+    const hasNewMessages = currentCount > prevCount;
+    const lastMessageChanged = lastMessage !== null && lastMessage !== prevLastMessage;
+    
+    if (hasNewMessages || lastMessageChanged) {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      });
+    }
+    
+    prevMessageCountRef.current = currentCount;
+    prevLastMessageRef.current = lastMessage;
   }, [messages, historyLoading]);
 
   // Scroll to bottom when switching modes
@@ -148,7 +188,6 @@ export function HomeScreen({
 
   // Dynamic styles that depend on the current theme
   const drivingStyles = useMemo(() => makeDrivingStyles(isDark), [isDark]);
-  const mdStyles = useMemo(() => makeMdStyles(isDark), [isDark]);
 
   // State labels are resolved via i18n at render time so they always reflect
   // the current locale even if the user switches language mid-session.
@@ -265,9 +304,13 @@ export function HomeScreen({
                   </Text>
                 </View>
               ) : (
-                messages.map((msg, idx) => (
-                  <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} language={language} />
-                ))
+              messages.map((msg) => {
+                // Use a stable key based on timestamp and text hash to prevent re-renders
+                const key = `${msg.timestamp.getTime()}-${msg.text.slice(0, 20).replace(/\s/g, '')}`;
+                return (
+                  <MessageBubble key={key} message={msg} isDark={isDark} language={language} />
+                );
+              })
               )}
               {pipelineState === 'processing' && (
                 <View className="flex-row items-center gap-2 py-1">
@@ -316,9 +359,13 @@ export function HomeScreen({
                 </Text>
               </View>
             ) : (
-              messages.map((msg, idx) => (
-                <MessageBubble key={idx} message={msg} mdStyles={mdStyles} isDark={isDark} language={language} />
-              ))
+              messages.map((msg) => {
+                // Use a stable key based on timestamp and text hash to prevent re-renders
+                const key = `${msg.timestamp.getTime()}-${msg.text.slice(0, 20).replace(/\s/g, '')}`;
+                return (
+                  <MessageBubble key={key} message={msg} isDark={isDark} language={language} />
+                );
+              })
             )}
 
             {pipelineState === 'processing' && (
@@ -599,80 +646,14 @@ function makeDrivingStyles(isDark: boolean) {
   });
 }
 
-function makeMdStyles(isDark: boolean) {
-  const textColor = isDark ? '#FFFFFF' : '#000000';
-  const codeBg   = isDark ? '#3A3A3C' : '#E5E5EA';
-  const divColor = isDark ? '#636366' : '#C7C7CC';
-  return StyleSheet.create({
-    body: { color: textColor, fontSize: 15, lineHeight: 21, backgroundColor: 'transparent' },
-    paragraph: { marginTop: 0, marginBottom: 4, width: 'auto' },
-    strong: { fontWeight: '700' },
-    em: { fontStyle: 'italic' },
-    heading1: { fontSize: 20, fontWeight: '700', color: textColor, marginTop: 8, marginBottom: 4 },
-    heading2: { fontSize: 18, fontWeight: '700', color: textColor, marginTop: 6, marginBottom: 4 },
-    heading3: { fontSize: 16, fontWeight: '700', color: textColor, marginTop: 4, marginBottom: 2 },
-    bullet_list: { marginTop: 2, marginBottom: 2 },
-    ordered_list: { marginTop: 2, marginBottom: 2 },
-    list_item: { marginTop: 1, marginBottom: 1, flexDirection: 'row', alignItems: 'flex-start' },
-    bullet_list_content: { flex: 1 },
-    ordered_list_content: { flex: 1 },
-    code_inline: {
-      backgroundColor: codeBg,
-      color: '#5AC8FA',
-      fontSize: 13,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      paddingHorizontal: 4,
-      paddingVertical: 1,
-      borderRadius: 4,
-    },
-    fence: {
-      backgroundColor: codeBg,
-      color: '#5AC8FA',
-      fontSize: 13,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      padding: 10,
-      borderRadius: 8,
-      marginTop: 4,
-      marginBottom: 4,
-    },
-    code_block: {
-      backgroundColor: codeBg,
-      color: '#5AC8FA',
-      fontSize: 13,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      padding: 10,
-      borderRadius: 8,
-      marginTop: 4,
-      marginBottom: 4,
-    },
-    blockquote: {
-      backgroundColor: codeBg,
-      borderLeftColor: '#007AFF',
-      borderLeftWidth: 3,
-      paddingLeft: 8,
-      paddingVertical: 4,
-      marginTop: 4,
-      marginBottom: 4,
-    },
-    link: { color: '#007AFF', textDecorationLine: 'underline' },
-    hr: { backgroundColor: divColor, height: 1, marginVertical: 8 },
-    table: { borderColor: divColor },
-    tr: { borderBottomColor: divColor },
-    th: { color: textColor, fontWeight: '700', padding: 4 },
-    td: { color: textColor, padding: 4 },
-  });
-}
-
 // ─── MessageBubble ────────────────────────────────────────────────────────────
 
-function MessageBubble({
+const MessageBubble = React.memo(function MessageBubble({
   message,
-  mdStyles,
   isDark,
   language,
 }: {
   message: Message;
-  mdStyles: ReturnType<typeof makeMdStyles>;
   isDark: boolean;
   language: string;
 }): React.JSX.Element {
@@ -704,9 +685,9 @@ function MessageBubble({
           {message.text}
         </Text>
       ) : (
-        <Markdown style={mdStyles}>{message.text}</Markdown>
+        <MarkdownText isDark={isDark}>{message.text}</MarkdownText>
       )}
       <Text className="text-[10px] text-label-quaternary self-end">{time}</Text>
     </View>
   );
-}
+});

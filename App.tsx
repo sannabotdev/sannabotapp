@@ -580,11 +580,23 @@ export default function App(): React.JSX.Element {
       }
     }).catch(() => {});
 
-    // On very first start, show onboarding hint about enabling skills
+    // On very first start, show onboarding message
     if (isFirstRun && storedMessages.length === 0) {
+      const selectedProvider = prefs.selectedProvider || 'openai';
+      const apiKey = selectedProvider === 'claude' ? secureKeys.claudeApiKey : secureKeys.openAIApiKey;
+      const hasApiKey = apiKey && apiKey.trim().length > 0;
+      
+      let onboardingText: string;
+      if (!hasApiKey) {
+        const providerName = selectedProvider === 'claude' ? 'Claude' : 'OpenAI';
+        onboardingText = t('app.onboarding.welcomeNoApiKey').replace('{provider}', providerName);
+      } else {
+        onboardingText = t('app.onboarding.welcomeWithApiKey');
+      }
+      
       setMessages([{
         role: 'assistant',
-        text: t('app.onboarding.skillHint'),
+        text: onboardingText,
         timestamp: new Date(),
       }]);
     }
@@ -1449,7 +1461,11 @@ export default function App(): React.JSX.Element {
     return (
       <View style={[{ flex: 1 }, themeVars]}>
         <SafeAreaProvider>
-          <SchedulesScreen onBack={() => setScreen('home')} />
+          <SchedulesScreen 
+            onBack={() => setScreen('home')}
+            enabledSkillNames={settings.enabledSkillNames}
+            isDark={isDark}
+          />
         </SafeAreaProvider>
       </View>
     );
@@ -1459,7 +1475,11 @@ export default function App(): React.JSX.Element {
     return (
       <View style={[{ flex: 1 }, themeVars]}>
         <SafeAreaProvider>
-          <NotificationListenersScreen onBack={() => setScreen('home')} />
+          <NotificationListenersScreen 
+            onBack={() => setScreen('home')}
+            enabledSkillNames={settings.enabledSkillNames}
+            isDark={isDark}
+          />
         </SafeAreaProvider>
       </View>
     );

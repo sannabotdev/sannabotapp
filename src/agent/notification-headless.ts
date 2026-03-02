@@ -157,6 +157,13 @@ export default async function notificationHeadlessTask(
   }
 
   const config: AgentConfig = JSON.parse(configJson);
+
+  // Check if notifications skill is enabled
+  if (!config.enabledSkillNames.includes('notifications')) {
+    DebugLogger.add('info', TAG, 'Notifications skill is disabled – skipping processing');
+    return;
+  }
+
   const lang = config.language || 'en-US';
   const drivingMode = config.drivingMode ?? false;
 

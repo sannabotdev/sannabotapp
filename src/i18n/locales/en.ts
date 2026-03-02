@@ -9,6 +9,8 @@ const en = {
   'app.locked.button': '🔓 Unlock',
   'app.locked.authError': 'Authentication failed. Please try again.',
   'app.onboarding.skillHint': 'Welcome! 👋 Some skills (e.g. Phone, SMS, Google Maps) need extra permissions and are disabled by default. Go to **Settings → Skills** to enable them.',
+  'app.onboarding.welcomeNoApiKey': 'Welcome to Sanna! 👋\n\nBefore you can start, you need to enter an API key. Go to **Settings → AI Provider** and enter your {provider} API key.\n\nYou can also enable and configure various features in **Settings → Skills**.',
+  'app.onboarding.welcomeWithApiKey': 'Welcome to Sanna! 👋\n\nI\'m your AI assistant and I can help you with various tasks. You can talk to me or type messages.\n\nIn **Settings → Skills** you can enable and configure various features like Phone, SMS, Google Maps, and more.',
 
   // ── Alerts ───────────────────────────────────────────────────────────────
   'alert.error': 'Error',
@@ -19,6 +21,8 @@ const en = {
   'alert.sttError': 'STT Error',
   'alert.permissionMissing.title': 'Permission missing',
   'alert.permissionMissing.message': "The \"{skillName}\" skill requires the following permissions:\n{permissions}",
+  'alert.skillDisabled.title': 'Skill disabled',
+  'alert.skillDisabled.message': 'The "{skillName}" skill is disabled. Go to **Settings → Skills** to enable it.',
 
   // ── Home Screen ───────────────────────────────────────────────────────────
   'home.state.idle': 'Ready',
@@ -256,6 +260,7 @@ const en = {
   'schedules.recurrence.interval.hoursMinutes': 'Every {hours}h {minutes}min',
   'schedules.recurrence.daily': 'Daily at {time}',
   'schedules.recurrence.weekly': 'Weekly {days} at {time}',
+  'schedules.skillDisabled': 'The "Scheduler" skill is disabled. Go to **Settings → Skills** to enable it.',
 
   // App Rules Screen (formerly Notification Listeners)
   'notifListeners.title': 'App Rules',
@@ -273,6 +278,7 @@ const en = {
   'notifListeners.delete.message': 'Really delete this app rule?',
   'notifListeners.delete.cancel': 'Cancel',
   'notifListeners.delete.confirm': 'Delete',
+  'notifListeners.skillDisabled': 'The "Notifications" skill is disabled. Go to **Settings → Skills** to enable it.',
 
   // Accessibility Hints Modal
   'accessibilityHints.button': 'Manage Accessibility Hints',

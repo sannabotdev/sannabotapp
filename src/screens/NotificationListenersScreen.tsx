@@ -15,10 +15,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '../i18n';
+import { MarkdownText } from '../components/MarkdownText';
 import { deleteRule, loadRules, type NotificationRule } from '../agent/notification-rules-store';
 
 interface NotificationListenersScreenProps {
   onBack: () => void;
+  enabledSkillNames: string[];
+  isDark: boolean;
 }
 
 function formatDate(isoString: string): string {
@@ -34,10 +37,14 @@ function formatDate(isoString: string): string {
 
 export function NotificationListenersScreen({
   onBack,
+  enabledSkillNames,
+  isDark,
 }: NotificationListenersScreenProps): React.JSX.Element {
   const [rules, setRules] = useState<NotificationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  const isSkillEnabled = enabledSkillNames.includes('notifications');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -56,8 +63,10 @@ export function NotificationListenersScreen({
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (isSkillEnabled) {
+      loadData();
+    }
+  }, [loadData, isSkillEnabled]);
 
   const handleToggle = (id: string) => {
     setExpandedId(prev => (prev === id ? null : id));
@@ -92,7 +101,11 @@ export function NotificationListenersScreen({
         <Text className="text-label-primary text-lg font-bold">{t('notifListeners.title')}</Text>
       </View>
 
-      {loading ? (
+      {!isSkillEnabled ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <MarkdownText isDark={isDark}>{t('notifListeners.skillDisabled')}</MarkdownText>
+        </View>
+      ) : loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#007AFF" />
         </View>

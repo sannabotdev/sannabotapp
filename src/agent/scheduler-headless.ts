@@ -133,6 +133,12 @@ export default async function schedulerHeadlessTask(
     }
     const config: AgentConfig = JSON.parse(configJson);
 
+    // Check if scheduler skill is enabled
+    if (!config.enabledSkillNames.includes('scheduler')) {
+      DebugLogger.add('info', TAG, 'Scheduler skill is disabled – skipping execution');
+      return;
+    }
+
     lang = config.language || 'en-US';
     drivingMode = config.drivingMode ?? false;
 
@@ -175,7 +181,7 @@ export default async function schedulerHeadlessTask(
     const toolRegistry = await createToolRegistry({
       credentialManager,
       skillLoader,
-      includeTts: false, // result is passed to foreground via appendPending; no TTS in background
+      includeTts: true, // TTS available, but only use if explicitly requested by user
       includeScheduler: false, // prevent recursive schedule creation
       includePersonalMemoryTool: false,
     });
@@ -205,7 +211,8 @@ export default async function schedulerHeadlessTask(
       ``,
       `IMPORTANT: You are a background agent. There is no direct user interaction.`,
       `- Execute the task directly without asking for clarification.`,
-      `- Do NOT use any speech or TTS. Return your result as text only.`,
+      `- Do NOT use TTS (text-to-speech) unless the user explicitly requests it in the instruction (e.g., "speak", "say aloud", "read out", "announce").`,
+      `- Return your result as text only unless speech is explicitly requested.`,
     ].join('\n');
 
     // 7. Run the sub-agent

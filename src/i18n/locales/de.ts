@@ -9,6 +9,8 @@ const de = {
   'app.locked.button': '🔓 Entsperren',
   'app.locked.authError': 'Authentifizierung fehlgeschlagen. Versuche es erneut.',
   'app.onboarding.skillHint': 'Willkommen! 👋 Einige Skills (z.\u00A0B. Telefon, SMS, Google Maps) benötigen zusätzliche Berechtigungen und sind standardmäßig deaktiviert. Gehe zu **Einstellungen → Skills**, um sie zu aktivieren.',
+  'app.onboarding.welcomeNoApiKey': 'Willkommen bei Sanna! 👋\n\nBevor du starten kannst, musst du einen API Key eingeben. Gehe zu **Einstellungen → KI-Anbieter** und gib deinen {provider} API Key ein.\n\nDu kannst auch in den **Einstellungen → Skills** verschiedene Funktionen aktivieren und konfigurieren.',
+  'app.onboarding.welcomeWithApiKey': 'Willkommen bei Sanna! 👋\n\nIch bin dein KI-Assistent und helfe dir bei verschiedenen Aufgaben. Du kannst mit mir sprechen oder Nachrichten eingeben.\n\nIn den **Einstellungen → Skills** kannst du verschiedene Funktionen aktivieren und konfigurieren, wie z.\u00A0B. Telefon, SMS, Google Maps und mehr.',
 
   // ── Alerts ───────────────────────────────────────────────────────────────
   'alert.error': 'Fehler',
@@ -19,6 +21,8 @@ const de = {
   'alert.sttError': 'STT Fehler',
   'alert.permissionMissing.title': 'Berechtigung fehlt',
   'alert.permissionMissing.message': 'Für den \"{skillName}\" Skill werden folgende Berechtigungen benötigt:\n{permissions}',
+  'alert.skillDisabled.title': 'Skill deaktiviert',
+  'alert.skillDisabled.message': 'Der \"{skillName}\" Skill ist deaktiviert. Gehe zu **Einstellungen → Skills**, um ihn zu aktivieren.',
 
   // ── Home Screen ───────────────────────────────────────────────────────────
   'home.state.idle': 'Bereit',
@@ -256,6 +260,7 @@ const de = {
   'schedules.recurrence.interval.hoursMinutes': 'Alle {hours}h {minutes}min',
   'schedules.recurrence.daily': 'T\u00E4glich um {time}',
   'schedules.recurrence.weekly': 'W\u00F6chentlich {days} um {time}',
+  'schedules.skillDisabled': 'Der "Scheduler" Skill ist deaktiviert. Gehe zu **Einstellungen → Skills**, um ihn zu aktivieren.',
 
   // App-Regeln-Screen (ehemals Notification-Listener)
   'notifListeners.title': 'App-Regeln',
@@ -273,6 +278,7 @@ const de = {
   'notifListeners.delete.message': 'Diese App-Regel wirklich l\u00F6schen?',
   'notifListeners.delete.cancel': 'Abbrechen',
   'notifListeners.delete.confirm': 'L\u00F6schen',
+  'notifListeners.skillDisabled': 'Der "Notifications" Skill ist deaktiviert. Gehe zu **Einstellungen → Skills**, um ihn zu aktivieren.',
 
   // Accessibility-Hints Modal
   'accessibilityHints.button': 'Accessibility-Hints verwalten',

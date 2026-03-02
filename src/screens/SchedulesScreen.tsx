@@ -15,11 +15,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from '../i18n';
+import { MarkdownText } from '../components/MarkdownText';
 import SchedulerModule from '../native/SchedulerModule';
 import type { Schedule } from '../tools/scheduler-tool';
 
 interface SchedulesScreenProps {
   onBack: () => void;
+  enabledSkillNames: string[];
+  isDark: boolean;
 }
 
 function formatDate(ms: number): string {
@@ -67,10 +70,12 @@ function formatRecurrence(s: Schedule): string {
   }
 }
 
-export function SchedulesScreen({ onBack }: SchedulesScreenProps): React.JSX.Element {
+export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: SchedulesScreenProps): React.JSX.Element {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  const isSkillEnabled = enabledSkillNames.includes('scheduler');
 
   const loadSchedules = useCallback(async () => {
     setLoading(true);
@@ -90,8 +95,10 @@ export function SchedulesScreen({ onBack }: SchedulesScreenProps): React.JSX.Ele
   }, []);
 
   useEffect(() => {
-    loadSchedules();
-  }, [loadSchedules]);
+    if (isSkillEnabled) {
+      loadSchedules();
+    }
+  }, [loadSchedules, isSkillEnabled]);
 
   const handleToggle = (id: string) => {
     setExpandedId(prev => (prev === id ? null : id));
@@ -126,7 +133,11 @@ export function SchedulesScreen({ onBack }: SchedulesScreenProps): React.JSX.Ele
         <Text className="text-label-primary text-lg font-bold">{t('schedules.title')}</Text>
       </View>
 
-      {loading ? (
+      {!isSkillEnabled ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <MarkdownText isDark={isDark}>{t('schedules.skillDisabled')}</MarkdownText>
+        </View>
+      ) : loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#007AFF" />
         </View>
