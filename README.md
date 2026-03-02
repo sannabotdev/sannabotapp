@@ -44,7 +44,7 @@ If you encounter any issues during beta testing, see [Getting Help](#-getting-he
 - **🚗 Driving mode** – Short spoken responses, auto-reads incoming notifications, optimized for hands-free use.
 - **🔒 No backend needed** – OAuth flows use PKCE. All data stays on your device.
 
-## 📦 16 Built-in Skills
+## 📦 Built-in Skills
 
 | Skill | What it does |
 |-------|-------------|
@@ -64,6 +64,7 @@ If you encounter any issues during beta testing, see [Getting Help](#-getting-he
 | 📝 Journal | Create and manage journal entries to track activities, events, and notes |
 | 📋 Lists | Manage local lists (shopping, to-do, packing) – fully offline |
 | 🌤️ Weather | Current weather & forecasts via wttr.in / Open-Meteo – no API key |
+| 🗞️ Headlines | Top news headlines from 40+ RSS feeds across 10 countries – no API key |
 
 ## 💡 Usage Examples
 
@@ -169,6 +170,15 @@ Lists are stored locally on-device – no internet, no cloud, no account needed.
 | "Navigate to the airport" | Opens Google Maps turn-by-turn |
 | "Will it rain tomorrow?" | Weather forecast for current GPS location |
 | "What's the weather in London?" | Weather for a specific city |
+
+### 🗞️ Headlines
+
+| You say | What happens |
+|---------|-------------|
+| "What are today's top headlines?" | Fetches BBC RSS, summarises top 5 stories |
+| "Read me the German news" | Fetches Tagesschau, reads aloud |
+| "Tech news" | Fetches Heise Online, summarises top tech stories |
+| "Read me the news every morning at 7" | Creates a recurring daily news briefing |
 
 ### 🤖 UI Automation (Learning Accessibility)
 
