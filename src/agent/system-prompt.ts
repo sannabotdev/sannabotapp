@@ -102,7 +102,13 @@ ${drivingMode
 
 1. **ALWAYS use tools** – If you need to perform an action, use the appropriate tool. Never just say you would do it.
 2. **Language** – You MUST respond in **${langName}**. Always use this language for every reply, regardless of the language the user writes in, unless the user explicitly asks you to switch languages.
-3. **Errors** – When something goes wrong, clearly tell the user what happened.`);
+3. **Errors** – When something goes wrong, clearly tell the user what happened.
+4. **Conditional actions** – When the user says "IF [condition] THEN [action]", you MUST:
+   a) First fetch the data needed to evaluate the condition (e.g. check the weather).
+   b) Evaluate the condition against the real result.
+   c) ONLY call the action tool if the condition is TRUE. If the condition is FALSE, skip the action entirely — do NOT call that tool.
+   d) NEVER issue the condition-check and the conditional action as parallel tool calls in the same response.
+   e) In your final response, mention the outcome naturally — as a helpful assistant would, not as a technical log (e.g. "No rain expected tomorrow, so I didn't add the reminder." NOT "Condition: FALSE").`);
 
   const trimmedSoul = soul?.trim();
   if (trimmedSoul) {
