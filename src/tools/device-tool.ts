@@ -107,23 +107,52 @@ export class DeviceTool implements Tool {
     // Request runtime permission first (Android)
     let fineGranted = true;
     if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
+      // Check first (works without Activity / in headless mode)
+      const fineAlready = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'GPS permission',
-          message: 'Sanna needs access to your location.',
-          buttonPositive: 'Erlauben',
-        },
       );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        // Fine location denied – try coarse (network-based) location
-        const coarseGranted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-        );
-        if (coarseGranted !== PermissionsAndroid.RESULTS.GRANTED) {
-          return errorResult('Location permission denied. Cannot get GPS coordinates or calculate distance without location permission.');
+
+      if (fineAlready) {
+        fineGranted = true;
+      } else {
+        // Try to request via dialog – this needs an Activity.
+        // In headless / background mode the call throws, so we catch it.
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'GPS permission',
+              message: 'Sanna needs access to your location.',
+              buttonPositive: 'Erlauben',
+            },
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            fineGranted = false;
+          }
+        } catch {
+          // No Activity – request dialog impossible. Permission stays denied.
+          fineGranted = false;
         }
-        fineGranted = false;
+
+        if (!fineGranted) {
+          // Try coarse location
+          const coarseAlready = await PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+          );
+          if (!coarseAlready) {
+            try {
+              const coarseGranted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+              );
+              if (coarseGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+                return errorResult('Location permission denied. Cannot get GPS coordinates or calculate distance without location permission. Please grant location permission while the app is in the foreground.');
+              }
+            } catch {
+              return errorResult('Location permission not granted and cannot be requested in background mode. Please grant location permission while the app is in the foreground.');
+            }
+          }
+          // coarseAlready === true → proceed with coarse
+        }
       }
     }
 

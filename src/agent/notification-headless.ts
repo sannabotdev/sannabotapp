@@ -22,6 +22,7 @@ import { ClaudeProvider } from '../llm/claude-provider';
 import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider } from '../llm/types';
 import { DebugLogger } from './debug-logger';
+import { DebugFileLogger } from './debug-file-logger';
 import { ConversationStore } from './conversation-store';
 import { SoulStore } from './soul-store';
 import { PersonalMemoryStore } from './personal-memory-store';
@@ -114,6 +115,7 @@ async function bringToForeground(): Promise<void> {
 export default async function notificationHeadlessTask(
   taskData: { notificationJson: string },
 ): Promise<void> {
+  DebugFileLogger.writeSystemLog('LIFECYCLE', '▶ SannaNotificationTask started');
   DebugLogger.add('info', TAG, '▶ Notification headless task started');
 
   // 1. Parse notification data
@@ -287,10 +289,12 @@ export default async function notificationHeadlessTask(
 
       // 11. Bring app to foreground – drainPending() will display + speak the result
       await bringToForeground();
+      DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaNotificationTask finished (${packageName})`);
     } else if (isSilent) {
       // Silent reply – no condition matched or sub-agent decided output is not user-facing
       const reason = resultText?.includes(NO_MATCH_TOKEN) ? 'no condition matched' : 'silent reply';
       DebugLogger.add('info', TAG, `${reason} for "${packageName}" – no bubble shown`);
+      DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaNotificationTask finished – ${reason} (${packageName})`);
     } else {
       // resultText is empty (shouldn't happen with tool-loop fix, but safety fallback)
       DebugLogger.add('info', TAG, `Sub-agent returned empty result for "${packageName}"`);
@@ -320,6 +324,7 @@ export default async function notificationHeadlessTask(
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    DebugFileLogger.writeSystemLog('LIFECYCLE', `❌ SannaNotificationTask crashed (${packageName}): ${errMsg}`);
     DebugLogger.add('error', TAG, `Sub-agent failed: ${errMsg}`);
     const formattedError = await formulateError({
       provider,

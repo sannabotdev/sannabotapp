@@ -13,7 +13,50 @@ import { AppRegistry } from 'react-native';
 import App from './App';
 import { name as appName } from './app.json';
 
+// ─── Global crash & rejection handlers ──────────────────────────────────────
+// Always write to the log file (writeSystemLog bypasses the enabled flag)
+// so fatal errors are captured even when debug logging is off.
+import { DebugFileLogger } from './src/agent/debug-file-logger';
+
+// Catch unhandled JS exceptions (crashes)
+const defaultHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  try {
+    const tag = isFatal ? 'FATAL' : 'ERROR';
+    const msg = error instanceof Error
+      ? `${error.message}\n${error.stack ?? ''}`
+      : String(error);
+    DebugFileLogger.writeSystemLog(tag, `💥 Unhandled JS exception: ${msg}`);
+  } catch {
+    // Must not throw inside the crash handler
+  }
+  // Forward to the default handler so React Native can show the red screen / crash
+  if (defaultHandler) {
+    defaultHandler(error, isFatal);
+  }
+});
+
+// Catch unhandled promise rejections
+if (typeof global !== 'undefined') {
+  const orig = global.onunhandledrejection;
+  global.onunhandledrejection = (event) => {
+    try {
+      const reason = event?.reason;
+      const msg = reason instanceof Error
+        ? `${reason.message}\n${reason.stack ?? ''}`
+        : String(reason);
+      DebugFileLogger.writeSystemLog('ERROR', `⚠️ Unhandled promise rejection: ${msg}`);
+    } catch {
+      // Must not throw
+    }
+    if (typeof orig === 'function') {
+      orig(event);
+    }
+  };
+}
+
 AppRegistry.registerComponent(appName, () => App);
+DebugFileLogger.writeSystemLog('LIFECYCLE', '🚀 JS runtime started');
 
 // Register the headless task for scheduled sub-agent execution.
 // When an alarm fires and the app is in the background, Android starts

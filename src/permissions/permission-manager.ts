@@ -66,6 +66,10 @@ export class PermissionManager {
   /**
    * Request all missing permissions from the given list.
    * Returns the combined result of check + request.
+   *
+   * Safe to call from headless / background tasks: if no Activity is
+   * attached, permissions are only *checked* (never requested via dialog).
+   * Already-granted permissions still work; missing ones are reported as denied.
    */
   async ensurePermissions(permissions: string[]): Promise<PermissionCheckResult> {
     if (permissions.length === 0) {
@@ -81,40 +85,56 @@ export class PermissionManager {
       return { allGranted: true, results: permissions.map(p => ({ permission: p, status: 'granted' as const })), missing: [] };
     }
 
-    const statuses = await PermissionsAndroid.requestMultiple(androidPerms);
-
-    const results: PermissionResult[] = [];
-    const missing: string[] = [];
-
-    for (const perm of permissions) {
-      const androidPerm = PERMISSION_MAP[perm];
-      if (!androidPerm) {
-        results.push({ permission: perm, status: 'granted' });
-        continue;
-      }
-
-      const status = statuses[androidPerm] as PermissionStatus;
-      let mapped: PermissionResult['status'];
-      switch (status) {
-        case PermissionsAndroid.RESULTS.GRANTED:
-          mapped = 'granted';
-          break;
-        case PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN:
-          mapped = 'never_ask_again';
-          missing.push(perm);
-          break;
-        default:
-          mapped = 'denied';
-          missing.push(perm);
-      }
-      results.push({ permission: perm, status: mapped });
+    // Fast path: check first – if everything is already granted we never
+    // need an Activity and can return immediately.
+    const checkResult = await this.checkPermissions(permissions);
+    if (checkResult.allGranted) {
+      return checkResult;
     }
 
-    return {
-      allGranted: missing.length === 0,
-      results,
-      missing,
-    };
+    // Some permissions are missing → try to show the request dialog.
+    // This requires an Activity; in headless mode it throws.
+    try {
+      const statuses = await PermissionsAndroid.requestMultiple(androidPerms);
+
+      const results: PermissionResult[] = [];
+      const missing: string[] = [];
+
+      for (const perm of permissions) {
+        const androidPerm = PERMISSION_MAP[perm];
+        if (!androidPerm) {
+          results.push({ permission: perm, status: 'granted' });
+          continue;
+        }
+
+        const status = statuses[androidPerm] as PermissionStatus;
+        let mapped: PermissionResult['status'];
+        switch (status) {
+          case PermissionsAndroid.RESULTS.GRANTED:
+            mapped = 'granted';
+            break;
+          case PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN:
+            mapped = 'never_ask_again';
+            missing.push(perm);
+            break;
+          default:
+            mapped = 'denied';
+            missing.push(perm);
+        }
+        results.push({ permission: perm, status: mapped });
+      }
+
+      return {
+        allGranted: missing.length === 0,
+        results,
+        missing,
+      };
+    } catch {
+      // No Activity available (headless / background mode).
+      // Return the check-only result so callers see which permissions
+      // are missing without crashing.
+      return checkResult;
+    }
   }
 
   /** Check a single permission */

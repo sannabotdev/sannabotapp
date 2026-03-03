@@ -30,8 +30,8 @@ class DebugFileLoggerImpl {
   }
 
   /**
-   * Rotate existing log file by renaming it with its last modification date.
-   * Called once when logging is first enabled.
+   * Rotate existing log file only if its last modification was on a previous day.
+   * This keeps one log file per day — rotation happens at most once daily.
    */
   private async rotateLogFile(): Promise<void> {
     try {
@@ -51,26 +51,31 @@ class DebugFileLoggerImpl {
       } else {
         mtime = new Date(); // Use current date as fallback
       }
+
+      // Only rotate if the file's last modification was on a previous calendar day
+      const now = new Date();
+      const sameDay =
+        mtime.getFullYear() === now.getFullYear() &&
+        mtime.getMonth() === now.getMonth() &&
+        mtime.getDate() === now.getDate();
+
+      if (sameDay) {
+        return; // Still today's log — keep appending
+      }
       
-      // Format date as YYYY-MM-DD-HH-MM-SS
+      // Format the mtime date as YYYY-MM-DD for the rotated filename
       const year = mtime.getFullYear();
       const month = String(mtime.getMonth() + 1).padStart(2, '0');
       const day = String(mtime.getDate()).padStart(2, '0');
-      const hours = String(mtime.getHours()).padStart(2, '0');
-      const minutes = String(mtime.getMinutes()).padStart(2, '0');
-      const seconds = String(mtime.getSeconds()).padStart(2, '0');
       
-      const dateStr = `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
+      const dateStr = `${year}-${month}-${day}`;
       const rotatedPath = `${RNFS.DocumentDirectoryPath}/sanna-${dateStr}.txt`;
       
       // Rename the file
       await RNFS.moveFile(LOG_FILE_PATH, rotatedPath);
     } catch (error) {
       // Silently ignore rotation errors - don't prevent logging from starting
-      const originalConsoleError = console.error;
-      if (originalConsoleError) {
-        originalConsoleError('[DebugFileLogger] Error rotating log file:', error);
-      }
+      console.error('[DebugFileLogger] Error rotating log file:', error);
     }
   }
 
@@ -149,6 +154,29 @@ class DebugFileLoggerImpl {
         }, 0);
       }
     }
+  }
+
+  /**
+   * Write a SYSTEM-level log entry that is ALWAYS written to disk,
+   * regardless of the enabled flag.  Used for crash handlers, lifecycle
+   * events, and anything that must survive even when debug logging is off.
+   */
+  async writeSystemLog(level: string, message: string): Promise<void> {
+    const timestamp = new Date();
+    const year = timestamp.getFullYear();
+    const month = String(timestamp.getMonth() + 1).padStart(2, '0');
+    const day = String(timestamp.getDate()).padStart(2, '0');
+    const hours = String(timestamp.getHours()).padStart(2, '0');
+    const minutes = String(timestamp.getMinutes()).padStart(2, '0');
+    const seconds = String(timestamp.getSeconds()).padStart(2, '0');
+    const milliseconds = String(timestamp.getMilliseconds()).padStart(3, '0');
+
+    const timestampStr = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+    const logLine = `[${timestampStr}] [${level}] ${message}\n`;
+
+    // Write synchronously to queue and flush — bypass enabled check
+    this.writeQueue.push(logLine);
+    this.processQueue().catch(() => {});
   }
 
   /**

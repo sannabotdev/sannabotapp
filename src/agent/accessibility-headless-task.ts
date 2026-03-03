@@ -36,6 +36,7 @@ import { runAccessibilitySubAgent } from './accessibility-sub-agent';
 import SchedulerModule from '../native/SchedulerModule';
 import { ConversationStore } from './conversation-store';
 import { DebugLogger } from './debug-logger';
+import { DebugFileLogger } from './debug-file-logger';
 import { formulateResponse } from './system-prompt';
 import { AccessibilityHintStore } from './accessibility-hint-store';
 import { PersonalMemoryStore } from './personal-memory-store';
@@ -398,6 +399,7 @@ export async function runAccessibilityAutomation(
 export default async function accessibilityHeadlessTask(
   taskData: { jobJson: string },
 ): Promise<void> {
+  DebugFileLogger.writeSystemLog('LIFECYCLE', '▶ SannaAccessibilityTask started');
   DebugLogger.add('info', 'AccessibilityTask', 'Starting background UI automation');
 
   // 1. Parse job  (no provider yet → raw message on error)
@@ -452,6 +454,7 @@ export default async function accessibilityHeadlessTask(
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    DebugFileLogger.writeSystemLog('LIFECYCLE', `❌ SannaAccessibilityTask crashed: ${msg}`);
     DebugLogger.add('error', 'AccessibilityTask', `Automation error: ${msg}`);
     await failFormatted(`UI automation failed: ${msg}`, { provider, packageName, goal, drivingMode, language });
     return;
@@ -462,5 +465,6 @@ export default async function accessibilityHeadlessTask(
   //     message must already be in AsyncStorage before that happens, otherwise
   //     drainPending() will find nothing and the bubble won't show.
   await ConversationStore.appendPending('assistant', result.formulated).catch(() => {});
+  DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaAccessibilityTask finished (${packageName})`);
   await restoreSannaBot();
 }

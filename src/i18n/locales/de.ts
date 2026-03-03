@@ -55,6 +55,7 @@ const de = {
 
   'home.bubble.user': '👤 Du',
   'home.bubble.assistant': 'Sanna',
+  'home.bubble.copied': 'Text in Zwischenablage kopiert',
 
   // ── Settings ─────────────────────────────────────────────────────────────
   'settings.back': '← Zurück',

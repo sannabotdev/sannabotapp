@@ -732,11 +732,15 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
+      // Log every AppState transition (always written, even if debug logging is off)
+      DebugFileLogger.writeSystemLog('LIFECYCLE', `AppState → ${nextState}`);
+
       if (nextState === 'background') {
         backgroundAtRef.current = Date.now();
       } else if (nextState === 'active' && backgroundAtRef.current !== null) {
         const elapsed = Date.now() - backgroundAtRef.current;
         backgroundAtRef.current = null;
+        DebugFileLogger.writeSystemLog('LIFECYCLE', `App returned to foreground after ${(elapsed / 1000).toFixed(1)}s`);
         if (elapsed > LOCK_GRACE_MS && !settings.drivingMode) {
           tokenStore.current.lock();
           setVaultUnlocked(false);

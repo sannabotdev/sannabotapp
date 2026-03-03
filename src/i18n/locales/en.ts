@@ -55,6 +55,7 @@ const en = {
 
   'home.bubble.user': '👤 You',
   'home.bubble.assistant': 'Sanna',
+  'home.bubble.copied': 'Text copied to clipboard',
 
   // ── Settings ─────────────────────────────────────────────────────────────
   'settings.back': '← Back',

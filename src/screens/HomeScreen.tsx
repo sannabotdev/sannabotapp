@@ -13,9 +13,11 @@ import {
   Platform,
   StyleSheet,
   Animated,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Clipboard from '@react-native-clipboard/clipboard';
 import type { PipelineState } from '../agent/conversation-pipeline';
 import { DebugPanel } from './DebugPanel';
 import { SannaAvatar } from '../components/SannaAvatar';
@@ -664,8 +666,15 @@ const MessageBubble = React.memo(function MessageBubble({
     minute: '2-digit',
   });
 
+  const handleLongPress = () => {
+    Clipboard.setString(message.text);
+    Alert.alert(t('home.bubble.copied'));
+  };
+
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onLongPress={handleLongPress}
       className={`p-3 rounded-2xl gap-1 ${
         isUser
           ? 'max-w-[85%] self-end bg-accent rounded-br-sm'
@@ -689,6 +698,6 @@ const MessageBubble = React.memo(function MessageBubble({
         <MarkdownText isDark={isDark}>{message.text}</MarkdownText>
       )}
       <Text className="text-[10px] text-label-quaternary self-end">{time}</Text>
-    </View>
+    </TouchableOpacity>
   );
 });

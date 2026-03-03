@@ -15,6 +15,7 @@ import { ClaudeProvider } from '../llm/claude-provider';
 import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider } from '../llm/types';
 import { DebugLogger } from './debug-logger';
+import { DebugFileLogger } from './debug-file-logger';
 import { ConversationStore } from './conversation-store';
 import TimerModule from '../native/TimerModule';
 import SchedulerModule from '../native/SchedulerModule';
@@ -60,6 +61,7 @@ export default async function timerHeadlessTask(
   taskData: { timerId: string },
 ): Promise<void> {
   const { timerId } = taskData;
+  DebugFileLogger.writeSystemLog('LIFECYCLE', `▶ SannaTimerTask started (id=${timerId})`);
   DebugLogger.add('info', TAG, `⏰ Timer expired: ${timerId}`);
 
   // These are set progressively – used in the catch block for LLM error formatting
@@ -150,9 +152,11 @@ export default async function timerHeadlessTask(
 
     // 7. Bring app to foreground so user sees the message
     await restoreSannaBot();
+    DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaTimerTask finished (id=${timerId})`);
 
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    DebugFileLogger.writeSystemLog('LIFECYCLE', `❌ SannaTimerTask crashed (id=${timerId}): ${errMsg}`);
     DebugLogger.add('error', TAG, `Timer headless task failed: ${errMsg}`, err instanceof Error ? err.stack : undefined);
 
     // Fallback: write simple message if LLM formatting failed

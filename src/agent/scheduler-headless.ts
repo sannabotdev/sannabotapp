@@ -21,6 +21,7 @@ import { ClaudeProvider } from '../llm/claude-provider';
 import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider, Message } from '../llm/types';
 import { DebugLogger } from './debug-logger';
+import { DebugFileLogger } from './debug-file-logger';
 import { ConversationStore } from './conversation-store';
 import { PersonalMemoryStore } from './personal-memory-store';
 import { addEntry } from './journal-store';
@@ -99,6 +100,7 @@ export default async function schedulerHeadlessTask(
   taskData: { scheduleId: string },
 ): Promise<void> {
   const { scheduleId } = taskData;
+  DebugFileLogger.writeSystemLog('LIFECYCLE', `▶ SannaSchedulerTask started (id=${scheduleId})`);
   DebugLogger.add('info', TAG, `⏰ Executing schedule: ${scheduleId}`);
 
   // These are set progressively – used in the catch block for LLM error formatting
@@ -291,8 +293,11 @@ export default async function schedulerHeadlessTask(
       DebugLogger.add('info', TAG, `One-time schedule ${scheduleId} removed`);
     }
 
+    DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaSchedulerTask finished (id=${scheduleId})`);
+
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    DebugFileLogger.writeSystemLog('LIFECYCLE', `❌ SannaSchedulerTask crashed (id=${scheduleId}): ${errMsg}`);
     DebugLogger.add('error', TAG, `Schedule ${scheduleId} failed: ${errMsg}`);
 
     // If we have a provider, ask the LLM to formulate a user-friendly error
