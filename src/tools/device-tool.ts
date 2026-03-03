@@ -121,7 +121,7 @@ export class DeviceTool implements Tool {
           PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
         );
         if (coarseGranted !== PermissionsAndroid.RESULTS.GRANTED) {
-          return errorResult('Location permission denied');
+          return errorResult('Location permission denied. Cannot get GPS coordinates or calculate distance without location permission.');
         }
         fineGranted = false;
       }
@@ -147,8 +147,8 @@ export class DeviceTool implements Tool {
       const timer = setTimeout(() => {
         resolve(errorResult(
           highAccuracy
-            ? 'GPS timeout – no signal'
-            : 'Network location timeout – no signal',
+            ? 'GPS timeout – no signal. Location unavailable. Cannot calculate distance without valid GPS coordinates.'
+            : 'Network location timeout – no signal. Location unavailable. Cannot calculate distance without valid GPS coordinates.',
         ));
       }, timeoutMs + 3000);
 
@@ -176,8 +176,8 @@ export class DeviceTool implements Tool {
           clearTimeout(timer);
           resolve(errorResult(
             highAccuracy
-              ? `GPS error: ${err.message}`
-              : `Network location error: ${err.message}`,
+              ? `GPS error: ${err.message}. Location unavailable. Cannot calculate distance without valid GPS coordinates.`
+              : `Network location error: ${err.message}. Location unavailable. Cannot calculate distance without valid GPS coordinates.`,
           ));
         },
         {
@@ -270,7 +270,12 @@ export class DeviceTool implements Tool {
     lat2: number,
     lon2: number,
   ): ToolResult {
+    // Explicitly check for null/undefined first
     if (
+      lat1 == null ||
+      lon1 == null ||
+      lat2 == null ||
+      lon2 == null ||
       typeof lat1 !== 'number' ||
       typeof lon1 !== 'number' ||
       typeof lat2 !== 'number' ||
@@ -281,7 +286,7 @@ export class DeviceTool implements Tool {
       isNaN(lon2)
     ) {
       return errorResult(
-        'calculate_distance: All four parameters (latitude1, longitude1, latitude2, longitude2) are required and must be valid numbers.',
+        'calculate_distance: All four parameters (latitude1, longitude1, latitude2, longitude2) are required and must be valid numbers. GPS location may have failed - ensure get_location succeeded before calculating distance.',
       );
     }
 
