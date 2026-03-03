@@ -140,6 +140,7 @@ export async function runNotificationSubAgent(
     `You are a background sub-agent processing a single notification.`,
     `There is no direct user interaction — do not ask questions.`,
     `IMPORTANT: Do NOT use TTS (text-to-speech) unless the user explicitly requests it in the rule instruction (e.g., "speak", "say aloud", "read out", "announce").`,
+    `IMPORTANT: Only describe actions that have been fully executed. Use past tense when reporting completed actions. Never describe planned actions as if they are already done.`,
     ``,
     rules.length === 1 && !rules[0].condition
       // Single catch-all rule: just execute it

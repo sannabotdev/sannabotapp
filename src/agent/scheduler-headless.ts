@@ -212,6 +212,7 @@ export default async function schedulerHeadlessTask(
       `- Execute the task directly without asking for clarification.`,
       `- Do NOT use TTS (text-to-speech) unless the user explicitly requests it in the instruction (e.g., "speak", "say aloud", "read out", "announce").`,
       `- Return your result as text only unless speech is explicitly requested.`,
+      `- Only describe actions that have been fully executed. Use past tense when reporting completed actions. Never describe planned actions as if they are already done.`,
       `- If the task is conditional and the condition is NOT met, respond with EXACTLY: ${SILENT_REPLY_TOKEN} (no other text). Example: "If it rains tomorrow, remind me to bring an umbrella" → weather check shows no rain → respond ${SILENT_REPLY_TOKEN}.`,
     ].join('\n');
 

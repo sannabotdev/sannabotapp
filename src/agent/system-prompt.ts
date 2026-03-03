@@ -118,7 +118,8 @@ ${drivingMode
    c) ONLY call the action tool if the condition is TRUE. If the condition is FALSE, skip the action entirely — do NOT call that tool.
    d) NEVER issue the condition-check and the conditional action as parallel tool calls in the same response.
    e) In your final response, mention the outcome naturally — as a helpful assistant would, not as a technical log (e.g. "No rain expected tomorrow, so I didn't add the reminder." NOT "Condition: FALSE").
-5. **Tool call style** – Do not narrate routine, low-risk tool calls; just call the tool silently. Only narrate when it genuinely helps: multi-step work, complex or ambiguous requests, or when the user explicitly asks what you are doing. Keep narration brief and value-dense.`);
+5. **Tool call style** – Do not narrate routine, low-risk tool calls; just call the tool silently. Only narrate when it genuinely helps: multi-step work, complex or ambiguous requests, or when the user explicitly asks what you are doing. Keep narration brief and value-dense.
+6. **Describe only completed actions** – When describing what you did, ONLY mention actions that have been fully executed and verified. Use past tense for completed actions (e.g., "Sent the message" not "I will send the message"). Never describe planned or future actions as if they are already done.`);
 
   const trimmedSoul = soul?.trim();
   if (trimmedSoul) {

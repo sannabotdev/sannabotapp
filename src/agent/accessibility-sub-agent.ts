@@ -109,7 +109,11 @@ ${goal}
 6. **Confirmation:** Buttons containing "Send", "Senden", "OK", or "Submit" are typically your final action triggers.
 
 ## Termination & Failure (YOU MUST FOLLOW THIS)
-- **Success:** As soon as you confirm the goal is achieved (based on the UI state), you MUST immediately call the \`finish_task\` tool with \`status: "success"\`. Do NOT take any further actions after that.
+- **Success:** ONLY call \`finish_task\` AFTER you have:
+  1. Executed all necessary actions via \`accessibility_action\`
+  2. Refreshed the tree with \`get_accessibility_tree\` to verify the final state
+  3. Confirmed that the goal is actually achieved based on the current UI state
+  Then call \`finish_task\` with \`status: "success"\` and describe what was ACTUALLY completed (not what you plan to do). Do NOT take any further actions after that.
 - **Loading/Delay:** If the screen appears to be loading, use \`get_accessibility_tree\` to poll the state again.
 - **Dead End Recovery:** If you are stuck after 2 state refreshes without meaningful progress, use the \`home\` action to navigate back to the app's home screen, refresh the tree with \`get_accessibility_tree\`, and try a different approach from there.
 - **Failure/Stuck:** If after Dead End Recovery you still cannot make progress, you MUST call \`finish_task\` with \`status: "failed"\` and explain why. This is the correct way to give up – do NOT keep retrying blindly.`;
@@ -374,9 +378,12 @@ class FinishTaskTool implements Tool {
   description(): string {
     return (
       'Signal that the task is complete or that you are unable to complete it. ' +
-      'Call this with status "success" once the goal has been achieved, ' +
-      'or with status "failed" if you are stuck and cannot make progress. ' +
-      'THIS IS THE ONLY WAY TO END YOUR TASK. You MUST call this tool when done.'
+      'Call this with status "success" ONLY AFTER you have verified that the goal has been achieved ' +
+      '(by checking the accessibility tree and confirming the desired state is visible). ' +
+      'Call with status "failed" if you are stuck and cannot make progress. ' +
+      'THIS IS THE ONLY WAY TO END YOUR TASK. You MUST call this tool when done. ' +
+      'IMPORTANT: Only call this AFTER all actions have been executed and verified. ' +
+      'The message should describe what was ACTUALLY completed, not what you plan to do.'
     );
   }
 
@@ -388,12 +395,14 @@ class FinishTaskTool implements Tool {
           type: 'string',
           enum: ['success', 'failed'],
           description:
-            '"success" – goal was achieved. "failed" – could not complete the goal.',
+            '"success" – goal was achieved and verified. "failed" – could not complete the goal.',
         },
         message: {
           type: 'string',
           description:
-            'A clear, concise summary of what was done (success) or what went wrong and why (failed).',
+            'A clear, concise summary describing what was ACTUALLY completed (for success) or what went wrong (for failed). ' +
+            'Only describe actions that have been fully executed and verified. ' +
+            'Use past tense to describe completed actions (e.g., "Opened Player FM and navigated to the podcast").',
         },
       },
       required: ['status', 'message'],
