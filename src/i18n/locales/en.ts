@@ -13,6 +13,11 @@ const en = {
   'app.onboarding.welcomeNoApiKey': 'Welcome to Sanna! 👋\n\nBefore you can start, you need to enter an API key. Go to **Settings → AI Provider** and enter your {provider} API key.\n\nYou can also enable and configure various features in **Settings → Skills**.',
   'app.onboarding.welcomeWithApiKey': 'Welcome to Sanna! 👋\n\nI\'m your AI assistant and I can help you with various tasks. You can talk to me or type messages.\n\nIn **Settings → Skills** you can enable and configure various features like Phone, SMS, Google Maps, and more.',
 
+  // ── Common ──────────────────────────────────────────────────────────────
+  'common.edit': 'Edit',
+  'common.save': 'Save',
+  'common.cancel': 'Cancel',
+
   // ── Alerts ───────────────────────────────────────────────────────────────
   'alert.error': 'Error',
   'alert.noApiKey.title': 'No API Key',

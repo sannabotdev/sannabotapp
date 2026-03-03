@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { MarkdownText } from '../components/MarkdownText';
+import { EditableDetailRow } from '../components/EditableDetailRow';
 import { deleteRule, loadRules, updateRule, type NotificationRule } from '../agent/notification-rules-store';
 
 interface NotificationListenersScreenProps {
@@ -76,6 +77,15 @@ export function NotificationListenersScreen({
 
   const handleToggleEnabled = async (rule: NotificationRule) => {
     await updateRule(rule.id, { enabled: !rule.enabled });
+    await loadData();
+  };
+
+  const handleSaveField = async (
+    rule: NotificationRule,
+    field: 'instruction' | 'condition',
+    value: string,
+  ) => {
+    await updateRule(rule.id, { [field]: value });
     await loadData();
   };
 
@@ -169,10 +179,18 @@ export function NotificationListenersScreen({
                 {isExpanded && (
                   <View className="border-t border-surface px-4 py-3 gap-2">
                     <DetailRow label={t('notifListeners.detail.app')} value={`${rule.appLabel} (${rule.app})`} />
-                    <DetailRow label={t('notifListeners.detail.instruction')} value={rule.instruction} />
-                    <DetailRow
+                    <EditableDetailRow
+                      label={t('notifListeners.detail.instruction')}
+                      value={rule.instruction}
+                      onSave={v => handleSaveField(rule, 'instruction', v)}
+                      labelWidth={96}
+                    />
+                    <EditableDetailRow
                       label={t('notifListeners.detail.condition')}
-                      value={rule.condition || t('notifListeners.detail.conditionAlways')}
+                      value={rule.condition}
+                      onSave={v => handleSaveField(rule, 'condition', v)}
+                      labelWidth={96}
+                      placeholder={t('notifListeners.detail.conditionAlways')}
                     />
                     <DetailRow
                       label={t('notifListeners.detail.status')}

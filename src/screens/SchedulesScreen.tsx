@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { MarkdownText } from '../components/MarkdownText';
+import { EditableDetailRow } from '../components/EditableDetailRow';
 import SchedulerModule from '../native/SchedulerModule';
 import type { Schedule } from '../tools/scheduler-tool';
 
@@ -112,6 +113,16 @@ export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: Schedules
     await loadSchedules();
   };
 
+  const handleSaveField = async (
+    schedule: Schedule,
+    field: 'label' | 'instruction',
+    value: string,
+  ) => {
+    const updated = { ...schedule, [field]: value };
+    await SchedulerModule.setSchedule(JSON.stringify(updated));
+    await loadSchedules();
+  };
+
   const handleDelete = (schedule: Schedule) => {
     Alert.alert(
       t('schedules.delete.title'),
@@ -201,10 +212,18 @@ export function SchedulesScreen({ onBack, enabledSkillNames, isDark }: Schedules
                 {/* Expanded content */}
                 {isExpanded && (
                   <View className="border-t border-surface px-4 py-3 gap-2">
-                    {schedule.label && (
-                      <DetailRow label={t('schedules.detail.label')} value={schedule.label} />
-                    )}
-                    <DetailRow label={t('schedules.detail.instruction')} value={schedule.instruction} />
+                    <EditableDetailRow
+                      label={t('schedules.detail.label')}
+                      value={schedule.label || ''}
+                      onSave={v => handleSaveField(schedule, 'label', v)}
+                      labelWidth={128}
+                    />
+                    <EditableDetailRow
+                      label={t('schedules.detail.instruction')}
+                      value={schedule.instruction}
+                      onSave={v => handleSaveField(schedule, 'instruction', v)}
+                      labelWidth={128}
+                    />
                     <DetailRow label={t('schedules.detail.triggerAt')} value={formatDate(schedule.triggerAtMs)} />
                     <DetailRow label={t('schedules.detail.recurrence')} value={formatRecurrence(schedule)} />
                     <DetailRow

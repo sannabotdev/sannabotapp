@@ -13,6 +13,11 @@ const de = {
   'app.onboarding.welcomeNoApiKey': 'Willkommen bei Sanna! 👋\n\nBevor du starten kannst, musst du einen API Key eingeben. Gehe zu **Einstellungen → KI-Anbieter** und gib deinen {provider} API Key ein.\n\nDu kannst auch in den **Einstellungen → Skills** verschiedene Funktionen aktivieren und konfigurieren.',
   'app.onboarding.welcomeWithApiKey': 'Willkommen bei Sanna! 👋\n\nIch bin dein KI-Assistent und helfe dir bei verschiedenen Aufgaben. Du kannst mit mir sprechen oder Nachrichten eingeben.\n\nIn den **Einstellungen → Skills** kannst du verschiedene Funktionen aktivieren und konfigurieren, wie z.\u00A0B. Telefon, SMS, Google Maps und mehr.',
 
+  // ── Common ──────────────────────────────────────────────────────────────
+  'common.edit': 'Bearbeiten',
+  'common.save': 'Speichern',
+  'common.cancel': 'Abbrechen',
+
   // ── Alerts ───────────────────────────────────────────────────────────────
   'alert.error': 'Fehler',
   'alert.noApiKey.title': 'Kein API Key',
