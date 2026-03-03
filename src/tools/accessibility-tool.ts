@@ -36,6 +36,10 @@ export class AccessibilityTool implements Tool {
     );
   }
 
+  systemHint(): string {
+    return 'Use when no direct API/skill exists for the target app. A sub-agent will tap, type, and swipe in the app UI. Always call skill_detail first to get the exact package name and goal format.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',

@@ -70,6 +70,14 @@ export function buildSystemPrompt(config: SystemPromptConfig): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+  
+  // Get timezone (e.g. "Europe/Vienna", "America/New_York")
+  let timezone: string;
+  try {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    timezone = 'UTC';
+  }
 
   const parts: string[] = [];
 
@@ -82,6 +90,7 @@ You are primarily operated by voice and respond in the user's configured languag
 ## Current Time
 ${dateStr}
 **Today is: ${isoDate}** (use this date for all date comparisons and calculations)
+**Timezone: ${timezone}**
 
 ## Operating Mode
 ${drivingMode

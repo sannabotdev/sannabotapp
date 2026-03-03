@@ -95,6 +95,10 @@ export class NotificationListenerTool implements Tool {
     ].join(' ');
   }
 
+  systemHint(): string {
+    return 'Use when the user wants to react to incoming messages from specific apps (e.g. "summarize WhatsApp messages", "alert me on emails from boss"). Rules can have conditions for selective processing.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',

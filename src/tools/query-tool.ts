@@ -25,6 +25,10 @@ export class QueryTool implements Tool {
     return 'Query local device data: contacts, SMS inbox, call log. No internet required.';
   }
 
+  systemHint(): string {
+    return 'Always look up contacts by name here before sending SMS or making calls — you need the phone number. Also useful for checking recent messages or missed calls.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',

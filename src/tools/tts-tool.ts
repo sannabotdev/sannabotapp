@@ -17,6 +17,10 @@ export class TTSTool implements Tool {
     return 'Read text aloud. Speak short, clear sentences.';
   }
 
+  systemHint(): string {
+    return 'Only available in headless sub-agents (scheduler, notifications). In the main interactive pipeline, TTS is handled automatically — do not call this tool there.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',

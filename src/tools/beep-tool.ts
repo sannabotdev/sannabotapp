@@ -30,6 +30,10 @@ export class BeepTool implements Tool {
     ].join(' ');
   }
 
+  systemHint(): string {
+    return 'Best for timer expirations and attention alerts. Combine with scheduler for timed alarms. Use "alarm" tone for urgency, "beep" for simple acknowledgements.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',

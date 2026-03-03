@@ -81,10 +81,14 @@ export class ToolRegistry {
       return this.summariesCache;
     }
 
-    // Generate summaries
+    // Generate summaries (description + optional system hint)
     const summaries = Array.from(this.tools.values())
       .sort((a, b) => a.name().localeCompare(b.name())) // Sort for consistent output
-      .map(t => `- **${t.name()}**: ${t.description()}`);
+      .map(t => {
+        const hint = t.systemHint?.();
+        const base = `- **${t.name()}**: ${t.description()}`;
+        return hint ? `${base} — *Hint: ${hint}*` : base;
+      });
 
     // Cache result
     this.summariesCache = summaries;

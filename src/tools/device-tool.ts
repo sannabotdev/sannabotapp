@@ -34,6 +34,10 @@ export class DeviceTool implements Tool {
     return 'Query and control device state: GPS location, battery level, volume (read/set), Wi-Fi status. Also calculates straight-line distance between two GPS coordinates using the Haversine formula.';
   }
 
+  systemHint(): string {
+    return 'Fetch GPS location before weather or navigation requests. Check battery/Wi-Fi when the user asks about phone status.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',

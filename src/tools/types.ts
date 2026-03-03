@@ -20,12 +20,18 @@ export interface ToolResult {
 export interface Tool {
   /** Unique tool name used by the LLM */
   name(): string;
-  /** Human-readable description */
+  /** Human-readable description (also sent in the LLM tool schema) */
   description(): string;
   /** JSON Schema parameters definition */
   parameters(): Record<string, unknown>;
   /** Execute the tool with given arguments */
   execute(args: Record<string, unknown>): Promise<ToolResult>;
+  /**
+   * Optional contextual hint shown only in the system prompt (not in the
+   * tool schema). Use this to give the LLM strategic guidance on *when* and
+   * *how* to choose this tool relative to others.
+   */
+  systemHint?(): string;
 }
 
 /** Convert a Tool to an LLM ToolDefinition */

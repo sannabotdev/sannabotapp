@@ -65,6 +65,10 @@ export class SchedulerTool implements Tool {
     ].join(' ');
   }
 
+  systemHint(): string {
+    return 'Use for reminders, recurring tasks, and any future action. The sub-agent has full tool access at execution time, so write instructions as natural language goals.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',

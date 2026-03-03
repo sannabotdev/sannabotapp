@@ -17,6 +17,10 @@ export class IntentTool implements Tool {
     return 'Control Android apps via Intents. Opens apps, starts navigation, makes calls, sends SMS, etc.';
   }
 
+  systemHint(): string {
+    return 'General-purpose app launcher. Prefer specific tools (send_sms, accessibility) when available; use intent as a fallback to open apps or trigger deep links.';
+  }
+
   parameters(): Record<string, unknown> {
     return {
       type: 'object',
