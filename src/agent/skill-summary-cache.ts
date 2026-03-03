@@ -2,9 +2,10 @@
  * SkillSummaryCache – Caches LLM-generated skill summaries with hash-based invalidation
  *
  * Stores summaries in AsyncStorage with format:
- *   skill_summary_<skillName> → JSON({ summary, contentHash, generatedAt })
+ *   skill_summary_<skillName> → JSON({ summary, contentHash, promptHash, generatedAt })
  *
- * When a skill's content changes (hash mismatch), the summary is regenerated.
+ * When a skill's content changes (contentHash mismatch) or the prompt changes (promptHash mismatch),
+ * the summary is regenerated.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -13,6 +14,7 @@ const SUMMARY_KEY_PREFIX = 'skill_summary_';
 interface CachedSummary {
   summary: string;
   contentHash: string;
+  promptHash?: string; // Optional for backward compatibility with old cache entries
   generatedAt: number;
 }
 
@@ -37,12 +39,13 @@ export class SkillSummaryCache {
   }
 
   /**
-   * Get cached summary if it exists and matches the current content hash.
+   * Get cached summary if it exists and matches the current content hash and prompt hash.
    * Returns null if cache miss or hash mismatch.
    */
   static async getCachedSummary(
     skillName: string,
     currentContentHash: string,
+    currentPromptHash?: string,
   ): Promise<string | null> {
     try {
       const key = SkillSummaryCache.key(skillName);
@@ -51,8 +54,17 @@ export class SkillSummaryCache {
 
       const data: CachedSummary = JSON.parse(cached);
       if (data.contentHash !== currentContentHash) {
-        // Hash mismatch - content changed, cache invalid
+        // Content hash mismatch - content changed, cache invalid
         return null;
+      }
+
+      // If prompt hash is provided, check it (required for new summaries)
+      // Old cache entries without promptHash are considered invalid if promptHash is provided
+      if (currentPromptHash !== undefined) {
+        if (data.promptHash === undefined || data.promptHash !== currentPromptHash) {
+          // Prompt hash mismatch or missing - prompt changed, cache invalid
+          return null;
+        }
       }
 
       return data.summary;
@@ -62,18 +74,20 @@ export class SkillSummaryCache {
   }
 
   /**
-   * Store a generated summary with its content hash.
+   * Store a generated summary with its content hash and prompt hash.
    */
   static async storeSummary(
     skillName: string,
     summary: string,
     contentHash: string,
+    promptHash?: string,
   ): Promise<void> {
     try {
       const key = SkillSummaryCache.key(skillName);
       const data: CachedSummary = {
         summary,
         contentHash,
+        promptHash,
         generatedAt: Date.now(),
       };
       await AsyncStorage.setItem(key, JSON.stringify(data));

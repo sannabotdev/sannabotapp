@@ -17,7 +17,6 @@ import { t, setLocale } from './src/i18n';
 // Services
 import { SkillLoader } from './src/agent/skill-loader';
 import { DynamicSkillStore } from './src/agent/dynamic-skill-store';
-import { SkillSummaryGenerator } from './src/agent/skill-summary-generator';
 import { validateSkillContent, extractSkillName } from './src/agent/skill-validator';
 import { ConversationPipeline } from './src/agent/conversation-pipeline';
 import { SoulStore } from './src/agent/soul-store';
@@ -464,15 +463,16 @@ function LockScreen({
 
 // ─── Loading Screen ───────────────────────────────────────────────────────────
 
-function LoadingScreenInner(): React.JSX.Element {
+function LoadingScreenInner({ status }: { status: 'unlocking' | 'loadingSkills' }): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  const loadingText = status === 'loadingSkills' ? t('app.loadingSkills') : t('app.loading');
   return (
     <View
       className="flex-1 bg-surface items-center justify-center"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       <SannaAvatar size={96} />
       <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 24 }} />
-      <Text className="text-label-secondary text-sm mt-4">{t('app.loading')}</Text>
+      <Text className="text-label-secondary text-sm mt-4">{loadingText}</Text>
     </View>
   );
 }
@@ -484,6 +484,7 @@ export default function App(): React.JSX.Element {
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
   const [vaultError, setVaultError] = useState<string | undefined>();
   const [initializing, setInitializing] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState<'unlocking' | 'loadingSkills'>('unlocking');
 
   const [screen, setScreen] = useState<'home' | 'settings' | 'lists' | 'schedules' | 'notificationListeners' | 'journal'>('home');
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -578,6 +579,21 @@ export default function App(): React.JSX.Element {
     const dynamicNames = await dynamicSkillStore.current.getSkillNames();
     setDynamicSkillNames(dynamicNames);
     setAllSkills(skillLoader.current.getAllSkills());
+
+    // Ensure all skill summaries are up-to-date during loading screen
+    const selectedProvider = prefs.selectedProvider || 'openai';
+    const apiKey = selectedProvider === 'claude' ? secureKeys.claudeApiKey : secureKeys.openAIApiKey;
+    if (apiKey) {
+      const selectedModel = selectedProvider === 'claude'
+        ? secureKeys.selectedClaudeModel
+        : secureKeys.selectedOpenAIModel;
+      const provider =
+        selectedProvider === 'claude'
+          ? new ClaudeProvider(apiKey, selectedModel)
+          : new OpenAIProvider(apiKey, selectedModel);
+      skillLoader.current.setSummaryProvider(provider);
+      await skillLoader.current.ensureAllSummariesUpToDate();
+    }
 
     // Sync notification rules → native allowlist (ensures native side is in sync
     // after backup restore, app update, or reinstall)
@@ -871,30 +887,6 @@ export default function App(): React.JSX.Element {
       selectedProvider === 'claude'
         ? new ClaudeProvider(apiKey, selectedModel)
         : new OpenAIProvider(apiKey, selectedModel);
-
-    // Generate skill summaries in background (non-blocking)
-    const summaryGenerator = new SkillSummaryGenerator({
-      provider,
-      model: provider.getCurrentModel(),
-    });
-    const allSkills = skillLoader.current.getAllSkills();
-    // Pre-generate summaries and update SkillLoader
-    summaryGenerator
-      .pregenerateSummaries(allSkills)
-      .then(async () => {
-        // After summaries are generated, update them in SkillLoader
-        for (const skill of allSkills) {
-          try {
-            const summary = await summaryGenerator.getOrGenerateSummary(skill);
-            skillLoader.current.setSkillSummary(skill.name, summary);
-          } catch {
-            // Non-critical - fallback to description
-          }
-        }
-      })
-      .catch(() => {
-        // Non-critical - summaries will be generated on-demand
-      });
 
     // Resolve 'system' → actual device locale before passing to pipeline.
     // The pipeline uses this for both TTS and the system-prompt language rule.
@@ -1423,6 +1415,13 @@ export default function App(): React.JSX.Element {
       await dynamicSkillStore.current.saveSkill(skillName, content);
       skillLoader.current.registerDynamicSkill(skillName, content);
 
+      // Generate summary immediately if provider is set
+      try {
+        await skillLoader.current.regenerateSummary(skillName);
+      } catch {
+        // Non-critical - summary generation failed, will be generated later
+      }
+
       // Update UI
       const newDynamicNames = await dynamicSkillStore.current.getSkillNames();
       setDynamicSkillNames(newDynamicNames);
@@ -1510,7 +1509,7 @@ export default function App(): React.JSX.Element {
     return (
       <View style={[{ flex: 1 }, DARK_THEME]}>
         <SafeAreaProvider>
-          <LoadingScreenInner />
+          <LoadingScreenInner status={loadingStatus} />
         </SafeAreaProvider>
       </View>
     );
@@ -1620,8 +1619,13 @@ export default function App(): React.JSX.Element {
             onDeleteSkill={handleDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
             onClearHistory={handleClearHistory}
-            onClearSkillSummary={(skillName) => {
-              skillLoader.current.clearSkillSummary(skillName);
+            onReloadSkillSummary={async (skillName) => {
+              try {
+                await skillLoader.current.regenerateSummary(skillName);
+                setAllSkills(skillLoader.current.getAllSkills());
+              } catch {
+                // Non-critical - show error if needed
+              }
             }}
             maxIterations={settings.maxIterations ?? 10}
             onMaxIterationsChange={v => setSettings(s => ({ ...s, maxIterations: v }))}

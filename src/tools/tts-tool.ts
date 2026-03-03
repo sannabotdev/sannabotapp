@@ -14,7 +14,7 @@ export class TTSTool implements Tool {
   }
 
   description(): string {
-    return 'Read text aloud. Use for ALL responses in driving mode. Speak short, clear sentences.';
+    return 'Read text aloud. Speak short, clear sentences.';
   }
 
   parameters(): Record<string, unknown> {

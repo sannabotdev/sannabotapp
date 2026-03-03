@@ -94,7 +94,7 @@ interface SettingsScreenProps {
   personalMemoryText: string;
   onPersonalMemoryTextChange: (value: string) => void;
   onClearPersonalMemory: () => void;
-  onClearSkillSummary?: (skillName: string) => void;
+  onReloadSkillSummary?: (skillName: string) => Promise<void>;
   debugLogEnabled: boolean;
   onDebugLogEnabledChange: (enabled: boolean) => void;
 }
@@ -159,7 +159,7 @@ export function SettingsScreen({
   personalMemoryText,
   onPersonalMemoryTextChange,
   onClearPersonalMemory,
-  onClearSkillSummary,
+  onReloadSkillSummary,
   debugLogEnabled,
   onDebugLogEnabledChange,
 }: SettingsScreenProps): React.JSX.Element {
@@ -263,7 +263,7 @@ export function SettingsScreen({
             onAddSkill={onAddSkill}
             onDeleteSkill={onDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
-            onClearSkillSummary={onClearSkillSummary}
+            onReloadSkillSummary={onReloadSkillSummary}
           />
         </CollapsibleSection>
 

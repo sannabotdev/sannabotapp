@@ -4,6 +4,7 @@
 const en = {
   // ── App / Lock Screen ────────────────────────────────────────────────────
   'app.loading': 'Unlocking Sanna…',
+  'app.loadingSkills': 'Loading skills…',
   'app.locked.title': 'Sanna is locked',
   'app.locked.subtitle': 'Unlock with fingerprint or PIN to access your keys and tokens.',
   'app.locked.button': '🔓 Unlock',
@@ -135,11 +136,11 @@ const en = {
   'settings.skills.summary.title': 'Summary',
   'settings.skills.summary.empty': 'No summary available',
   'settings.skills.summary.close': 'Close',
-  'settings.skills.summary.delete': 'Delete summary',
-  'settings.skills.summary.deleteConfirm.title': 'Delete summary?',
-  'settings.skills.summary.deleteConfirm.message': 'Do you really want to delete the summary for "{name}"?',
-  'settings.skills.summary.deleteConfirm.cancel': 'Cancel',
-  'settings.skills.summary.deleteConfirm.confirm': 'Delete',
+  'settings.skills.summary.reload': 'Reload summary',
+  'settings.skills.summary.reloadConfirm.title': 'Reload summary?',
+  'settings.skills.summary.reloadConfirm.message': 'Do you want to regenerate the summary for "{name}"?',
+  'settings.skills.summary.reloadConfirm.cancel': 'Cancel',
+  'settings.skills.summary.reloadConfirm.confirm': 'Reload',
 
   // Skill categories
   'settings.skills.category.communication': 'Communication',

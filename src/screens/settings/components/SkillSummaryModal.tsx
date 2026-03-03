@@ -4,7 +4,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   ScrollView,
   Text,
@@ -19,14 +18,14 @@ interface SkillSummaryModalProps {
   visible: boolean;
   skill: SkillInfo | null;
   onClose: () => void;
-  onSummaryDeleted?: (skillName: string) => void;
+  onSummaryReloaded?: (skillName: string) => void;
 }
 
 export function SkillSummaryModal({
   visible,
   skill,
   onClose,
-  onSummaryDeleted,
+  onSummaryReloaded,
 }: SkillSummaryModalProps): React.JSX.Element {
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,26 +66,17 @@ export function SkillSummaryModal({
     }
   }, [visible, skill, loadSummary]);
 
-  const handleDelete = useCallback(() => {
-    if (!skill) return;
-    Alert.alert(
-      t('settings.skills.summary.deleteConfirm.title'),
-      t('settings.skills.summary.deleteConfirm.message').replace('{name}', skill.name),
-      [
-        { text: t('settings.skills.summary.deleteConfirm.cancel'), style: 'cancel' },
-        {
-          text: t('settings.skills.summary.deleteConfirm.confirm'),
-          style: 'destructive',
-          onPress: async () => {
-            await SkillSummaryCache.clearSummary(skill.name);
-            setSummary(null);
-            onSummaryDeleted?.(skill.name);
-            onClose();
-          },
-        },
-      ],
-    );
-  }, [skill, onSummaryDeleted, onClose]);
+  const handleReload = useCallback(async () => {
+    if (!skill || loading) return;
+    setLoading(true);
+    try {
+      await onSummaryReloaded?.(skill.name);
+      // Reload summary after regeneration
+      await loadSummary();
+    } catch {
+      setLoading(false);
+    }
+  }, [skill, onSummaryReloaded, loadSummary, loading]);
 
   return (
     <Modal
@@ -113,9 +103,21 @@ export function SkillSummaryModal({
                 {skill?.name ?? ''}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} className="p-1">
-              <Text className="text-accent text-sm font-medium">{t('settings.skills.summary.close')}</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              {summary && summary.trim().length > 0 && (
+                <TouchableOpacity
+                  onPress={handleReload}
+                  disabled={loading}
+                  style={{ width: 28, height: 28 }}
+                  className="rounded-full bg-surface-tertiary items-center justify-center"
+                  activeOpacity={0.7}>
+                  <Text className="text-label-primary text-[13px] leading-none">⟳</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={onClose} className="p-1">
+                <Text className="text-accent text-sm font-medium">{t('settings.skills.summary.close')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Content */}
@@ -137,14 +139,6 @@ export function SkillSummaryModal({
               <Text className="text-label-primary text-sm leading-relaxed">
                 {summary}
               </Text>
-              <TouchableOpacity
-                onPress={handleDelete}
-                activeOpacity={0.7}
-                className="mt-4 py-3 rounded-xl bg-red-500/15 items-center">
-                <Text className="text-red-400 text-sm font-semibold">
-                  {t('settings.skills.summary.delete')}
-                </Text>
-              </TouchableOpacity>
             </ScrollView>
           )}
         </View>

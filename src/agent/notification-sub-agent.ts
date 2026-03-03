@@ -82,6 +82,7 @@ export async function runNotificationSubAgent(
   // 1. Create tool registry (TTS available, but only use if explicitly requested; no scheduler to prevent recursion)
   DebugLogger.add('info', TAG, 'Creating tool registry…');
   const skillLoader = new SkillLoader();
+  skillLoader.setSummaryProvider(provider);
   const toolRegistry = await createToolRegistry({
     credentialManager,
     skillLoader,

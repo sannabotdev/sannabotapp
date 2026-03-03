@@ -177,6 +177,7 @@ export default async function schedulerHeadlessTask(
     }
 
     const skillLoader = new SkillLoader();
+    skillLoader.setSummaryProvider(provider);
 
     const toolRegistry = await createToolRegistry({
       credentialManager,

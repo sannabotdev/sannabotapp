@@ -12,25 +12,20 @@ import { SkillSummaryCache } from './skill-summary-cache';
 import type { SkillInfo } from './skill-loader';
 import { DebugLogger } from './debug-logger';
 
-const SUMMARY_GENERATION_PROMPT = `You are analyzing a skill definition for an AI assistant. Generate a concise summary (max 400 words) that includes:
+const SUMMARY_GENERATION_PROMPT = `You are analyzing a skill definition for an AI assistant. Generate a concise summary (max 400 words) that focuses on WHAT the skill can do, not HOW it works.
 
-1. **Tool(s) used** - Which tool(s) this skill uses
-2. **Key parameters** - Important parameters and their exact names/values (especially for HTTP calls: required headers, auth params, etc.)
-3. **Critical constraints** - Important warnings, requirements, or limitations. If a required HTTP header is mentioned (e.g. X-Goog-FieldMask), include it VERBATIM with its exact value.
-4. **Basic usage pattern** - How to use this skill (high-level, not step-by-step)
-5. **When to call skill_detail** - If the skill has complex workflows or detailed API call examples, note that the assistant should call skill_detail to get the full instructions before making API calls.
-
-IMPORTANT: For any HTTP/REST API calls described in the skill:
-- Include ALL required headers by name and example value
-- Include any mandatory query parameters
-- Note if authentication is needed and how (e.g. auth_provider, auth_header values)
+Focus on:
+1. **Capabilities** - What actions and tasks can be performed with this skill? What can the user accomplish?
+2. **Use cases** - What are the main scenarios where this skill is useful?
+3. **Required authentication** - What authentication/credentials are needed (e.g. OAuth, API keys, etc.)
 
 Do NOT include:
-- Full step-by-step workflows
-- Complete JSON request bodies
-- Redundant information already in the description
+- Technical implementation details (HTTP methods, headers, query parameters, etc.)
+- Step-by-step instructions on how to use it
+- Internal workflows or technical processes
+- Complete JSON request bodies or API call details
 
-Format the summary as clear, structured text that helps the AI assistant quickly understand how to use this skill.`;
+Focus on WHAT the user can achieve with this skill, not the technical details of HOW it works. Format the summary as clear, structured text that helps the AI assistant quickly understand what capabilities this skill provides.`;
 
 export interface SkillSummaryGeneratorConfig {
   provider: LLMProvider;
@@ -41,6 +36,14 @@ export class SkillSummaryGenerator {
   constructor(private config: SkillSummaryGeneratorConfig) {}
 
   /**
+   * Get the hash of the current summary generation prompt.
+   * Used to invalidate cached summaries when the prompt changes (e.g. app updates).
+   */
+  static getPromptHash(): string {
+    return SkillSummaryCache.computeHash(SUMMARY_GENERATION_PROMPT);
+  }
+
+  /**
    * Get or generate a skill summary.
    * Uses cache if available and content hash matches.
    * Returns the summary and whether it was newly generated (not from cache).
@@ -49,9 +52,10 @@ export class SkillSummaryGenerator {
   async getOrGenerateSummary(skill: SkillInfo, returnGenerated: true): Promise<{ summary: string; wasGenerated: boolean }>;
   async getOrGenerateSummary(skill: SkillInfo, returnGenerated?: boolean): Promise<string | { summary: string; wasGenerated: boolean }> {
     const contentHash = SkillSummaryCache.computeHash(skill.content);
+    const promptHash = SkillSummaryGenerator.getPromptHash();
 
-    // Check cache first
-    const cached = await SkillSummaryCache.getCachedSummary(skill.name, contentHash);
+    // Check cache first (must match both content hash and prompt hash)
+    const cached = await SkillSummaryCache.getCachedSummary(skill.name, contentHash, promptHash);
     if (cached) {
       if (returnGenerated) {
         return { summary: cached, wasGenerated: false };
@@ -64,8 +68,8 @@ export class SkillSummaryGenerator {
     // Generate new summary
     const summary = await this.generateSummary(skill);
 
-    // Store in cache
-    await SkillSummaryCache.storeSummary(skill.name, summary, contentHash);
+    // Store in cache with both content hash and prompt hash
+    await SkillSummaryCache.storeSummary(skill.name, summary, contentHash, promptHash);
 
     DebugLogger.add('info', 'SKILL_SUMMARY', `Summary generated and cached for skill "${skill.name}"`, summary);
 

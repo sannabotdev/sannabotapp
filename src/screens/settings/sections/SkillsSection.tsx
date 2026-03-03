@@ -82,8 +82,8 @@ interface SkillsSectionProps {
   onDeleteSkill?: (skillName: string) => Promise<void>;
   /** Names of dynamically uploaded skills (for delete button visibility). */
   dynamicSkillNames?: string[];
-  /** Called when a skill summary is deleted. */
-  onClearSkillSummary?: (skillName: string) => void;
+  /** Called when a skill summary should be reloaded/regenerated. */
+  onReloadSkillSummary?: (skillName: string) => Promise<void>;
 }
 
 export function SkillsSection({
@@ -102,7 +102,7 @@ export function SkillsSection({
   onAddSkill,
   onDeleteSkill,
   dynamicSkillNames = [],
-  onClearSkillSummary,
+  onReloadSkillSummary,
 }: SkillsSectionProps): React.JSX.Element {
   const [showOnlyInstalled, setShowOnlyInstalled] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -503,8 +503,8 @@ export function SkillsSection({
         visible={summaryModalSkill !== null}
         skill={summaryModalSkill}
         onClose={() => setSummaryModalSkill(null)}
-        onSummaryDeleted={(skillName) => {
-          onClearSkillSummary?.(skillName);
+        onSummaryReloaded={async (skillName) => {
+          await onReloadSkillSummary?.(skillName);
         }}
       />
     </>

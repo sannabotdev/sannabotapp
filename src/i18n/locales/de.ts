@@ -4,6 +4,7 @@
 const de = {
   // ── App / Lock Screen ────────────────────────────────────────────────────
   'app.loading': 'Sanna wird entsperrt…',
+  'app.loadingSkills': 'Skills werden geladen…',
   'app.locked.title': 'Sanna ist gesperrt',
   'app.locked.subtitle': 'Entsperre mit Fingerabdruck oder PIN, um auf deine Keys und Tokens zuzugreifen.',
   'app.locked.button': '🔓 Entsperren',
@@ -135,11 +136,11 @@ const de = {
   'settings.skills.summary.title': 'Zusammenfassung',
   'settings.skills.summary.empty': 'Keine Zusammenfassung vorhanden',
   'settings.skills.summary.close': 'Schließen',
-  'settings.skills.summary.delete': 'Zusammenfassung löschen',
-  'settings.skills.summary.deleteConfirm.title': 'Zusammenfassung löschen?',
-  'settings.skills.summary.deleteConfirm.message': 'Möchten Sie die Zusammenfassung für "{name}" wirklich löschen?',
-  'settings.skills.summary.deleteConfirm.cancel': 'Abbrechen',
-  'settings.skills.summary.deleteConfirm.confirm': 'Löschen',
+  'settings.skills.summary.reload': 'Zusammenfassung neu laden',
+  'settings.skills.summary.reloadConfirm.title': 'Zusammenfassung neu laden?',
+  'settings.skills.summary.reloadConfirm.message': 'Möchten Sie die Zusammenfassung für "{name}" neu generieren?',
+  'settings.skills.summary.reloadConfirm.cancel': 'Abbrechen',
+  'settings.skills.summary.reloadConfirm.confirm': 'Neu laden',
 
   // Skill-Kategorien
   'settings.skills.category.communication': 'Kommunikation',
