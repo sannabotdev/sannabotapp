@@ -1,7 +1,7 @@
 ---
 name: timer
 category: productivity
-description: Simple timers and stopwatches – countdown timers with beep, stopwatches with status query
+description: Countdown timers with alarm beep and stopwatches with elapsed time. For short durations (seconds to minutes). Use scheduler for longer/complex tasks. Tools: timer.
 exclusive_tool: timer
 permissions:
  - android.permission.SCHEDULE_EXACT_ALARM

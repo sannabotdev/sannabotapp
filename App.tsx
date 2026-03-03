@@ -658,8 +658,6 @@ export default function App(): React.JSX.Element {
         selectedProvider === 'claude'
           ? new ClaudeProvider(apiKey, selectedModel)
           : new OpenAIProvider(apiKey, selectedModel);
-      skillLoader.current.setSummaryProvider(provider);
-      await skillLoader.current.ensureAllSummariesUpToDate();
     }
 
     // Sync notification rules → native allowlist (ensures native side is in sync
@@ -1486,13 +1484,6 @@ export default function App(): React.JSX.Element {
       await dynamicSkillStore.current.saveSkill(skillName, content);
       skillLoader.current.registerDynamicSkill(skillName, content);
 
-      // Generate summary immediately if provider is set
-      try {
-        await skillLoader.current.regenerateSummary(skillName);
-      } catch {
-        // Non-critical - summary generation failed, will be generated later
-      }
-
       // Update UI
       const newDynamicNames = await dynamicSkillStore.current.getSkillNames();
       setDynamicSkillNames(newDynamicNames);
@@ -1690,14 +1681,6 @@ export default function App(): React.JSX.Element {
             onDeleteSkill={handleDeleteSkill}
             dynamicSkillNames={dynamicSkillNames}
             onClearHistory={handleClearHistory}
-            onReloadSkillSummary={async (skillName) => {
-              try {
-                await skillLoader.current.regenerateSummary(skillName);
-                setAllSkills(skillLoader.current.getAllSkills());
-              } catch {
-                // Non-critical - show error if needed
-              }
-            }}
             maxIterations={settings.maxIterations ?? 10}
             onMaxIterationsChange={v => setSettings(s => ({ ...s, maxIterations: v }))}
             maxSubAgentIterations={settings.maxSubAgentIterations ?? 8}

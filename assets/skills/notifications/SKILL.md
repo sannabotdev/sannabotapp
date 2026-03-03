@@ -1,7 +1,7 @@
 ---
 name: notifications
 category: information
-description: Create notification rules – a sub-agent executes any instruction when a matching notification arrives
+description: Create rules that trigger a sub-agent when notifications arrive from specific apps (WhatsApp, Email, Telegram, etc.). Rules can have conditions. Tools: notifications.
 test_prompt: List all notification rules
 exclusive_tool: notifications
 permissions:

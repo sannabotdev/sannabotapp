@@ -1,7 +1,7 @@
 ---
 name: gmail
 category: communication
-description: Read, search and send emails via Gmail API
+description: Read, search and send emails via Gmail API. Requires Google OAuth. Tools: gmail_send, http.
 test_prompt: Fetch the last 3 emails from the inbox and return sender and subject
 permissions:
  - android.permission.INTERNET

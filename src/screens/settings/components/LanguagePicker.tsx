@@ -58,7 +58,7 @@ export function LanguagePicker({
                 {t('settings.language.pickTitle')}
               </Text>
               <TouchableOpacity onPress={() => setPickerVisible(false)} className="p-1">
-                <Text className="text-accent text-sm font-medium">{t('settings.skills.summary.close')}</Text>
+                <Text className="text-accent text-sm font-medium">{t('evidence.close')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView className="max-h-[400px]">

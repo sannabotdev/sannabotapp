@@ -1,7 +1,7 @@
 ---
 name: headlines
 category: information
-description: Fetch and summarize top news headlines from RSS feeds of major international news outlets and press agencies (no API key required)
+description: Fetch top news headlines from major international RSS feeds (Reuters, AP, BBC, etc.). No API key required. Tools: http.
 test_prompt: What are today's top headlines?
 permissions:
  - android.permission.INTERNET

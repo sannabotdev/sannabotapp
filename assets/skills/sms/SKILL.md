@@ -1,7 +1,7 @@
 ---
 name: sms
 category: communication
-description: Send SMS directly and open the messaging app
+description: Send SMS messages. Preferred: send_sms (sends immediately). Alternative: intent (opens SMS app). Look up contact number first.
 permissions:
  - android.permission.SEND_SMS
  - android.permission.READ_SMS

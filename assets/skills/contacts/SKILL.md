@@ -1,7 +1,7 @@
 ---
 name: contacts
 category: information
-description: Search contacts and retrieve contact information
+description: Search contacts by name and retrieve phone numbers. Use before calling or sending SMS. Tools: query.
 test_prompt: Search for contacts and show the first 3
 permissions:
  - android.permission.READ_CONTACTS

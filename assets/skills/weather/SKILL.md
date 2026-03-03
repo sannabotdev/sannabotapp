@@ -1,7 +1,7 @@
 ---
 name: weather
 category: information
-description: Get current weather and forecasts for any location (no API key required)
+description: Get current weather and forecasts for any location. No API key. Uses device GPS if no location given. Primary: wttr.in, fallback: Open-Meteo. Tools: http, device.
 test_prompt: What is the current weather in London?
 permissions:
  - android.permission.INTERNET

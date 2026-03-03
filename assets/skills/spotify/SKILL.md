@@ -1,7 +1,7 @@
 ---
 name: spotify
 category: media
-description: Play and control music via Spotify
+description: Play, pause, skip, search and control Spotify playback. Requires Spotify OAuth. Tools: http, intent, accessibility (only for NO_ACTIVE_DEVICE recovery).
 test_prompt: Fetch the currently playing track or show the user profile
 android_package: com.spotify.music
 permissions:

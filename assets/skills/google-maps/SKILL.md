@@ -1,7 +1,7 @@
 ---
 name: google-maps
 category: information
-description: Navigation and route planning via the Google Maps app
+description: Start navigation, get directions and route info via Google Maps app. Tools: intent, http (optional, requires Maps API key for traffic/route details).
 android_package: com.google.android.apps.maps
 permissions:
  - android.permission.ACCESS_FINE_LOCATION

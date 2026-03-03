@@ -139,14 +139,6 @@ const de = {
   'settings.skills.disconnect.cancel': 'Abbrechen',
   'settings.skills.disconnect.confirm': 'Trennen',
   'settings.skills.connectError.title': 'Verbindung fehlgeschlagen',
-  'settings.skills.summary.title': 'Zusammenfassung',
-  'settings.skills.summary.empty': 'Keine Zusammenfassung vorhanden',
-  'settings.skills.summary.close': 'Schließen',
-  'settings.skills.summary.reload': 'Zusammenfassung neu laden',
-  'settings.skills.summary.reloadConfirm.title': 'Zusammenfassung neu laden?',
-  'settings.skills.summary.reloadConfirm.message': 'Möchten Sie die Zusammenfassung für "{name}" neu generieren?',
-  'settings.skills.summary.reloadConfirm.cancel': 'Abbrechen',
-  'settings.skills.summary.reloadConfirm.confirm': 'Neu laden',
 
   // Skill-Kategorien
   'settings.skills.category.communication': 'Kommunikation',

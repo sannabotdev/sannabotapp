@@ -77,7 +77,7 @@ export function ModelPicker({
                 <View className="p-4 border-b border-surface-tertiary flex-row items-center justify-between">
                   <Text className="text-label-primary text-lg font-bold flex-1">{label}</Text>
                   <TouchableOpacity onPress={() => setPickerVisible(false)} className="p-1">
-                    <Text className="text-accent text-sm font-medium">{t('settings.skills.summary.close')}</Text>
+                    <Text className="text-accent text-sm font-medium">{t('evidence.close')}</Text>
                   </TouchableOpacity>
                 </View>
             {loading ? (

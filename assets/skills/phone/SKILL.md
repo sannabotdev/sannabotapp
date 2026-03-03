@@ -1,7 +1,7 @@
 ---
 name: phone
 category: communication
-description: Make phone calls and control phone functions
+description: Make phone calls via intent. Look up contacts first with the contacts skill. Tools: intent.
 permissions:
  - android.permission.CALL_PHONE
  - android.permission.READ_CONTACTS

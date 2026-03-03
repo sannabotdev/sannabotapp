@@ -10,7 +10,7 @@
     "start": "react-native start",
     "test": "jest",
     "logcat": "adb logcat -c && adb logcat -s ReactNativeJS:V *:S",
-    "logfile": "adb shell \"run-as com.sannabot cat files/sanna.txt\" > sanna-$(date +%Y%m%d-%H%M%S).txt"
+    "logfile": "adb shell \"run-as com.sannabot cat files/sanna.txt\" > sanna.txt"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",

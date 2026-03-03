@@ -1,7 +1,7 @@
 ---
 name: web-research
 category: information
-description: Search the web and look up facts using Brave Search (with API key) and Wikipedia/DuckDuckGo (free, no key required)
+description: Search the web for facts and current information. Brave Search (requires API key), Wikipedia and DuckDuckGo (free). Tools: http.
 test_prompt: What is artificial intelligence?
 permissions:
  - android.permission.INTERNET

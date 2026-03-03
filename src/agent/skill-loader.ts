@@ -8,9 +8,6 @@ import { Platform } from 'react-native';
 import IntentModule from '../native/IntentModule';
 import type { DynamicSkillStore } from './dynamic-skill-store';
 import { registerBundledSkillName } from './skill-validator';
-import { SkillSummaryGenerator } from './skill-summary-generator';
-import { SkillSummaryCache } from './skill-summary-cache';
-import type { LLMProvider } from '../llm/types';
 
 export interface CredentialRequirement {
   id: string;
@@ -43,8 +40,6 @@ export interface SkillInfo {
   exclusiveTool?: string;
   permissions: string[];
   credentials: CredentialRequirement[];
-  /** LLM-generated summary (cached, hash-based invalidation) */
-  summary?: string;
 }
 
 /**
@@ -186,7 +181,6 @@ export function registerSkillContent(name: string, content: string): void {
 export class SkillLoader {
   private skills: Map<string, SkillInfo> = new Map();
   private skillsSummaryCache: Map<string, string> = new Map();
-  private summaryGenerator: SkillSummaryGenerator | null = null;
 
   constructor() {
     this.loadAll();
@@ -229,19 +223,6 @@ export class SkillLoader {
     }
   }
 
-  /**
-   * Set the LLM provider for summary generation.
-   * Call this once during app startup after the provider is available.
-   * If not set, summaries will only be loaded from cache, not generated.
-   */
-  setSummaryProvider(provider: LLMProvider): void {
-    this.summaryGenerator = new SkillSummaryGenerator({
-      provider,
-      model: provider.getCurrentModel(),
-    });
-    // Invalidate cache so summaries can be refreshed if needed
-    this.skillsSummaryCache.clear();
-  }
 
   /**
    * Register a single dynamic skill at runtime (after upload or on startup).
@@ -346,86 +327,6 @@ export class SkillLoader {
     return disabled;
   }
 
-  /**
-   * Set the LLM-generated summary for a skill.
-   * Called by SkillSummaryGenerator after generating or loading from cache.
-   * Invalidates the skills summary cache since summaries changed.
-   */
-  setSkillSummary(skillName: string, summary: string): void {
-    const skill = this.skills.get(skillName);
-    if (skill) {
-      skill.summary = summary;
-      // Invalidate cache - summaries changed
-      this.skillsSummaryCache.clear();
-    }
-  }
-
-  /**
-   * Ensure all skill summaries are up-to-date.
-   * Checks cache for each skill and generates/updates summaries if needed.
-   * Call this during app startup (loading screen) to ensure all summaries are current.
-   * Automatically regenerates summaries if the prompt hash has changed (e.g. after app updates).
-   */
-  async ensureAllSummariesUpToDate(): Promise<void> {
-    if (!this.summaryGenerator) {
-      // No generator available - try to load from cache only (without prompt hash check)
-      for (const skill of this.getAllSkills()) {
-        if (!skill.summary) {
-          try {
-            const currentHash = SkillSummaryCache.computeHash(skill.content);
-            const cachedSummary = await SkillSummaryCache.getCachedSummary(skill.name, currentHash);
-            if (cachedSummary) {
-              this.setSkillSummary(skill.name, cachedSummary);
-            }
-          } catch {
-            // Non-critical - continue without summary
-          }
-        }
-      }
-      return;
-    }
-
-    // For each skill, check cache and generate if needed
-    // getOrGenerateSummary will automatically check both content hash and prompt hash
-    for (const skill of this.getAllSkills()) {
-      try {
-        const summary = await this.summaryGenerator.getOrGenerateSummary(skill);
-        this.setSkillSummary(skill.name, summary);
-      } catch (err) {
-        // Non-critical - continue without summary, will use description
-        console.warn(`[SkillLoader] Failed to ensure summary for ${skill.name}:`, err);
-      }
-    }
-  }
-
-  /**
-   * Regenerate the summary for a specific skill.
-   * Clears the cache entry and generates a new summary.
-   */
-  async regenerateSummary(skillName: string): Promise<void> {
-    if (!this.summaryGenerator) {
-      console.warn(`[SkillLoader] Cannot regenerate summary for ${skillName}: no summary generator set`);
-      return;
-    }
-
-    const skill = this.skills.get(skillName);
-    if (!skill) {
-      console.warn(`[SkillLoader] Cannot regenerate summary: skill "${skillName}" not found`);
-      return;
-    }
-
-    try {
-      // Clear cache entry to force regeneration
-      await SkillSummaryCache.clearSummary(skillName);
-      
-      // Generate new summary
-      const summary = await this.summaryGenerator.getOrGenerateSummary(skill);
-      this.setSkillSummary(skillName, summary);
-    } catch (err) {
-      console.warn(`[SkillLoader] Failed to regenerate summary for ${skillName}:`, err);
-      throw err;
-    }
-  }
 
   /**
    * Build XML skill summary for system prompt
@@ -434,15 +335,9 @@ export class SkillLoader {
    * Results are cached based on enabledSkillNames and skill summaries.
    */
   buildSkillsSummary(enabledSkillNames: string[]): string {
-    // Create cache key from sorted enabled skill names and their summary states
+    // Create cache key from sorted enabled skill names
     const sortedNames = [...enabledSkillNames].sort().join(',');
-    const summaryStates = enabledSkillNames
-      .map(n => {
-        const skill = this.skills.get(n);
-        return skill ? (skill.summary ? '1' : '0') : '0';
-      })
-      .join('');
-    const cacheKey = `${sortedNames}:${summaryStates}`;
+    const cacheKey = sortedNames;
 
     // Check cache
     const cached = this.skillsSummaryCache.get(cacheKey);
@@ -464,9 +359,6 @@ export class SkillLoader {
       lines.push('  <skill>');
       lines.push(`    <name>${escapeXML(skill.name)}</name>`);
       lines.push(`    <description>${escapeXML(skill.description)}</description>`);
-      if (skill.summary) {
-        lines.push(`    <summary>${escapeXML(skill.summary)}</summary>`);
-      }
       lines.push('  </skill>');
     }
     lines.push('</skills>');

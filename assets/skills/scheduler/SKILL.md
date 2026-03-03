@@ -1,7 +1,7 @@
 ---
 name: scheduler
 category: productivity
-description: Schedule time-based tasks – a sub-agent executes any instruction in the background
+description: Schedule one-time or recurring tasks (reminders, checks, reports). A sub-agent with full tool access executes the instruction at the scheduled time. Tools: scheduler. Always use datetime tool for trigger_at_ms.
 test_prompt: List all existing schedules
 exclusive_tool: scheduler
 permissions:

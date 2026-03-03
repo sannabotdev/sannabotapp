@@ -1,7 +1,7 @@
 ---
 name: journal
 category: productivity
-description: Create and manage journal entries to track activities, events, and notes
+description: Create and manage local journal entries to track activities and notes. Tools: journal.
 ---
 # Journal Skill
 

@@ -1,7 +1,7 @@
 ---
 name: calendar
 category: productivity
-description: Read, create, update, move and delete Google Calendar events
+description: Read, create, update and delete Google Calendar events. Requires Google OAuth. Tools: http.
 test_prompt: Fetch the next 3 appointments from the calendar
 permissions:
  - android.permission.INTERNET

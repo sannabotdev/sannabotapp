@@ -1,7 +1,7 @@
 ---
 name: google-tasks
 category: productivity
-description: Read, create and manage tasks via the Google Tasks API
+description: Read, create, complete and delete tasks via Google Tasks API. Requires Google OAuth. Tools: http.
 test_prompt: Fetch the task lists and show the open tasks from the first list
 permissions:
  - android.permission.INTERNET

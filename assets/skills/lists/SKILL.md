@@ -1,7 +1,7 @@
 ---
 name: lists
 category: productivity
-description: Manage local lists (shopping list, to-do, etc.) – add, remove, read and check items
+description: Manage local lists (shopping, to-do, etc.) stored as files. Add, remove, check and read items. Tools: file_storage.
 ---
 # Lists Skill
 

@@ -1,7 +1,7 @@
 ---
 name: whatsapp
 category: communication
-description: Send WhatsApp messages and open WhatsApp chats – including fully automated sending via Accessibility
+description: Send WhatsApp messages. Preferred: accessibility (fully automated, no user tap). Alternative: intent (opens chat, user taps Send). Look up contact number first.
 test_prompt: Open WhatsApp
 android_package: com.whatsapp
 permissions:

@@ -139,14 +139,6 @@ const en = {
   'settings.skills.disconnect.cancel': 'Cancel',
   'settings.skills.disconnect.confirm': 'Disconnect',
   'settings.skills.connectError.title': 'Connection failed',
-  'settings.skills.summary.title': 'Summary',
-  'settings.skills.summary.empty': 'No summary available',
-  'settings.skills.summary.close': 'Close',
-  'settings.skills.summary.reload': 'Reload summary',
-  'settings.skills.summary.reloadConfirm.title': 'Reload summary?',
-  'settings.skills.summary.reloadConfirm.message': 'Do you want to regenerate the summary for "{name}"?',
-  'settings.skills.summary.reloadConfirm.cancel': 'Cancel',
-  'settings.skills.summary.reloadConfirm.confirm': 'Reload',
 
   // Skill categories
   'settings.skills.category.communication': 'Communication',
