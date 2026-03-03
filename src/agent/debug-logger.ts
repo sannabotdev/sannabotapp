@@ -7,6 +7,7 @@
  * Subscribers get notified in real-time (for UI display).
  */
 import type { Message } from '../llm/types';
+import { DebugFileLogger } from './debug-file-logger';
 
 export type LogLevel = 'info' | 'llm' | 'tool' | 'prompt' | 'error';
 
@@ -218,6 +219,20 @@ class DebugLoggerImpl {
       default:
         console.log(`ℹ️ ${prefix}`, summary);
         if (detailStr) console.log(`ℹ️ ${prefix} [detail]`, detailStr);
+    }
+
+    // Write to file logger if enabled
+    if (DebugFileLogger.enabled) {
+      const emojiMap: Record<LogLevel, string> = {
+        error: '❌',
+        llm: '🤖',
+        tool: '🔧',
+        prompt: '📝',
+        info: 'ℹ️',
+      };
+      const emoji = emojiMap[level];
+      const fileMessage = `${emoji} ${prefix} ${summary}${detailStr ? '\n' + detailStr : ''}`;
+      DebugFileLogger.writeLog(level.toUpperCase(), fileMessage).catch(() => {});
     }
 
     // Notify subscribers

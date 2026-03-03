@@ -67,6 +67,7 @@ const de = {
   'settings.section.skills': 'Skills',
   'settings.section.about': 'Über Sanna',
   'settings.about.debugLog': 'Debug-Log',
+  'settings.about.debugFileHint': 'Log-Datei: Documents/sanna.txt',
 
   // Datenverwaltung
   'settings.clearHistory.button': 'Gesprächsverlauf löschen',

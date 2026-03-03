@@ -49,6 +49,9 @@ const LOCAL_DEV_CONFIG = {
 
   /** Enable debug logging by default (optional, default: false) */
   debugLogEnabled: false,
+
+  /** Enable debug file logging to Documents/sanna.txt (optional, default: false) */
+  debugFileEnabled: false,
 };
 
 export default LOCAL_DEV_CONFIG;

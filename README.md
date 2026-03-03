@@ -315,13 +315,13 @@ Both paths use the same `SKILL.md` format. The agent picks up the skill automati
 
 If you encounter a bug or issue, please help us debug it by providing a debug log:
 
-1. **Enable Debug Log**: Open **Settings → About → Debug Log** and toggle it on.
-2. **Reproduce the issue**: Perform the action that causes the problem while the debug log is enabled.
-3. **Export the debug log**: Open the **Debug Log** panel (from the main menu), then tap the export/share button to save or share the log.
-4. **Clean sensitive data**: The debug log may contain API keys, tokens, and other secrets. **Before sharing, carefully review the log and remove or redact any sensitive information** (API keys, access tokens, personal data, etc.).
+1. **Enable Debug File**: Open **Settings → About → Debug File** and toggle it on.
+2. **Reproduce the issue**: Perform the action that causes the problem while the debug file is enabled.
+3. **Locate the debug file**: The debug log is automatically written to `sanna.txt` in your Documents folder. You can access it via any file manager app.
+4. **Clean sensitive data**: The debug file may contain API keys, tokens, and other secrets. **Before sharing, carefully review the file and remove or redact any sensitive information** (API keys, access tokens, personal data, etc.).
 5. **Report the issue**:
-   - **Public**: Create a [GitHub Issue](https://github.com/your-repo/issues) and attach the cleaned debug log.
-   - **Private**: Email the cleaned debug log to [sannabot@proton.me](mailto:sannabot@proton.me).
+   - **Public**: Create a [GitHub Issue](https://github.com/your-repo/issues) and attach the cleaned debug file.
+   - **Private**: Email the cleaned debug file (`sanna.txt` from your Documents folder) to [sannabot@proton.me](mailto:sannabot@proton.me).
 
 Please include a brief description of what you were trying to do and what went wrong.
 

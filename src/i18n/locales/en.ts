@@ -67,6 +67,7 @@ const en = {
   'settings.section.skills': 'Skills',
   'settings.section.about': 'About',
   'settings.about.debugLog': 'Debug Log',
+  'settings.about.debugFileHint': 'Log file: Documents/sanna.txt',
 
   // Data management
   'settings.clearHistory.button': 'Clear Conversation History',

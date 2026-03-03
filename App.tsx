@@ -22,6 +22,8 @@ import { ConversationPipeline } from './src/agent/conversation-pipeline';
 import { SoulStore } from './src/agent/soul-store';
 import { PersonalMemoryStore } from './src/agent/personal-memory-store';
 import { DebugLogger } from './src/agent/debug-logger';
+import { DebugFileLogger } from './src/agent/debug-file-logger';
+import RNFS from 'react-native-fs';
 import type { PipelineState } from './src/agent/conversation-pipeline';
 import { createToolRegistry } from './src/agent/create-tool-registry';
 import { runSkillTest } from './src/agent/skill-test';
@@ -63,7 +65,7 @@ import { SannaAvatar } from './src/components/SannaAvatar';
 
 // Local dev config (gitignored – never shipped to production)
 // If the file is missing (e.g. in CI/Production), empty defaults are used.
-let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string; braveSearchApiKey: string; debugLogEnabled?: boolean } = {
+let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string; braveSearchApiKey: string; debugLogEnabled?: boolean; debugFileEnabled?: boolean } = {
   openAIApiKey: '',
   claudeApiKey: '',
   selectedProvider: 'openai',
@@ -77,6 +79,7 @@ let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider
   googleMapsApiKey: '',
   braveSearchApiKey: '',
   debugLogEnabled: false,
+  debugFileEnabled: false,
 };
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -88,6 +91,58 @@ try {
 // Auto-register all SKILL.md files found under assets/skills/*/SKILL.md.
 // Adding a new skill folder is all that's needed – no changes here required.
 import './src/agent/skill-auto-register';
+
+// ─── Console method replacement for file logging ────────────────────────────
+// Store original console methods before any code runs
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+/**
+ * Replace console methods to write to file logger when enabled.
+ * This must be called early to capture boot-time logs.
+ */
+function setupConsoleFileLogging(enabled: boolean): void {
+  if (enabled) {
+    console.log = (...args: unknown[]) => {
+      originalConsoleLog(...args);
+      const message = args.map(arg => {
+        if (typeof arg === 'string') return arg;
+        if (typeof arg === 'object') return JSON.stringify(arg);
+        return String(arg);
+      }).join(' ');
+      DebugFileLogger.writeLog('LOG', message).catch(() => {});
+    };
+
+    console.error = (...args: unknown[]) => {
+      originalConsoleError(...args);
+      const message = args.map(arg => {
+        if (typeof arg === 'string') return arg;
+        if (typeof arg === 'object') return JSON.stringify(arg);
+        return String(arg);
+      }).join(' ');
+      DebugFileLogger.writeLog('ERROR', message).catch(() => {});
+    };
+
+    console.warn = (...args: unknown[]) => {
+      originalConsoleWarn(...args);
+      const message = args.map(arg => {
+        if (typeof arg === 'string') return arg;
+        if (typeof arg === 'object') return JSON.stringify(arg);
+        return String(arg);
+      }).join(' ');
+      DebugFileLogger.writeLog('WARN', message).catch(() => {});
+    };
+  } else {
+    // Restore original methods
+    console.log = originalConsoleLog;
+    console.error = originalConsoleError;
+    console.warn = originalConsoleWarn;
+  }
+}
+
+// Initialize console file logging based on config (before other code runs)
+setupConsoleFileLogging(LOCAL_CONFIG.debugFileEnabled ?? false);
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
 // CSS variable bundles applied to the root view via NativeWind vars().
@@ -169,6 +224,8 @@ interface AppPreferences {
   conversationHistoryMaxMessages?: number;
   /** Enable debug logging (default: false) */
   debugLogEnabled?: boolean;
+  /** Enable debug file logging to Documents/sanna.txt (default: false) */
+  debugFileEnabled?: boolean;
 }
 
 /** Full app settings (preferences + secure keys loaded from Keychain) */
@@ -200,6 +257,7 @@ const DEFAULT_PREFS: AppPreferences = {
   llmContextMaxMessages: 20,
   conversationHistoryMaxMessages: 50,
   debugLogEnabled: LOCAL_CONFIG.debugLogEnabled ?? false,
+  debugFileEnabled: LOCAL_CONFIG.debugFileEnabled ?? false,
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -527,7 +585,16 @@ export default function App(): React.JSX.Element {
   // ─── Debug Logger: update enabled state whenever debugLogEnabled changes ───
   useEffect(() => {
     if (settingsLoaded) {
-      DebugLogger.enabled = settings.debugLogEnabled ?? false;
+      const enabled = settings.debugLogEnabled ?? false;
+      DebugLogger.enabled = enabled;
+      // Also enable/disable file logging when debug log is toggled
+      DebugFileLogger.enabled = enabled;
+      setupConsoleFileLogging(enabled);
+      // Log to console (original) to show file path when enabled
+      if (enabled) {
+        const originalConsoleLog = console.log;
+        originalConsoleLog(`[DebugFileLogger] File logging enabled. Path: ${RNFS.DocumentDirectoryPath}/sanna.txt`);
+      }
     }
   }, [settings.debugLogEnabled, settingsLoaded]);
 
@@ -707,6 +774,10 @@ export default function App(): React.JSX.Element {
       (event: { level: string; tag: string; message: string }) => {
         const level = (event.level === 'error' ? 'error' : 'info') as import('./src/agent/debug-logger').LogLevel;
         DebugLogger.add(level, event.tag, event.message);
+        // Also write directly to file logger (DebugLogger.add() also writes, but this ensures it's captured)
+        if (DebugFileLogger.enabled) {
+          DebugFileLogger.writeLog(event.level.toUpperCase(), `[${event.tag}] ${event.message}`).catch(() => {});
+        }
       },
     );
     return () => sub.remove();
@@ -1655,7 +1726,9 @@ export default function App(): React.JSX.Element {
               PersonalMemoryStore.clearMemory().catch(() => {});
             }}
             debugLogEnabled={settings.debugLogEnabled ?? false}
-            onDebugLogEnabledChange={v => setSettings(s => ({ ...s, debugLogEnabled: v }))}
+            onDebugLogEnabledChange={v => {
+              setSettings(s => ({ ...s, debugLogEnabled: v, debugFileEnabled: v }));
+            }}
           />
         </SafeAreaProvider>
       </View>
