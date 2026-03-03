@@ -35,7 +35,7 @@ import { SILENT_REPLY_TOKEN, NO_MATCH_TOKEN } from './tokens';
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
 import { CredentialManager } from '../permissions/credential-manager';
-import { GoogleAuth } from '../permissions/google-auth';
+
 
 // Agent config – reuse SchedulerModule (same config as all headless tasks)
 import SchedulerModule from '../native/SchedulerModule';
@@ -221,12 +221,7 @@ export default async function notificationHeadlessTask(
   const credentialManager = new CredentialManager(tokenStore);
 
   if (config.googleWebClientId) {
-    const googleAuth = new GoogleAuth(credentialManager);
-    googleAuth.configure(config.googleWebClientId);
-    credentialManager.registerTokenRefreshHandler(
-      'google',
-      () => googleAuth.getAccessToken(),
-    );
+    credentialManager.configureGoogleTokenRefresh(config.googleWebClientId);
   }
 
   // 7. Run notification sub-agent

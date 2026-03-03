@@ -8,6 +8,7 @@
  */
 import { TokenStore, type OAuthToken } from './token-store';
 import type { CredentialRequirement } from '../agent/skill-loader';
+import { GoogleAuth } from './google-auth';
 
 // Spotify PKCE OAuth config
 const SPOTIFY_AUTH_CONFIG = {
@@ -240,5 +241,19 @@ export class CredentialManager {
 
   setSlackClientId(clientId: string): void {
     SLACK_AUTH_CONFIG.clientId = clientId;
+  }
+
+  /**
+   * Configure Google token auto-refresh via the Sign-In SDK.
+   * Creates a GoogleAuth instance internally, configures it, and registers the
+   * refresh handler.  Use this in headless contexts where no UI setup is needed.
+   */
+  configureGoogleTokenRefresh(webClientId: string): void {
+    const googleAuth = new GoogleAuth(this);
+    googleAuth.configure(webClientId);
+    this.registerTokenRefreshHandler(
+      'google',
+      () => googleAuth.getAccessToken(),
+    );
   }
 }

@@ -28,7 +28,7 @@ import { addEntry } from './journal-store';
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
 import { CredentialManager } from '../permissions/credential-manager';
-import { GoogleAuth } from '../permissions/google-auth';
+
 
 // Scheduler
 import SchedulerModule from '../native/SchedulerModule';
@@ -168,13 +168,7 @@ export default async function schedulerHeadlessTask(
 
     // Set up Google token auto-refresh via the Sign-In SDK
     if (config.googleWebClientId) {
-      const googleAuth = new GoogleAuth(credentialManager);
-      googleAuth.configure(config.googleWebClientId);
-      // Only register the refresh handler (not the setup handler – no UI in headless)
-      credentialManager.registerTokenRefreshHandler(
-        'google',
-        () => googleAuth.getAccessToken(),
-      );
+      credentialManager.configureGoogleTokenRefresh(config.googleWebClientId);
     }
 
     const skillLoader = new SkillLoader();
@@ -184,7 +178,7 @@ export default async function schedulerHeadlessTask(
       credentialManager,
       skillLoader,
       includeTts: true, // TTS available, but only use if explicitly requested by user
-      includeScheduler: false, // prevent recursive schedule creation
+      includeScheduler: true, // included so the sub-agent can disable/delete its own schedule
       includePersonalMemoryTool: false,
     });
     toolRegistry.removeDisabledSkillTools(skillLoader, config.enabledSkillNames);
@@ -208,6 +202,9 @@ export default async function schedulerHeadlessTask(
 
     const userInstruction = [
       `[SCHEDULED TASK – Automatic execution at ${timeStr}, ${dateStr}]`,
+      ``,
+      `Schedule ID: ${scheduleId}`,
+      `You can use the scheduler tool with this ID to disable (action: "disable") or delete (action: "delete") this schedule after execution if needed (e.g. for one-shot tasks that should not recur, or if the task is complete).`,
       ``,
       `Execute the following instruction: ${instruction}`,
       ``,

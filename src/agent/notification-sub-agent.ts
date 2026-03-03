@@ -80,7 +80,7 @@ export async function runNotificationSubAgent(
     ].join('\n'),
   );
 
-  // 1. Create tool registry (TTS available, but only use if explicitly requested; no scheduler to prevent recursion)
+  // 1. Create tool registry (TTS available, but only use if explicitly requested; scheduler+notifications included so sub-agent can self-deactivate)
   DebugLogger.add('info', TAG, 'Creating tool registry…');
   const skillLoader = new SkillLoader();
   skillLoader.setSummaryProvider(provider);
@@ -88,7 +88,7 @@ export async function runNotificationSubAgent(
     credentialManager,
     skillLoader,
     includeTts: true, // TTS available, but only use if explicitly requested by user
-    includeScheduler: false,
+    includeScheduler: true, // included so the sub-agent can manage schedules and self-deactivate rules
     includePersonalMemoryTool: false,
   });
 
@@ -122,12 +122,12 @@ export async function runNotificationSubAgent(
   const isEmail =
     notification.appName === 'Email' || notification.appName === 'Gmail';
 
-  // Format the rules for the LLM
+  // Format the rules for the LLM (include rule IDs so the sub-agent can self-deactivate)
   const rulesBlock = rules.map((r, i) => {
     const condLine = r.condition
       ? `   Condition: ${r.condition}`
       : `   Condition: (none – always applies)`;
-    return `Rule ${i + 1}:\n${condLine}\n   Instruction: ${r.instruction}`;
+    return `Rule ${i + 1}:\n   Rule ID: ${r.id}\n${condLine}\n   Instruction: ${r.instruction}`;
   }).join('\n\n');
 
   const parts = [
@@ -143,13 +143,19 @@ export async function runNotificationSubAgent(
     ``,
     rules.length === 1 && !rules[0].condition
       // Single catch-all rule: just execute it
-      ? `YOUR TASK:\n${rules[0].instruction}`
+      ? [
+          `Rule ID: ${rules[0].id}`,
+          `You can use the notifications tool with this rule_id to disable (action: "update_rule", rule_id, enabled: false) or delete (action: "delete_rule", rule_id) this rule if the instruction asks you to deactivate it after use.`,
+          ``,
+          `YOUR TASK:\n${rules[0].instruction}`,
+        ].join('\n')
       // Multiple rules or conditional: LLM must evaluate
       : [
           `The user has configured the following notification rules for this app.`,
           `Evaluate each rule's condition against the notification above.`,
           `Execute the FIRST rule whose condition matches (or the catch-all rule if no conditional rule matches).`,
           `If NO rule matches at all, respond with EXACTLY the text ${NO_MATCH_TOKEN} and nothing else. Do NOT use any tools.`,
+          `You can use the notifications tool with the matching rule_id to disable (action: "update_rule", rule_id, enabled: false) or delete (action: "delete_rule", rule_id) a rule if the instruction asks you to deactivate it after use.`,
           ``,
           rulesBlock,
         ].join('\n'),
