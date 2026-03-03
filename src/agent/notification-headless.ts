@@ -30,6 +30,7 @@ import { loadRules, getRulesForApp } from './notification-rules-store';
 import type { NotificationRule } from './notification-rules-store';
 import IntentModule from '../native/IntentModule';
 import { formulateError } from './system-prompt';
+import { SILENT_REPLY_TOKEN, NO_MATCH_TOKEN } from './tokens';
 
 // Credential infrastructure
 import { TokenStore } from '../permissions/token-store';
@@ -252,7 +253,10 @@ export default async function notificationHeadlessTask(
     const resultText = result.content;
     const isMaxIterationsReached = result.iterations >= (config.maxSubAgentIterations ?? 8);
 
-    if (resultText && !resultText.includes('__NO_MATCH__')) {
+    // Silent tokens: skip UI output entirely
+    const isSilent = resultText?.includes(SILENT_REPLY_TOKEN) || resultText?.includes(NO_MATCH_TOKEN);
+
+    if (resultText && !isSilent) {
       // 8. Check if max iterations reached and format message accordingly
       let messageToShow = resultText;
       if (isMaxIterationsReached || !messageToShow) {
@@ -288,9 +292,10 @@ export default async function notificationHeadlessTask(
 
       // 11. Bring app to foreground – drainPending() will display + speak the result
       await bringToForeground();
-    } else if (resultText && resultText.includes('__NO_MATCH__')) {
-      // No condition matched - don't show anything (this is expected behavior)
-      DebugLogger.add('info', TAG, `No condition matched for "${packageName}" – no bubble shown`);
+    } else if (isSilent) {
+      // Silent reply – no condition matched or sub-agent decided output is not user-facing
+      const reason = resultText?.includes(NO_MATCH_TOKEN) ? 'no condition matched' : 'silent reply';
+      DebugLogger.add('info', TAG, `${reason} for "${packageName}" – no bubble shown`);
     } else {
       // resultText is empty (shouldn't happen with tool-loop fix, but safety fallback)
       DebugLogger.add('info', TAG, `Sub-agent returned empty result for "${packageName}"`);

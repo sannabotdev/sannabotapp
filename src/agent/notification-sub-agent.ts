@@ -17,6 +17,7 @@ import { DebugLogger } from './debug-logger';
 import type { LLMProvider, Message } from '../llm/types';
 import type { CredentialManager } from '../permissions/credential-manager';
 import type { NotificationRule } from './notification-rules-store';
+import { SILENT_REPLY_TOKEN, NO_MATCH_TOKEN } from './tokens';
 
 const TAG = 'NotifAgent';
 
@@ -148,11 +149,12 @@ export async function runNotificationSubAgent(
           `The user has configured the following notification rules for this app.`,
           `Evaluate each rule's condition against the notification above.`,
           `Execute the FIRST rule whose condition matches (or the catch-all rule if no conditional rule matches).`,
-          `If NO rule matches at all, respond with EXACTLY the text __NO_MATCH__ and nothing else. Do NOT use any tools.`,
+          `If NO rule matches at all, respond with EXACTLY the text ${NO_MATCH_TOKEN} and nothing else. Do NOT use any tools.`,
           ``,
           rulesBlock,
         ].join('\n'),
     ``,
+    `If you executed a rule but the result is purely internal and not useful to show the user (e.g., silent archiving, no-op), respond with EXACTLY: ${SILENT_REPLY_TOKEN}`,
     `Respond in the language with BCP-47 code "${language}".`,
     ``,
     isEmail

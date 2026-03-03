@@ -16,6 +16,7 @@ import { SkillLoader, registerSkillContent } from './skill-loader';
 import { createToolRegistry } from './create-tool-registry';
 import { runToolLoop } from './tool-loop';
 import { buildSystemPrompt, formulateError } from './system-prompt';
+import { SILENT_REPLY_TOKEN } from './tokens';
 import { ClaudeProvider } from '../llm/claude-provider';
 import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider, Message } from '../llm/types';
@@ -214,6 +215,7 @@ export default async function schedulerHeadlessTask(
       `- Execute the task directly without asking for clarification.`,
       `- Do NOT use TTS (text-to-speech) unless the user explicitly requests it in the instruction (e.g., "speak", "say aloud", "read out", "announce").`,
       `- Return your result as text only unless speech is explicitly requested.`,
+      `- If the task is conditional and the condition is NOT met, respond with EXACTLY: ${SILENT_REPLY_TOKEN} (no other text). Example: "If it rains tomorrow, remind me to bring an umbrella" → weather check shows no rain → respond ${SILENT_REPLY_TOKEN}.`,
     ].join('\n');
 
     // 7. Run the sub-agent
@@ -235,39 +237,45 @@ export default async function schedulerHeadlessTask(
 
     DebugLogger.add('info', TAG, `✅ Sub-agent done (${result.iterations} iterations)`, result.content);
 
-    // Write the assistant result to the pending queue so it appears as a bubble,
-    // then bring the app to the foreground so the user sees it immediately.
-    // ALWAYS write something, even if content is empty (e.g., max iterations reached)
-    let messageToShow = result.content;
-    const isMaxIterationsReached = result.iterations >= (config.maxSubAgentIterations ?? 8);
-    
-    // If content is empty or max iterations reached, format it via LLM for consistency
-    if (!messageToShow || isMaxIterationsReached) {
-      const rawError = isMaxIterationsReached
-        ? `Scheduled task reached iteration limit (${result.iterations} iterations) and could not be completed. You can increase the iteration limit in Settings → Agent Iterations → Sub-Agent (App Rules & Scheduler).`
-        : `Scheduled task completed but no output was generated.`;
-      messageToShow = await formulateError({
-        provider,
-        instruction: instruction,
-        rawError,
-        drivingMode,
-        language: lang,
-      });
-    }
-    
-    await ConversationStore.appendPending('assistant', messageToShow).catch(() => {});
-    await bringToForeground();
+    // Silent reply: sub-agent decided the result is not user-facing (e.g., conditional task where condition was false)
+    if (result.content?.includes(SILENT_REPLY_TOKEN)) {
+      DebugLogger.add('info', TAG, `Silent reply for "${instruction}" – no bubble shown`);
+      // Still mark as executed and handle recurrence (below), but skip UI output
+    } else {
+      // Write the assistant result to the pending queue so it appears as a bubble,
+      // then bring the app to the foreground so the user sees it immediately.
+      // ALWAYS write something, even if content is empty (e.g., max iterations reached)
+      let messageToShow = result.content;
+      const isMaxIterationsReached = result.iterations >= (config.maxSubAgentIterations ?? 8);
 
-    // 8. Create journal entry (always, even on errors/max iterations)
-    try {
-      await addEntry({
-        category: 'Scheduler',
-        title: instruction,
-        details: messageToShow,
-      });
-    } catch (err) {
-      // Non-fatal: journal entry creation failed
-      DebugLogger.add('error', TAG, `Failed to create journal entry: ${err}`);
+      // If content is empty or max iterations reached, format it via LLM for consistency
+      if (!messageToShow || isMaxIterationsReached) {
+        const rawError = isMaxIterationsReached
+          ? `Scheduled task reached iteration limit (${result.iterations} iterations) and could not be completed. You can increase the iteration limit in Settings → Agent Iterations → Sub-Agent (App Rules & Scheduler).`
+          : `Scheduled task completed but no output was generated.`;
+        messageToShow = await formulateError({
+          provider,
+          instruction: instruction,
+          rawError,
+          drivingMode,
+          language: lang,
+        });
+      }
+
+      await ConversationStore.appendPending('assistant', messageToShow).catch(() => {});
+      await bringToForeground();
+
+      // 8. Create journal entry (always, even on errors/max iterations)
+      try {
+        await addEntry({
+          category: 'Scheduler',
+          title: instruction,
+          details: messageToShow,
+        });
+      } catch (err) {
+        // Non-fatal: journal entry creation failed
+        DebugLogger.add('error', TAG, `Failed to create journal entry: ${err}`);
+      }
     }
 
     // 9. Mark as executed
