@@ -114,15 +114,11 @@ export class AccessibilityHintStore {
           `User hint condensed and saved for ${packageName} (${condensedHints.length} chars)`,
           condensedHints,
         );
-        console.log(
-          `[AccessibilityHintStore] User hint condensed and saved for ${packageName} (${condensedHints.length} chars)`,
-        );
       } else {
         throw new Error('LLM returned empty condensed hints');
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[AccessibilityHintStore] Failed to condense user hint for ${packageName}:`, msg);
       DebugLogger.add(
         'error',
         'AccessibilityHints',

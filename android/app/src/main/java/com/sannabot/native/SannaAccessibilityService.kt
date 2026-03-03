@@ -247,20 +247,62 @@ class SannaAccessibilityService : AccessibilityService() {
 
         return when (action) {
             "click" -> {
-                val ok = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                if (ok) {
-                    "Clicked [$nodeId]"
-                } else {
-                    // Fallback: dispatch a tap gesture at the node's center coordinates
-                    val rect = Rect()
-                    node.getBoundsInScreen(rect)
-                    val cx = (rect.left + rect.right) / 2
-                    val cy = (rect.top + rect.bottom) / 2
-                    if (rect.width() > 0 && rect.height() > 0) {
-                        dispatchTapGestureSync(cx, cy)
-                    } else {
-                        "Failed to click [$nodeId] (node may not be clickable or has no valid bounds)"
+                // Get coordinates and use gesture dispatch (most reliable method)
+                val rect = Rect()
+                node.getBoundsInScreen(rect)
+                if (rect.width() <= 0 || rect.height() <= 0) {
+                    return "Failed to click [$nodeId] (node has no valid bounds)"
+                }
+                
+                val cx = (rect.left + rect.right) / 2
+                val cy = (rect.top + rect.bottom) / 2
+                
+                // Find the actual clickable node at these coordinates
+                // This helps when the target node is overlapped by another view
+                val nodeAtCoords = findNodeAt(cx, cy)
+                var gestureX = cx
+                var gestureY = cy
+                
+                if (nodeAtCoords != null) {
+                    try {
+                        // If we found a play button or the target node, use its coordinates
+                        if (nodeAtCoords.viewIdResourceName == node.viewIdResourceName ||
+                            (nodeAtCoords.contentDescription?.toString() == node.contentDescription?.toString() && 
+                             node.contentDescription != null)) {
+                            // Same node - use original coordinates
+                        } else if (nodeAtCoords.isClickable && 
+                                   (nodeAtCoords.viewIdResourceName?.contains("play") == true || 
+                                    nodeAtCoords.contentDescription?.toString()?.contains("Play") == true ||
+                                    nodeAtCoords.contentDescription?.toString()?.contains("play") == true)) {
+                            // Found a play button - use its coordinates
+                            val foundRect = Rect()
+                            nodeAtCoords.getBoundsInScreen(foundRect)
+                            if (foundRect.width() > 0 && foundRect.height() > 0) {
+                                gestureX = (foundRect.left + foundRect.right) / 2
+                                gestureY = (foundRect.top + foundRect.bottom) / 2
+                            }
+                        } else if (nodeAtCoords.isClickable) {
+                            // Found a different clickable node - use its coordinates
+                            val foundRect = Rect()
+                            nodeAtCoords.getBoundsInScreen(foundRect)
+                            if (foundRect.width() > 0 && foundRect.height() > 0) {
+                                gestureX = (foundRect.left + foundRect.right) / 2
+                                gestureY = (foundRect.top + foundRect.bottom) / 2
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Ignore errors and use original coordinates
+                    } finally {
+                        nodeAtCoords.recycle()
                     }
+                }
+                
+                // Use gesture dispatch (most reliable method)
+                val gestureResult = dispatchTapGestureSync(gestureX, gestureY)
+                if (gestureResult.contains("completed")) {
+                    return "Clicked [$nodeId]"
+                } else {
+                    return "Failed to click [$nodeId]: gesture $gestureResult"
                 }
             }
             "long_click" -> {
@@ -409,7 +451,7 @@ class SannaAccessibilityService : AccessibilityService() {
      */
     private fun dispatchTapGestureSync(x: Int, y: Int): String {
         val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
-        val stroke = GestureDescription.StrokeDescription(path, 0, 50)
+        val stroke = GestureDescription.StrokeDescription(path, 0, 100)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         return dispatchGestureSync(gesture, "Tap gesture at ($x, $y)")
     }

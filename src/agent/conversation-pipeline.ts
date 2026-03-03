@@ -205,6 +205,9 @@ export class ConversationPipeline {
 
       const assistantText = result.content || 'Task started.';
 
+      // Check for silent reply token (e.g., from accessibility tool waiting for background result)
+      const isSilent = assistantText.includes('__SILENT__');
+
       // Save intermediate tool call messages to history (assistant tool calls + tool results)
       this.history.push(...result.newMessages);
 
@@ -213,6 +216,12 @@ export class ConversationPipeline {
 
       // Trim history to avoid context overflow
       this.trimHistory(this.config.maxHistoryMessages ?? 20);
+
+      // If silent, don't show bubble or speak - the actual result will come via appendPending
+      if (isSilent) {
+        this.setState('idle');
+        return '';
+      }
 
       // Show the final response as a bubble.
       // In driving mode: also speak it via TTS (pipeline-controlled, no tts tool needed).

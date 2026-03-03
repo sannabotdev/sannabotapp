@@ -199,6 +199,7 @@ class DebugLoggerImpl {
         ? detail.slice(0, MAX_DETAIL) + `\n... (truncated after ${MAX_DETAIL} chars)`
         : detail
       : undefined;
+    // Console output for Metro / LogCat
     switch (level) {
       case 'error':
         console.error(prefix, summary);

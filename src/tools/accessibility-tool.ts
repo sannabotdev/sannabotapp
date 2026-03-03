@@ -1,16 +1,13 @@
 /**
  * AccessibilityTool – LLM-driven UI automation for any Android app
  *
- * Instead of running the automation in the main JS context (which gets
- * throttled when SannaBot goes to the background), this tool starts an
- * Android HeadlessJsTaskService that runs the full automation in a separate
- * JS context specifically designed for background execution.
+ * Starts a HeadlessJS task that runs in a separate JS context (not throttled
+ * when SannaBot goes to background). The result is announced via voice when done.
  *
  * Flow:
  *   1. Check Accessibility Service is enabled
- *   2. Serialize job parameters to JSON
- *   3. Start AccessibilityHeadlessService (→ triggers SannaAccessibilityTask)
- *   4. Return immediately – the result will be spoken via TTS when done
+ *   2. Start HeadlessJS task (runs in background)
+ *   3. Return immediately – the result will be spoken via TTS when done
  *
  * Skills reference this tool when they need to interact with an app's UI
  * directly (e.g. send a WhatsApp message by actually pressing the Send button).
@@ -21,6 +18,7 @@ import type { Tool, ToolResult } from './types';
 import { errorResult, successResult } from './types';
 import AccessibilityModule from '../native/AccessibilityModule';
 import AccessibilityJobModule from '../native/AccessibilityJobModule';
+import { SILENT_REPLY_TOKEN } from '../agent/tokens';
 
 export class AccessibilityTool implements Tool {
   name(): string {
@@ -121,12 +119,12 @@ export class AccessibilityTool implements Tool {
       return errorResult(`Failed to start background automation task: ${msg}`);
     }
 
-    // Return a success result. The tool loop makes one more LLM call which –
-    // using the existing system prompt (language, driving mode, persona) –
-    // naturally produces a short, well-formatted confirmation for the user.
-    // The real result arrives later via ConversationStore.appendPending.
+    // Return SILENT_REPLY_TOKEN to tell the agent not to generate a response yet.
+    // The actual result will come via appendPending when the background task completes.
+    // The tool loop will detect this token and stop without generating a user-facing response.
     return successResult(
-      `Background UI automation started for "${packageName}". Task is running in background.`,
+      `${SILENT_REPLY_TOKEN} Background UI automation task started for "${packageName}". The result will be delivered separately when the task completes.`,
+      undefined, // No forUser - don't speak this
     );
   }
 }

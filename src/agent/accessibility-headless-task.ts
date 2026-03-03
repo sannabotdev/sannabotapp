@@ -67,7 +67,7 @@ async function restoreSannaBot(): Promise<void> {
     await IntentModule.sendIntent('android.intent.action.MAIN', null, 'com.sannabot', null);
     await new Promise<void>(resolve => setTimeout(() => resolve(), 600));
   } catch (err) {
-    console.warn('[AccessibilityTask] Could not restore SannaBot to foreground:', err);
+    DebugLogger.add('error', 'AccessibilityTask', `Could not restore SannaBot to foreground: ${err}`);
   }
 }
 
@@ -208,14 +208,189 @@ async function extractAndCondenseHints(
     if (condensedHints) {
       await AccessibilityHintStore.saveHints(packageName, condensedHints);
       DebugLogger.add('info', 'AccessibilityHints', `Condensed hints saved for ${packageName} (${condensedHints.length} chars)`, condensedHints);
-      console.log(`[AccessibilityTask] Hints condensed and saved for ${packageName} (${condensedHints.length} chars)`);
     }
   } catch (err) {
     // Non-fatal – hint condensing is best-effort and must not abort the task
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn('[AccessibilityTask] Failed to condense hints:', msg);
     DebugLogger.add('error', 'AccessibilityHints', `Failed to condense hints for ${packageName}: ${msg}`);
   }
+}
+
+// ── Core automation logic ────────────────────────────────────────────────────────
+
+export interface RunAccessibilityAutomationParams {
+  packageName: string;
+  goal: string;
+  intentAction: string | null;
+  intentUri: string | null;
+  provider: LLMProvider;
+  drivingMode: boolean;
+  language: string;
+  maxIterations?: number;
+}
+
+export interface RunAccessibilityAutomationResult {
+  formulated: string;
+  status: 'success' | 'failed' | 'timeout';
+}
+
+/**
+ * Run the accessibility automation workflow.
+ * 
+ * This function performs the core automation steps:
+ * - Checks Accessibility Service is enabled
+ * - Opens the target app via Intent
+ * - Waits for the app to appear
+ * - Captures the accessibility tree
+ * - Runs the LLM sub-agent
+ * - Condenses hints (best-effort)
+ * - Formulates the result via LLM
+ * 
+ * Returns the formulated message and status.
+ * Throws on errors (caller should handle).
+ */
+export async function runAccessibilityAutomation(
+  params: RunAccessibilityAutomationParams,
+): Promise<RunAccessibilityAutomationResult> {
+  const { packageName, goal, intentAction, intentUri, provider, drivingMode, language, maxIterations } = params;
+
+  // Shared context for error formatting
+  const ctx = { provider, packageName, goal, drivingMode, language };
+
+  // 1. Check Accessibility Service
+  let serviceEnabled = false;
+  try {
+    serviceEnabled = await AccessibilityModule.isAccessibilityServiceEnabled();
+  } catch { /* ignore */ }
+
+  if (!serviceEnabled) {
+    const formulated = await formulateResponse({
+      ...ctx,
+      status: 'failed',
+      rawMessage: 'The Sanna Accessibility Service is not enabled. Please enable it in Android Settings → Accessibility.',
+    });
+    return { formulated, status: 'failed' };
+  }
+
+  // 2. Ensure foreground service is running before opening the target app
+  // Give the system a moment to fully initialize the foreground service
+  // This prevents Android from killing the task when SannaBot goes to background
+  // The notification must be visible before we open the target app
+  await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
+
+  // 3. Open app via Intent
+  // If intentAction is provided, use it. Otherwise, default to ACTION_MAIN to launch the app.
+  const actionToUse = (intentAction && intentAction.trim() !== '')
+    ? intentAction
+    : 'android.intent.action.MAIN';
+  DebugLogger.add('info', 'AccessibilityAutomation', `Opening app ${packageName} with action ${actionToUse}`);
+  try {
+    await IntentModule.sendIntent(actionToUse, intentUri ?? null, packageName, null);
+    DebugLogger.add('info', 'AccessibilityAutomation', 'Intent sent successfully');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    DebugLogger.add('error', 'AccessibilityAutomation', `Intent failed: ${msg}`);
+    const formulated = await formulateResponse({
+      ...ctx,
+      status: 'failed',
+      rawMessage: `Could not open the app: ${msg}`,
+    });
+    return { formulated, status: 'failed' };
+  }
+
+  // 4. Wait for the app to appear in foreground (up to 15 seconds)
+  DebugLogger.add('info', 'AccessibilityAutomation', `Waiting for app ${packageName} to appear...`);
+  let appVisible = false;
+  try {
+    appVisible = await AccessibilityModule.waitForApp(packageName, 15_000);
+    DebugLogger.add('info', 'AccessibilityAutomation', `App visible: ${appVisible}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    DebugLogger.add('error', 'AccessibilityAutomation', `waitForApp error: ${msg}`);
+  }
+
+  if (!appVisible) {
+    const formulated = await formulateResponse({
+      ...ctx,
+      status: 'failed',
+      rawMessage: 'The app did not appear in the foreground within 15 seconds. Please make sure it is installed and try again.',
+    });
+    return { formulated, status: 'failed' };
+  }
+
+  // Give the app time to render its UI
+  await new Promise<void>(resolve => setTimeout(() => resolve(), 2500));
+
+  // 5. Capture accessibility tree
+  let accessibilityTree: string;
+  try {
+    accessibilityTree = await AccessibilityModule.getAccessibilityTree();
+    DebugLogger.add('info', 'AccessibilityAutomation', `Accessibility tree captured (${accessibilityTree.length} chars)`, accessibilityTree);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    DebugLogger.add('error', 'AccessibilityAutomation', `Tree capture failed: ${msg}`);
+    const formulated = await formulateResponse({
+      ...ctx,
+      status: 'failed',
+      rawMessage: `Could not read the UI tree: ${msg}`,
+    });
+    return { formulated, status: 'failed' };
+  }
+
+  if (!accessibilityTree || accessibilityTree.includes('No active window found')) {
+    const formulated = await formulateResponse({
+      ...ctx,
+      status: 'failed',
+      rawMessage: 'No active window found. The app does not seem to be open.',
+    });
+    return { formulated, status: 'failed' };
+  }
+
+  // 6. Run LLM sub-agent
+  DebugLogger.add('info', 'AccessibilityAutomation', 'Running sub-agent...');
+  let subResult: { message: string; status: 'success' | 'failed' | 'timeout'; messages: Message[] };
+  try {
+    const personalMemory = await PersonalMemoryStore.getMemory();
+    subResult = await runAccessibilitySubAgent({
+      provider,
+      packageName,
+      goal,
+      accessibilityTree,
+      maxIterations,
+      personalMemory,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    DebugLogger.add('error', 'AccessibilityAutomation', `Sub-agent error: ${msg}`);
+    const formulated = await formulateResponse({
+      ...ctx,
+      status: 'failed',
+      rawMessage: `UI automation failed unexpectedly: ${msg}`,
+    });
+    return { formulated, status: 'failed' };
+  }
+
+  DebugLogger.add('info', 'AccessibilityAutomation', `Done: ${subResult.status} ${subResult.message.slice(0, 200)}`);
+
+  // 7. Condense interaction into reusable hints (best-effort, skip on timeout)
+  if (subResult.status !== 'timeout') {
+    await extractAndCondenseHints(
+      subResult.messages,
+      packageName,
+      goal,
+      subResult.status,
+      provider,
+    );
+  }
+
+  // 8. Reformulate result via LLM (language-aware, mode-aware)
+  const formulated = await formulateResponse({
+    ...ctx,
+    status: subResult.status,
+    rawMessage: subResult.message,
+  });
+
+  return { formulated, status: subResult.status };
 }
 
 // ── Main headless task ────────────────────────────────────────────────────────
@@ -223,21 +398,21 @@ async function extractAndCondenseHints(
 export default async function accessibilityHeadlessTask(
   taskData: { jobJson: string },
 ): Promise<void> {
-  console.log('[AccessibilityTask] Starting background UI automation');
+  DebugLogger.add('info', 'AccessibilityTask', 'Starting background UI automation');
 
   // 1. Parse job  (no provider yet → raw message on error)
   let job: AccessibilityJob;
   try {
     job = JSON.parse(taskData.jobJson) as AccessibilityJob;
   } catch {
-    console.error('[AccessibilityTask] Failed to parse jobJson:', taskData.jobJson);
+    DebugLogger.add('error', 'AccessibilityTask', `Failed to parse jobJson: ${taskData.jobJson}`);
     await ConversationStore.appendPending('assistant', 'UI automation failed: Invalid job data.').catch(() => {}); // write before foreground restore
     await restoreSannaBot();
     return;
   }
 
   const { packageName, goal, intentAction, intentUri } = job;
-  console.log(`[AccessibilityTask] Job: package=${packageName} goal="${goal}"`);
+  DebugLogger.add('info', 'AccessibilityTask', `Job: package=${packageName} goal="${goal}"`);
 
   // 2. Load agent config  (no provider yet → raw message on error)
   let config: AgentConfig;
@@ -248,7 +423,7 @@ export default async function accessibilityHeadlessTask(
     if (!config.apiKey) throw new Error('No API key configured');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[AccessibilityTask] Config error:', msg);
+    DebugLogger.add('error', 'AccessibilityTask', `Config error: ${msg}`);
     await ConversationStore.appendPending('assistant', `UI automation failed: ${msg}`).catch(() => {}); // write before foreground restore
     await restoreSannaBot();
     return;
@@ -262,136 +437,30 @@ export default async function accessibilityHeadlessTask(
   const drivingMode = config.drivingMode ?? false;
   const language = config.language ?? 'en-US';
 
-  // Shared context passed to failFormatted for every subsequent error
-  const ctx = { provider, packageName, goal, drivingMode, language };
-
-  // 4. Check Accessibility Service
-  let serviceEnabled = false;
+  // 4. Run automation
+  let result: RunAccessibilityAutomationResult;
   try {
-    serviceEnabled = await AccessibilityModule.isAccessibilityServiceEnabled();
-  } catch { /* ignore */ }
-
-  if (!serviceEnabled) {
-    await failFormatted(
-      'The Sanna Accessibility Service is not enabled. ' +
-      'Please enable it in Android Settings → Accessibility.',
-      ctx,
-    );
-    return;
-  }
-
-  // 5. Ensure foreground service is running before opening the target app
-  // Give the system a moment to fully initialize the foreground service
-  // This prevents Android from killing the task when SannaBot goes to background
-  // The notification must be visible before we open the target app
-  await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
-
-  // 6. Open app via Intent
-  // If intentAction is provided, use it. Otherwise, default to ACTION_MAIN to launch the app.
-  const actionToUse = (intentAction && intentAction.trim() !== '')
-    ? intentAction
-    : 'android.intent.action.MAIN';
-  console.log(`[AccessibilityTask] Opening app ${packageName} with action ${actionToUse}`);
-  try {
-    await IntentModule.sendIntent(actionToUse, intentUri ?? null, packageName, null);
-    console.log(`[AccessibilityTask] Intent sent successfully`);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[AccessibilityTask] Intent failed:', msg);
-    await failFormatted(`Could not open the app: ${msg}`, ctx);
-    return;
-  }
-
-  // 7. Wait for the app to appear in foreground (up to 15 seconds)
-  console.log(`[AccessibilityTask] Waiting for app ${packageName} to appear...`);
-  let appVisible = false;
-  try {
-    appVisible = await AccessibilityModule.waitForApp(packageName, 15_000);
-    console.log(`[AccessibilityTask] App visible: ${appVisible}`);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[AccessibilityTask] waitForApp error:', msg);
-  }
-
-  if (!appVisible) {
-    await failFormatted(
-      `The app did not appear in the foreground within 15 seconds. ` +
-      'Please make sure it is installed and try again.',
-      ctx,
-    );
-    return;
-  }
-
-  // Give the app time to render its UI
-  await new Promise<void>(resolve => setTimeout(() => resolve(), 2500));
-
-  // 8. Capture accessibility tree
-  let accessibilityTree: string;
-  try {
-    accessibilityTree = await AccessibilityModule.getAccessibilityTree();
-    // Log the tree for debugging (truncated if too long)
-    const treePreview = accessibilityTree.length > 2000
-      ? accessibilityTree.slice(0, 2000) + '\n... (truncated)'
-      : accessibilityTree;
-    console.log('[AccessibilityTask] Captured accessibility tree:');
-    console.log(treePreview);
-    DebugLogger.add('info', 'AccessibilityTask', `Accessibility tree captured (${accessibilityTree.length} chars)`, accessibilityTree);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[AccessibilityTask] Tree capture failed:', msg);
-    await failFormatted(`Could not read the UI tree: ${msg}`, ctx);
-    return;
-  }
-
-  if (!accessibilityTree || accessibilityTree.includes('No active window found')) {
-    await failFormatted('No active window found. The app does not seem to be open.', ctx);
-    return;
-  }
-
-  // 9. Run LLM sub-agent
-  console.log('[AccessibilityTask] Running sub-agent...');
-  let subResult: { message: string; status: 'success' | 'failed' | 'timeout'; messages: Message[] };
-  try {
-    const personalMemory = await PersonalMemoryStore.getMemory();
-    subResult = await runAccessibilitySubAgent({
-      provider,
+    result = await runAccessibilityAutomation({
       packageName,
       goal,
-      accessibilityTree,
+      intentAction: intentAction ?? null,
+      intentUri: intentUri ?? null,
+      provider,
+      drivingMode,
+      language,
       maxIterations: config.maxAccessibilityIterations,
-      personalMemory,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[AccessibilityTask] Sub-agent error:', msg);
-    await failFormatted(`UI automation failed unexpectedly: ${msg}`, ctx);
+    DebugLogger.add('error', 'AccessibilityTask', `Automation error: ${msg}`);
+    await failFormatted(`UI automation failed: ${msg}`, { provider, packageName, goal, drivingMode, language });
     return;
   }
 
-  console.log('[AccessibilityTask] Done:', subResult.status, subResult.message.slice(0, 200));
-
-  // 10. Condense interaction into reusable hints (best-effort, skip on timeout)
-  if (subResult.status !== 'timeout') {
-    await extractAndCondenseHints(
-      subResult.messages,
-      packageName,
-      goal,
-      subResult.status,
-      provider,
-    );
-  }
-
-  // 11. Reformulate result via LLM (language-aware, mode-aware)
-  const formulated = await formulateResponse({
-    ...ctx,
-    status: subResult.status,
-    rawMessage: subResult.message,
-  });
-
-  // 12. Write to pending queue FIRST, then restore foreground.
+  // 5. Write to pending queue FIRST, then restore foreground.
   //     The AppState 'active' event fires the instant SannaBot appears – the
   //     message must already be in AsyncStorage before that happens, otherwise
   //     drainPending() will find nothing and the bubble won't show.
-  await ConversationStore.appendPending('assistant', formulated).catch(() => {});
+  await ConversationStore.appendPending('assistant', result.formulated).catch(() => {});
   await restoreSannaBot();
 }

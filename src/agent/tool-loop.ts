@@ -7,6 +7,7 @@
 import type { LLMProvider, Message } from '../llm/types';
 import type { ToolRegistry } from './tool-registry';
 import { DebugLogger } from './debug-logger';
+import { SILENT_REPLY_TOKEN } from './tokens';
 export interface ToolLoopConfig {
   provider: LLMProvider;
   tools: ToolRegistry;
@@ -70,10 +71,16 @@ export async function runToolLoop(
     newMessages.push(assistantMsg);
 
     // Execute all tool calls and collect results
+    let shouldExitSilently = false;
     for (const tc of response.toolCalls) {
       DebugLogger.logToolCall(tc.name, tc.arguments);
       const result = await config.tools.execute(tc.name, tc.arguments);
       DebugLogger.logToolResult(tc.name, result.forLLM, result.forUser, result.isError);
+
+      // Check if tool returned SILENT_REPLY_TOKEN (e.g., accessibility tool waiting for background result)
+      if (result.forLLM?.includes(SILENT_REPLY_TOKEN)) {
+        shouldExitSilently = true;
+      }
 
       // In driving mode, speak tool results to user immediately
       if (result.forUser && config.onUserMessage) {
@@ -87,6 +94,12 @@ export async function runToolLoop(
       };
       messages = [...messages, toolResultMsg];
       newMessages.push(toolResultMsg);
+    }
+
+    // If a tool requested silent exit (e.g., background task started), exit without generating response
+    if (shouldExitSilently) {
+      DebugLogger.logFinalResult(SILENT_REPLY_TOKEN, newMessages.length / 2 + 1);
+      return { content: SILENT_REPLY_TOKEN, iterations: Math.floor(newMessages.length / 2) + 1, newMessages };
     }
 
     // Early-exit check: a tool (e.g. finish_task) requested hard termination

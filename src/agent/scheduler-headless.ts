@@ -172,13 +172,13 @@ export default async function schedulerHeadlessTask(
     }
 
     const skillLoader = new SkillLoader();
-    skillLoader.setSummaryProvider(provider);
 
     const toolRegistry = await createToolRegistry({
       credentialManager,
       skillLoader,
       includeTts: true, // TTS available, but only use if explicitly requested by user
       includeScheduler: true, // included so the sub-agent can disable/delete its own schedule
+      includeAccessibility: false, // accessibility tool only for main agent
       includePersonalMemoryTool: false,
     });
     toolRegistry.removeDisabledSkillTools(skillLoader, config.enabledSkillNames);

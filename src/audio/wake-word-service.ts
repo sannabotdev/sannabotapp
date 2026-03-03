@@ -8,6 +8,7 @@
  *   - Custom: path to a .ppn file (trained via Picovoice Console)
  */
 import WakeWordModule, { WakeWordEvents } from '../native/WakeWordModule';
+import { DebugLogger } from '../agent/debug-logger';
 
 type WakeWordCallback = (keyword: string) => void;
 
@@ -30,7 +31,7 @@ export class WakeWordService {
     this.detectedSub = WakeWordEvents.addListener(
       'wake_word_detected',
       (event: { keyword: string; timestamp: number }) => {
-        console.log('[WakeWord] Detected:', event.keyword);
+        DebugLogger.add('info', 'WakeWord', `Detected: ${event.keyword}`);
         this.onDetected?.(event.keyword);
       },
     );
@@ -38,13 +39,13 @@ export class WakeWordService {
     this.errorSub = WakeWordEvents.addListener(
       'wake_word_error',
       (event: { error: string }) => {
-        console.error('[WakeWord] Error:', event.error);
+        DebugLogger.add('error', 'WakeWord', `Error: ${event.error}`);
       },
     );
 
     await WakeWordModule.startListening(accessKey, keywordPath ?? null);
     this.isActive = true;
-    console.log('[WakeWord] Started listening');
+    DebugLogger.add('info', 'WakeWord', 'Started listening');
   }
 
   /** Stop wake word detection */
@@ -59,7 +60,7 @@ export class WakeWordService {
 
     await WakeWordModule.stopListening();
     this.isActive = false;
-    console.log('[WakeWord] Stopped');
+    DebugLogger.add('info', 'WakeWord', 'Stopped');
   }
 
   /** Manually trigger wake word detection (for testing / manual button) */

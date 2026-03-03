@@ -190,7 +190,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
           [{ text: t('debug.fileSaved.ok') }]
         );
       } catch (error: unknown) {
-        console.error('Error saving debug log to file:', error);
+        DebugLogger.add('error', 'DebugPanel', `Error saving debug log to file: ${error}`);
         Alert.alert(
           t('debug.fileSaveError.title'),
           t('debug.fileSaveError.message'),
@@ -215,7 +215,7 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
         return;
       }
     } catch (error: unknown) {
-      console.error('Error sharing debug log:', error);
+      DebugLogger.add('error', 'DebugPanel', `Error sharing debug log: ${error}`);
       
       // Show user-friendly error message
       const errorCode = (error as { code?: string })?.code;

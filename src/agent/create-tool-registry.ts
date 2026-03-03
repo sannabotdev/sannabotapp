@@ -27,6 +27,7 @@ import { SkillDetailTool } from '../tools/skill-detail-tool';
 import { CheckCredentialTool } from '../tools/check-credential-tool';
 import { PersonalMemoryTool } from '../tools/personal-memory-tool';
 import { AccessibilityHintTool } from '../tools/accessibility-hint-tool';
+import AccessibilityModule from '../native/AccessibilityModule';
 import { GmailSendTool } from '../tools/gmail-send-tool';
 import { JournalTool } from '../tools/journal-tool';
 import { TimerTool } from '../tools/timer-tool';
@@ -49,6 +50,13 @@ export interface CreateToolRegistryOptions {
    * - `true` (default) everywhere else.
    */
   includeScheduler?: boolean;
+
+  /**
+   * Include the Accessibility tool.
+   * - `false` for headless sub-agents (scheduler, notifications).
+   * - `true` (default) for the main agent and skill tests.
+   */
+  includeAccessibility?: boolean;
 
   /**
    * Include personal-memory write tool.
@@ -85,7 +93,21 @@ export async function createToolRegistry(opts: CreateToolRegistryOptions): Promi
     registry.register(new SchedulerTool());
   }
   registry.register(new NotificationListenerTool());
-  registry.register(new AccessibilityTool());
+  
+  // Check if Accessibility Service is enabled (only once, reuse result)
+  let accessibilityServiceEnabled = false;
+  if (opts.includeAccessibility !== false) {
+    try {
+      accessibilityServiceEnabled = await AccessibilityModule.isAccessibilityServiceEnabled();
+    } catch {
+      // If check fails, assume service is not enabled
+      accessibilityServiceEnabled = false;
+    }
+    if (accessibilityServiceEnabled) {
+      registry.register(new AccessibilityTool());
+    }
+  }
+  
   registry.register(new AppSearchTool());
   registry.register(new FileStorageTool());
   registry.register(new BeepTool());
@@ -96,7 +118,7 @@ export async function createToolRegistry(opts: CreateToolRegistryOptions): Promi
   if (opts.includePersonalMemoryTool !== false) {
     registry.register(new PersonalMemoryTool(opts.provider));
   }
-  if (opts.provider) {
+  if (opts.provider && opts.includeAccessibility !== false && accessibilityServiceEnabled) {
     registry.register(new AccessibilityHintTool(opts.provider));
   }
 

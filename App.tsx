@@ -92,57 +92,6 @@ try {
 // Adding a new skill folder is all that's needed – no changes here required.
 import './src/agent/skill-auto-register';
 
-// ─── Console method replacement for file logging ────────────────────────────
-// Store original console methods before any code runs
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-
-/**
- * Replace console methods to write to file logger when enabled.
- * This must be called early to capture boot-time logs.
- */
-function setupConsoleFileLogging(enabled: boolean): void {
-  if (enabled) {
-    console.log = (...args: unknown[]) => {
-      originalConsoleLog(...args);
-      const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (typeof arg === 'object') return JSON.stringify(arg);
-        return String(arg);
-      }).join(' ');
-      DebugFileLogger.writeLog('LOG', message).catch(() => {});
-    };
-
-    console.error = (...args: unknown[]) => {
-      originalConsoleError(...args);
-      const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (typeof arg === 'object') return JSON.stringify(arg);
-        return String(arg);
-      }).join(' ');
-      DebugFileLogger.writeLog('ERROR', message).catch(() => {});
-    };
-
-    console.warn = (...args: unknown[]) => {
-      originalConsoleWarn(...args);
-      const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (typeof arg === 'object') return JSON.stringify(arg);
-        return String(arg);
-      }).join(' ');
-      DebugFileLogger.writeLog('WARN', message).catch(() => {});
-    };
-  } else {
-    // Restore original methods
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
-    console.warn = originalConsoleWarn;
-  }
-}
-
-// Initialize console file logging based on config (before other code runs)
-setupConsoleFileLogging(LOCAL_CONFIG.debugFileEnabled ?? false);
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
 // CSS variable bundles applied to the root view via NativeWind vars().
@@ -589,11 +538,8 @@ export default function App(): React.JSX.Element {
       DebugLogger.enabled = enabled;
       // Also enable/disable file logging when debug log is toggled
       DebugFileLogger.enabled = enabled;
-      setupConsoleFileLogging(enabled);
-      // Log to console (original) to show file path when enabled
       if (enabled) {
-        const originalConsoleLog = console.log;
-        originalConsoleLog(`[DebugFileLogger] File logging enabled. Path: ${RNFS.DocumentDirectoryPath}/sanna.txt`);
+        DebugLogger.add('info', 'DebugFileLogger', `File logging enabled. Path: ${RNFS.DocumentDirectoryPath}/sanna.txt`);
       }
     }
   }, [settings.debugLogEnabled, settingsLoaded]);
@@ -772,10 +718,6 @@ export default function App(): React.JSX.Element {
       (event: { level: string; tag: string; message: string }) => {
         const level = (event.level === 'error' ? 'error' : 'info') as import('./src/agent/debug-logger').LogLevel;
         DebugLogger.add(level, event.tag, event.message);
-        // Also write directly to file logger (DebugLogger.add() also writes, but this ensures it's captured)
-        if (DebugFileLogger.enabled) {
-          DebugFileLogger.writeLog(event.level.toUpperCase(), `[${event.tag}] ${event.message}`).catch(() => {});
-        }
       },
     );
     return () => sub.remove();
@@ -1150,7 +1092,7 @@ export default function App(): React.JSX.Element {
       await pipelineRef.current.stopSpeaking();
     }
     const lang = settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
-    console.log('[WakeWord] Speaking greeting in language:', lang);
+    DebugLogger.add('info', 'WakeWord', `Speaking greeting in language: ${lang}`);
     await ttsService.current.speak(t('wakeWord.greeting'), lang);
     handleMicPress();
   }, [handleMicPress, settings.appLanguage]);

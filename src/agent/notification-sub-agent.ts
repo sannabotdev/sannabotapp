@@ -83,12 +83,12 @@ export async function runNotificationSubAgent(
   // 1. Create tool registry (TTS available, but only use if explicitly requested; scheduler+notifications included so sub-agent can self-deactivate)
   DebugLogger.add('info', TAG, 'Creating tool registry…');
   const skillLoader = new SkillLoader();
-  skillLoader.setSummaryProvider(provider);
   const toolRegistry = await createToolRegistry({
     credentialManager,
     skillLoader,
     includeTts: true, // TTS available, but only use if explicitly requested by user
     includeScheduler: true, // included so the sub-agent can manage schedules and self-deactivate rules
+    includeAccessibility: false, // accessibility tool only for main agent
     includePersonalMemoryTool: false,
   });
 
