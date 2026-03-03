@@ -36,8 +36,11 @@ export function EvidenceModal({
           className="bg-surface-elevated rounded-xl w-[90%] max-w-[500px] overflow-hidden"
           activeOpacity={1}
           onPress={() => {}}>
-          <View className="p-4 border-b border-surface-tertiary">
-            <Text className="text-label-primary text-lg font-bold">{title || t('evidence.noDetails')}</Text>
+          <View className="p-4 border-b border-surface-tertiary flex-row items-center justify-between">
+            <Text className="text-label-primary text-lg font-bold flex-1">{title || t('evidence.noDetails')}</Text>
+            <TouchableOpacity onPress={onClose} className="p-1">
+              <Text className="text-accent text-sm font-medium">{t('evidence.close')}</Text>
+            </TouchableOpacity>
           </View>
           <ScrollView
             style={{ maxHeight: maxScrollHeight }}
@@ -47,13 +50,6 @@ export function EvidenceModal({
               {text || t('evidence.noDetails')}
             </Text>
           </ScrollView>
-          <View className="p-3 border-t border-surface-tertiary">
-            <TouchableOpacity
-              className="py-2 items-center"
-              onPress={onClose}>
-              <Text className="text-accent font-medium">{t('evidence.close')}</Text>
-            </TouchableOpacity>
-          </View>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>

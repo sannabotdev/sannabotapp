@@ -90,9 +90,11 @@ export function SkillSummaryModal({
         activeOpacity={1}
         onPress={onClose}>
         {/* Panel – stop touch propagation */}
-        <View
+        <TouchableOpacity
           className="bg-surface rounded-2xl w-[92%] max-w-[540px] overflow-hidden"
-          style={{ maxHeight: '80%' }}>
+          style={{ maxHeight: '80%' }}
+          activeOpacity={1}
+          onPress={() => {}}>
           {/* Header */}
           <View className="px-5 py-4 border-b border-surface-elevated flex-row items-center justify-between">
             <View className="flex-1">
@@ -141,7 +143,7 @@ export function SkillSummaryModal({
               </Text>
             </ScrollView>
           )}
-        </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );

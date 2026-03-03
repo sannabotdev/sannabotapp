@@ -49,11 +49,17 @@ export function LanguagePicker({
           className="flex-1 bg-black/50 justify-center items-center"
           activeOpacity={1}
           onPress={() => setPickerVisible(false)}>
-          <View className="bg-surface-elevated rounded-xl w-[80%] max-w-[400px] overflow-hidden">
-            <View className="p-4 border-b border-surface-tertiary">
-              <Text className="text-label-primary text-lg font-bold">
+          <TouchableOpacity
+            className="bg-surface-elevated rounded-xl w-[80%] max-w-[400px] overflow-hidden"
+            activeOpacity={1}
+            onPress={() => {}}>
+            <View className="p-4 border-b border-surface-tertiary flex-row items-center justify-between">
+              <Text className="text-label-primary text-lg font-bold flex-1">
                 {t('settings.language.pickTitle')}
               </Text>
+              <TouchableOpacity onPress={() => setPickerVisible(false)} className="p-1">
+                <Text className="text-accent text-sm font-medium">{t('settings.skills.summary.close')}</Text>
+              </TouchableOpacity>
             </View>
             <ScrollView className="max-h-[400px]">
               {LANGUAGES.map(lang => (
@@ -75,7 +81,7 @@ export function LanguagePicker({
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </>

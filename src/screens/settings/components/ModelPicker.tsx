@@ -70,9 +70,15 @@ export function ModelPicker({
               className="flex-1 bg-black/50 justify-center items-center"
               activeOpacity={1}
               onPress={() => setPickerVisible(false)}>
-              <View className="bg-surface-elevated rounded-xl w-[80%] max-w-[400px] overflow-hidden">
-                <View className="p-4 border-b border-surface-tertiary">
-                  <Text className="text-label-primary text-lg font-bold">{label}</Text>
+              <TouchableOpacity
+                className="bg-surface-elevated rounded-xl w-[80%] max-w-[400px] overflow-hidden"
+                activeOpacity={1}
+                onPress={() => {}}>
+                <View className="p-4 border-b border-surface-tertiary flex-row items-center justify-between">
+                  <Text className="text-label-primary text-lg font-bold flex-1">{label}</Text>
+                  <TouchableOpacity onPress={() => setPickerVisible(false)} className="p-1">
+                    <Text className="text-accent text-sm font-medium">{t('settings.skills.summary.close')}</Text>
+                  </TouchableOpacity>
                 </View>
             {loading ? (
               <View className="py-8 items-center">
@@ -103,7 +109,7 @@ export function ModelPicker({
                   ))}
                 </ScrollView>
             )}
-              </View>
+              </TouchableOpacity>
             </TouchableOpacity>
           </Modal>
         </>

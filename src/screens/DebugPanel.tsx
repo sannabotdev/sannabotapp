@@ -245,8 +245,11 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
         onRequestClose={onClose}>
         <View className="flex-1 bg-surface">
           {/* Header */}
-          <View className="flex-row justify-between items-center px-4 pt-12 pb-3 border-b border-surface-elevated">
-            <Text className="text-lg font-bold text-label-primary">{t('debug.title')}</Text>
+          <View className="flex-row items-center px-4 pt-12 pb-3 border-b border-surface-elevated gap-3">
+            <TouchableOpacity onPress={onClose} className="p-1">
+              <Text className="text-accent text-base">{t('settings.back')}</Text>
+            </TouchableOpacity>
+            <Text className="text-lg font-bold text-label-primary flex-1">{t('debug.title')}</Text>
             <View className="flex-row gap-2">
               {entries.length > 0 && (
                 <TouchableOpacity
@@ -259,11 +262,6 @@ export function DebugPanel({ visible, onClose }: DebugPanelProps): React.JSX.Ele
                 onPress={handleClear}
                 className="w-10 h-10 items-center justify-center bg-surface-elevated rounded-lg">
                 <Text className="text-lg">🗑️</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={onClose}
-                className="w-10 h-10 items-center justify-center bg-surface-elevated rounded-lg">
-                <Text className="text-lg text-label-primary">✕</Text>
               </TouchableOpacity>
             </View>
           </View>
