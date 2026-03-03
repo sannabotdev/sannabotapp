@@ -36,8 +36,8 @@ import SchedulerModule from '../native/SchedulerModule';
 import { calculateNextTrigger } from '../tools/scheduler-tool';
 import type { Schedule } from '../tools/scheduler-tool';
 
-// Intent – for bringing SannaBot back to the foreground after a result is ready
-import IntentModule from '../native/IntentModule';
+// Foreground restore
+import { bringToForeground } from './bring-to-foreground';
 
 // Skills – imported at bundle time (metro md-transformer)
 import googleMapsSkill from '../../assets/skills/google-maps/SKILL.md';
@@ -83,15 +83,6 @@ interface AgentConfig {
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const TAG = 'Scheduler';
-
-/** Bring SannaBot's Activity to the foreground. Non-fatal on failure. */
-async function bringToForeground(): Promise<void> {
-  try {
-    await IntentModule.sendIntent('android.intent.action.MAIN', null, 'com.sannabot', null);
-  } catch (err) {
-    DebugLogger.add('error', TAG, `Could not bring app to foreground: ${err}`);
-  }
-}
 
 
 // ── Main headless task ───────────────────────────────────────────────────
@@ -263,7 +254,7 @@ export default async function schedulerHeadlessTask(
       }
 
       await ConversationStore.appendPending('assistant', messageToShow).catch(() => {});
-      await bringToForeground();
+      await bringToForeground(TAG);
 
       // 8. Create journal entry (always, even on errors/max iterations)
       try {
@@ -329,6 +320,6 @@ export default async function schedulerHeadlessTask(
     }
     
     // Bring app to foreground so user sees the error result
-    await bringToForeground();
+    await bringToForeground(TAG);
   }
 }

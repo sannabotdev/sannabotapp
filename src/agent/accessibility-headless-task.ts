@@ -32,6 +32,7 @@ import { OpenAIProvider } from '../llm/openai-provider';
 import type { LLMProvider, Message } from '../llm/types';
 import IntentModule from '../native/IntentModule';
 import AccessibilityModule from '../native/AccessibilityModule';
+import { bringToForeground } from './bring-to-foreground';
 import { runAccessibilitySubAgent } from './accessibility-sub-agent';
 import SchedulerModule from '../native/SchedulerModule';
 import { ConversationStore } from './conversation-store';
@@ -62,17 +63,6 @@ interface AgentConfig {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Bring SannaBot's Activity to the foreground. Non-fatal on failure. */
-async function restoreSannaBot(): Promise<void> {
-  try {
-    await IntentModule.sendIntent('android.intent.action.MAIN', null, 'com.sannabot', null);
-    await new Promise<void>(resolve => setTimeout(() => resolve(), 600));
-  } catch (err) {
-    DebugLogger.add('error', 'AccessibilityTask', `Could not restore SannaBot to foreground: ${err}`);
-  }
-}
-
-
 /**
  * Formulate an error message via LLM, restore SannaBot, and write to the
  * pending queue.  Used for all error paths that already have a provider.
@@ -95,7 +85,7 @@ async function failFormatted(
   // Write BEFORE restoring foreground – the AppState active event fires as soon
   // as the app appears, so the message must already be in the queue by then.
   await ConversationStore.appendPending('assistant', formulated).catch(() => {});
-  await restoreSannaBot();
+  await bringToForeground('AccessibilityTask');
 }
 
 // ── Hint condensing ───────────────────────────────────────────────────────────
@@ -409,7 +399,7 @@ export default async function accessibilityHeadlessTask(
   } catch {
     DebugLogger.add('error', 'AccessibilityTask', `Failed to parse jobJson: ${taskData.jobJson}`);
     await ConversationStore.appendPending('assistant', 'UI automation failed: Invalid job data.').catch(() => {}); // write before foreground restore
-    await restoreSannaBot();
+    await bringToForeground('AccessibilityTask');
     return;
   }
 
@@ -427,7 +417,7 @@ export default async function accessibilityHeadlessTask(
     const msg = err instanceof Error ? err.message : String(err);
     DebugLogger.add('error', 'AccessibilityTask', `Config error: ${msg}`);
     await ConversationStore.appendPending('assistant', `UI automation failed: ${msg}`).catch(() => {}); // write before foreground restore
-    await restoreSannaBot();
+    await bringToForeground('AccessibilityTask');
     return;
   }
 
@@ -466,5 +456,5 @@ export default async function accessibilityHeadlessTask(
   //     drainPending() will find nothing and the bubble won't show.
   await ConversationStore.appendPending('assistant', result.formulated).catch(() => {});
   DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaAccessibilityTask finished (${packageName})`);
-  await restoreSannaBot();
+  await bringToForeground('AccessibilityTask');
 }

@@ -95,40 +95,40 @@ export class PermissionManager {
     // Some permissions are missing → try to show the request dialog.
     // This requires an Activity; in headless mode it throws.
     try {
-      const statuses = await PermissionsAndroid.requestMultiple(androidPerms);
+    const statuses = await PermissionsAndroid.requestMultiple(androidPerms);
 
-      const results: PermissionResult[] = [];
-      const missing: string[] = [];
+    const results: PermissionResult[] = [];
+    const missing: string[] = [];
 
-      for (const perm of permissions) {
-        const androidPerm = PERMISSION_MAP[perm];
-        if (!androidPerm) {
-          results.push({ permission: perm, status: 'granted' });
-          continue;
-        }
-
-        const status = statuses[androidPerm] as PermissionStatus;
-        let mapped: PermissionResult['status'];
-        switch (status) {
-          case PermissionsAndroid.RESULTS.GRANTED:
-            mapped = 'granted';
-            break;
-          case PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN:
-            mapped = 'never_ask_again';
-            missing.push(perm);
-            break;
-          default:
-            mapped = 'denied';
-            missing.push(perm);
-        }
-        results.push({ permission: perm, status: mapped });
+    for (const perm of permissions) {
+      const androidPerm = PERMISSION_MAP[perm];
+      if (!androidPerm) {
+        results.push({ permission: perm, status: 'granted' });
+        continue;
       }
 
-      return {
-        allGranted: missing.length === 0,
-        results,
-        missing,
-      };
+      const status = statuses[androidPerm] as PermissionStatus;
+      let mapped: PermissionResult['status'];
+      switch (status) {
+        case PermissionsAndroid.RESULTS.GRANTED:
+          mapped = 'granted';
+          break;
+        case PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN:
+          mapped = 'never_ask_again';
+          missing.push(perm);
+          break;
+        default:
+          mapped = 'denied';
+          missing.push(perm);
+      }
+      results.push({ permission: perm, status: mapped });
+    }
+
+    return {
+      allGranted: missing.length === 0,
+      results,
+      missing,
+    };
     } catch {
       // No Activity available (headless / background mode).
       // Return the check-only result so callers see which permissions

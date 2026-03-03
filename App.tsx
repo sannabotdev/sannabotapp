@@ -47,6 +47,8 @@ import SchedulerModule from './src/native/SchedulerModule';
 // Conversation persistence
 import { ConversationStore } from './src/agent/conversation-store';
 
+// Conversation persistence – pending messages from background tasks
+
 // Notification rules – only startup sync needed; sub-agent runs in headless task
 import { syncOnStartup as syncNotificationRules } from './src/agent/notification-rules-store';
 
@@ -526,6 +528,39 @@ export default function App(): React.JSX.Element {
   // True while a concurrent STT session is active (listening during TTS).
   const autoListeningStartedRef = useRef(false);
 
+  // ─── Helper: process pending messages from background tasks ─────────────
+  // Shared by the polling interval and the AppState foreground listener.
+  // Adds drained messages to the chat, persists them, feeds the pipeline,
+  // and speaks them aloud when driving mode is on.
+  const processPendingMessages = useCallback((pending: import('./src/agent/conversation-store').StoredMessage[]) => {
+    if (pending.length === 0) return;
+    setMessages(prev => {
+      const updated = [
+        ...prev,
+        ...pending.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
+      ];
+      ConversationStore.saveHistory(
+        updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+        settings.conversationHistoryMaxMessages ?? 50,
+      ).catch(() => {});
+      return updated;
+    });
+    if (pipelineRef.current) {
+      pipelineRef.current.appendToHistory(
+        pending.map(m => ({ role: m.role, content: m.text })),
+      );
+    }
+    if (settings.drivingMode) {
+      const lang = settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
+      pending
+        .filter(m => m.role === 'assistant')
+        .forEach(m => {
+          const plain = m.text.replace(/[*_`#]/g, '').trim();
+          ttsService.current.speak(plain, lang).catch(() => {});
+        });
+    }
+  }, [settings.drivingMode, settings.appLanguage, settings.conversationHistoryMaxMessages]);
+
   // ─── i18n: apply locale whenever appLanguage changes ────────────────────
   useEffect(() => {
     setLocale(settings.appLanguage);
@@ -741,47 +776,77 @@ export default function App(): React.JSX.Element {
         const elapsed = Date.now() - backgroundAtRef.current;
         backgroundAtRef.current = null;
         DebugFileLogger.writeSystemLog('LIFECYCLE', `App returned to foreground after ${(elapsed / 1000).toFixed(1)}s`);
-        if (elapsed > LOCK_GRACE_MS && !settings.drivingMode) {
-          tokenStore.current.lock();
-          setVaultUnlocked(false);
-        }
 
-        // Drain any messages written by background tasks (e.g. accessibility automation)
+        // Drain pending messages FIRST – if a background task (scheduler,
+        // notification, timer, accessibility) brought the app to foreground,
+        // we must NOT re-lock the vault (the user never left intentionally).
         ConversationStore.drainPending().then(pending => {
-          if (pending.length === 0) return;
-          setMessages(prev => {
-            const updated = [
-              ...prev,
-              ...pending.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
-            ];
-            ConversationStore.saveHistory(
-              updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
-              settings.conversationHistoryMaxMessages ?? 50,
-            ).catch(() => {});
-            return updated;
-          });
-          if (pipelineRef.current) {
-            pipelineRef.current.appendToHistory(
-              pending.map(m => ({ role: m.role, content: m.text })),
-            );
+          const broughtByBackgroundTask = pending.length > 0;
+
+          // Only re-lock if the user left the app manually (no pending
+          // messages from a background task) and the grace period expired.
+          if (elapsed > LOCK_GRACE_MS && !settings.drivingMode && !broughtByBackgroundTask) {
+            tokenStore.current.lock();
+            setVaultUnlocked(false);
           }
-          // In driving mode, speak assistant messages aloud.
-          // In normal mode the chat bubble is sufficient – no TTS.
-          if (settings.drivingMode) {
-            const lang = settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
-            pending
-              .filter(m => m.role === 'assistant')
-              .forEach(m => {
-                // Strip markdown so the voice output sounds natural
-                const plain = m.text.replace(/[*_`#]/g, '').trim();
-                ttsService.current.speak(plain, lang).catch(() => {});
-              });
-          }
+
+          processPendingMessages(pending);
         }).catch(() => {});
       }
     });
     return () => sub.remove();
   }, [settings.drivingMode, settings.appLanguage, settings.conversationHistoryMaxMessages]);
+
+  // Poll for pending messages from headless tasks (scheduler, notification, timer).
+  // DeviceEventEmitter doesn't reliably deliver events from HeadlessJS tasks to the
+  // main React component (they may run on separate JS contexts), so we use a
+  // lightweight polling interval that checks AsyncStorage every 3 seconds.
+  // The polling only runs when the app is active. When the app is in background,
+  // bringToForeground() will bring it to foreground, triggering the AppState listener
+  // which immediately drains pending messages.
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      // Immediate check when starting
+      ConversationStore.drainPending()
+        .then(processPendingMessages)
+        .catch(() => {});
+
+      // Then poll every 3 seconds
+      intervalId = setInterval(() => {
+        ConversationStore.drainPending()
+          .then(processPendingMessages)
+          .catch(() => {});
+      }, 3000);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    // Start polling if app is currently active
+    if (AppState.currentState === 'active') {
+      startPolling();
+    }
+
+    // Listen for AppState changes to start/stop polling
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    });
+
+    return () => {
+      sub.remove();
+      stopPolling();
+    };
+  }, [processPendingMessages]);
 
   // Persist preferences to Keychain whenever they change
   useEffect(() => {

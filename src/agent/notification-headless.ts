@@ -29,7 +29,7 @@ import { PersonalMemoryStore } from './personal-memory-store';
 import { addEntry } from './journal-store';
 import { loadRules, getRulesForApp } from './notification-rules-store';
 import type { NotificationRule } from './notification-rules-store';
-import IntentModule from '../native/IntentModule';
+import { bringToForeground } from './bring-to-foreground';
 import { formulateError } from './system-prompt';
 import { SILENT_REPLY_TOKEN, NO_MATCH_TOKEN } from './tokens';
 
@@ -98,17 +98,6 @@ const APP_ALIAS_MAP: Record<string, string> = {
   'org.thoughtcrime.securesms': 'Signal',
   'com.android.mms': 'SMS',
 };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Bring SannaBot's Activity to the foreground. Non-fatal on failure. */
-async function bringToForeground(): Promise<void> {
-  try {
-    await IntentModule.sendIntent('android.intent.action.MAIN', null, 'com.sannabot', null);
-  } catch (err) {
-    DebugLogger.add('error', TAG, `Could not bring app to foreground: ${err}`);
-  }
-}
 
 // ── Main headless task ────────────────────────────────────────────────────────
 
@@ -288,7 +277,7 @@ export default async function notificationHeadlessTask(
       }
 
       // 11. Bring app to foreground – drainPending() will display + speak the result
-      await bringToForeground();
+      await bringToForeground(TAG);
       DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaNotificationTask finished (${packageName})`);
     } else if (isSilent) {
       // Silent reply – no condition matched or sub-agent decided output is not user-facing
@@ -320,7 +309,7 @@ export default async function notificationHeadlessTask(
         DebugLogger.add('error', TAG, `Failed to create journal entry: ${err}`);
       }
       
-      await bringToForeground();
+      await bringToForeground(TAG);
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -347,6 +336,6 @@ export default async function notificationHeadlessTask(
       DebugLogger.add('error', TAG, `Failed to create journal entry: ${journalErr}`);
     }
     
-    await bringToForeground();
+    await bringToForeground(TAG);
   }
 }

@@ -19,7 +19,7 @@ import { DebugFileLogger } from './debug-file-logger';
 import { ConversationStore } from './conversation-store';
 import TimerModule from '../native/TimerModule';
 import SchedulerModule from '../native/SchedulerModule';
-import IntentModule from '../native/IntentModule';
+import { bringToForeground } from './bring-to-foreground';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,18 +42,6 @@ interface Timer {
 }
 
 const TAG = 'TimerHeadless';
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-/** Bring SannaBot's Activity to the foreground. Non-fatal on failure. */
-async function restoreSannaBot(): Promise<void> {
-  try {
-    await IntentModule.sendIntent('android.intent.action.MAIN', null, 'com.sannabot', null);
-    await new Promise<void>(resolve => setTimeout(() => resolve(), 600));
-  } catch (err) {
-    DebugLogger.add('error', TAG, `Could not restore SannaBot to foreground: ${err}`);
-  }
-}
 
 // ── Main headless task ────────────────────────────────────────────────────────
 
@@ -151,7 +139,7 @@ export default async function timerHeadlessTask(
     await TimerModule.removeTimer(timerId).catch(() => {});
 
     // 7. Bring app to foreground so user sees the message
-    await restoreSannaBot();
+    await bringToForeground(TAG);
     DebugFileLogger.writeSystemLog('LIFECYCLE', `✅ SannaTimerTask finished (id=${timerId})`);
 
   } catch (err) {
