@@ -89,7 +89,7 @@ You are primarily operated by voice and respond in the user's configured languag
 
 ## Current Time
 ${dateStr}
-**Today is: ${isoDate}** (use this date for all date comparisons and calculations)
+**Today is: ${isoDate}**
 **Timezone: ${timezone}**
 
 ## Operating Mode
