@@ -1851,6 +1851,40 @@ export default function App(): React.JSX.Element {
     [settings],
   );
 
+  const handleTestCustomConnection = useCallback(async () => {
+    const { customApiKey, customModelUrl, customModelName } = settings;
+
+    if (!customApiKey || !customModelUrl || !customModelName) {
+      Alert.alert(
+        t('alert.error'),
+        'Please enter both API Key and Base URL before testing.',
+      );
+      return;
+    }
+
+    const provider = new OpenAIProvider(
+      customApiKey,
+      customModelName,
+      customModelUrl,
+    );
+    const result = await provider.testConnection();
+
+    if (result.success) {
+      Alert.alert(
+        t('settings.provider.connectionSuccess'),
+        `The endpoint responded successfully.\n\nResponse: "${result.response?.slice(
+          0,
+          100,
+        )}${result.response && result.response.length > 100 ? '...' : ''}"`,
+      );
+    } else {
+      Alert.alert(
+        t('settings.provider.connectionFailed'),
+        result.error || 'Unknown error occurred.',
+      );
+    }
+  }, [settings]);
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   const isDark = settings.darkMode !== false; // default true until prefs loaded
@@ -1961,6 +1995,7 @@ export default function App(): React.JSX.Element {
             onCustomModelNameChange={name =>
               updateSecureKey('customModelName', name)
             }
+            onTestCustomConnection={handleTestCustomConnection}
             wakeWordEnabled={settings.wakeWordEnabled}
             onWakeWordToggle={v =>
               setSettings(s => ({ ...s, wakeWordEnabled: v }))

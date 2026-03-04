@@ -56,6 +56,7 @@ interface SettingsScreenProps {
   onCustomModelUrlChange: (url: string) => void;
   customModelName: string;
   onCustomModelNameChange: (name: string) => void;
+  onTestCustomConnection?: () => void;
   wakeWordEnabled: boolean;
   onWakeWordToggle: (enabled: boolean) => void;
   wakeWordKey: string;
@@ -142,6 +143,7 @@ export function SettingsScreen({
   onCustomModelUrlChange,
   customModelName,
   onCustomModelNameChange,
+  onTestCustomConnection,
   wakeWordEnabled,
   onWakeWordToggle,
   wakeWordKey,
@@ -348,6 +350,7 @@ export function SettingsScreen({
             onCustomModelUrlChange={onCustomModelUrlChange}
             customModelName={customModelName}
             onCustomModelNameChange={onCustomModelNameChange}
+            onTestCustomConnection={onTestCustomConnection}
           />
         </CollapsibleSection>
 

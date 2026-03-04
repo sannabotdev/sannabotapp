@@ -90,7 +90,10 @@ const de = {
   'settings.provider.customModel': 'Modellname',
   'settings.provider.customDescription': 'Verwende deinen eigenen OpenAI-kompatiblen API-Endpunkt',
   'settings.provider.manualModelInput': 'Modellnamen manuell eingeben',
-
+  'settings.provider.testConnection': 'Verbindung testen',
+  'settings.provider.testingConnection': 'Teste...',
+  'settings.provider.connectionSuccess': 'Verbindung erfolgreich!',
+  'settings.provider.connectionFailed': 'Verbindung fehlgeschlagen',
 
   // Wake Word
   'settings.wakeWord.label': "'Hey Sanna' aktivieren",

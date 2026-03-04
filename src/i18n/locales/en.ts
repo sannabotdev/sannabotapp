@@ -90,6 +90,10 @@ const en = {
   'settings.provider.customModel': 'Model Name',
   'settings.provider.customDescription': 'Use your own OpenAI-compatible API endpoint',
   'settings.provider.manualModelInput': 'Enter model name manually',
+  'settings.provider.testConnection': 'Test Connection',
+  'settings.provider.testingConnection': 'Testing...',
+  'settings.provider.connectionSuccess': 'Connection successful!',
+  'settings.provider.connectionFailed': 'Connection failed',
 
 
   // Wake Word

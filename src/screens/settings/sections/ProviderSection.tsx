@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { ApiKeyInput } from '../components/ApiKeyInput';
 import { ModelPicker } from '../components/ModelPicker';
 import { ProviderToggle } from '../components/ProviderToggle';
@@ -26,6 +27,7 @@ interface ProviderSectionProps {
   onCustomModelUrlChange: (url: string) => void;
   customModelName: string;
   onCustomModelNameChange: (name: string) => void;
+  onTestCustomConnection?: () => void;
 }
 
 export function ProviderSection({
@@ -45,6 +47,7 @@ export function ProviderSection({
   onCustomModelUrlChange,
   customModelName,
   onCustomModelNameChange,
+  onTestCustomConnection,
 }: ProviderSectionProps): React.JSX.Element {
   return (
     <>
@@ -110,8 +113,70 @@ export function ProviderSection({
             allowManualInput
             baseUrl={customModelUrl}
           />
+          <View className="mt-2">
+            <CustomConnectionTest
+              onTest={onTestCustomConnection}
+              apiKey={customApiKey}
+              url={customModelUrl}
+            />
+          </View>
         </>
       )}
     </>
+  );
+}
+
+interface CustomConnectionTestProps {
+  onTest?: () => void;
+  apiKey: string;
+  url: string;
+}
+
+function CustomConnectionTest({
+  onTest,
+  apiKey,
+  url,
+}: CustomConnectionTestProps): React.JSX.Element | null {
+  const [testing, setTesting] = useState(false);
+
+  const canTest =
+    apiKey.trim() !== '' && url.trim() !== '' && onTest !== undefined;
+
+  const handleTest = async () => {
+    if (!canTest || !onTest) return;
+    setTesting(true);
+    try {
+      await onTest();
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  // Don't render if callback is not provided
+  if (onTest === undefined) {
+    return null;
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={handleTest}
+      disabled={!canTest || testing}
+      className={`rounded-lg px-4 py-3 mt-2 ${
+        canTest && !testing ? 'bg-accent' : 'bg-surface-tertiary opacity-50'
+      }`}
+    >
+      {testing ? (
+        <View className="flex-row items-center justify-center gap-2">
+          <ActivityIndicator size="small" color="#fff" />
+          <Text className="text-label-primary text-sm font-medium">
+            {t('settings.provider.testingConnection')}
+          </Text>
+        </View>
+      ) : (
+        <Text className="text-label-primary text-sm font-medium text-center">
+          {t('settings.provider.testConnection')}
+        </Text>
+      )}
+    </TouchableOpacity>
   );
 }
