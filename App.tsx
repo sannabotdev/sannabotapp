@@ -745,14 +745,24 @@ export default function App(): React.JSX.Element {
 
     // Ensure all skill summaries are up-to-date during loading screen
     const selectedProvider = prefs.selectedProvider || 'openai';
-    const apiKey = selectedProvider === 'claude' ? secureKeys.claudeApiKey : secureKeys.openAIApiKey;
+    const apiKey =
+      selectedProvider === 'claude'
+        ? secureKeys.claudeApiKey
+        : selectedProvider === 'custom'
+        ? secureKeys.customApiKey
+        : secureKeys.openAIApiKey;
     if (apiKey) {
-      const selectedModel = selectedProvider === 'claude'
-        ? secureKeys.selectedClaudeModel
-        : secureKeys.selectedOpenAIModel;
+      const selectedModel =
+        selectedProvider === 'claude'
+          ? secureKeys.selectedClaudeModel
+          : selectedProvider === 'custom'
+          ? secureKeys.customModelName
+          : secureKeys.selectedOpenAIModel;
       const provider =
         selectedProvider === 'claude'
           ? new ClaudeProvider(apiKey, selectedModel)
+          : selectedProvider === 'custom'
+          ? new OpenAIProvider(apiKey, selectedModel, secureKeys.customModelUrl)
           : new OpenAIProvider(apiKey, selectedModel);
     }
 
