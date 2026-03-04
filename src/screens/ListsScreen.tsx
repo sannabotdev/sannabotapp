@@ -19,6 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 
 const FILE_KEY_PREFIX = 'sanna_file_';
+const TYPE_KEY_PREFIX = 'sanna_file_';
+const TYPE_KEY_SUFFIX = '_type';
 
 interface ListEntry {
   name: string;
@@ -41,11 +43,18 @@ export function ListsScreen({ onBack }: ListsScreenProps): React.JSX.Element {
     try {
       const allKeys = await AsyncStorage.getAllKeys();
       const fileKeys = (allKeys as readonly string[]).filter(k =>
-        k.startsWith(FILE_KEY_PREFIX),
+        k.startsWith(FILE_KEY_PREFIX) && !k.endsWith(TYPE_KEY_SUFFIX),
       );
       const entries: ListEntry[] = [];
       for (const key of fileKeys) {
         const name = key.slice(FILE_KEY_PREFIX.length);
+        // Check if this file has type "list" (or no type for backward compatibility)
+        const typeKey = `${TYPE_KEY_PREFIX}${name}${TYPE_KEY_SUFFIX}`;
+        const fileType = await AsyncStorage.getItem(typeKey);
+        // Only include files with type "list" or no type (backward compatibility)
+        if (fileType !== null && fileType !== 'list') {
+          continue;
+        }
         const content = await AsyncStorage.getItem(key);
         const items = content
           ? content.split('\n').filter(l => l.trim().length > 0)
@@ -81,6 +90,8 @@ export function ListsScreen({ onBack }: ListsScreenProps): React.JSX.Element {
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.removeItem(`${FILE_KEY_PREFIX}${name}`);
+            // Also delete type metadata
+            await AsyncStorage.removeItem(`${TYPE_KEY_PREFIX}${name}${TYPE_KEY_SUFFIX}`);
             if (expandedList === name) setExpandedList(null);
             if (editingList === name) setEditingList(null);
             await loadLists();
@@ -151,22 +162,22 @@ export function ListsScreen({ onBack }: ListsScreenProps): React.JSX.Element {
                 {isExpanded && (
                   <View className="border-t border-surface">
                     {/* Action buttons */}
-                    <View className="flex-row gap-2 px-4 py-2 border-b border-surface">
+                    <View className="flex-row gap-2 px-4 py-2 border-b border-surface items-center justify-end">
                       <TouchableOpacity
                         onPress={() => setEditingList(isEditing ? null : list.name)}
                         activeOpacity={0.7}
-                        className={`flex-1 py-2 rounded-lg items-center ${isEditing ? 'bg-accent' : 'bg-surface'}`}>
-                        <Text className={`text-sm font-medium ${isEditing ? 'text-white' : 'text-accent'}`}>
-                          {isEditing ? t('lists.editMode.done') : t('lists.editMode.button')}
+                        style={{ width: 28, height: 28 }}
+                        className={`rounded-full items-center justify-center ${isEditing ? 'bg-accent' : 'bg-surface-tertiary'}`}>
+                        <Text className={`text-[13px] leading-none ${isEditing ? 'text-white' : 'text-label-primary'}`}>
+                          {isEditing ? '✓' : '✏️'}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDeleteList(list.name)}
                         activeOpacity={0.7}
-                        className="flex-1 py-2 rounded-lg items-center bg-surface">
-                        <Text className="text-sm font-medium text-accent-red">
-                          {t('lists.deleteList.button')}
-                        </Text>
+                        style={{ width: 28, height: 28 }}
+                        className="rounded-full bg-surface-tertiary items-center justify-center">
+                        <Text className="text-label-primary text-[13px] leading-none">🗑️</Text>
                       </TouchableOpacity>
                     </View>
 

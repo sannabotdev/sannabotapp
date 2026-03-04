@@ -17,8 +17,11 @@ import type { Tool, ToolResult } from './types';
 import { errorResult, successResult } from './types';
 
 const FILE_KEY_PREFIX = 'sanna_file_';
+const TYPE_KEY_PREFIX = 'sanna_file_';
+const TYPE_KEY_SUFFIX = '_type';
 
 type FileAction = 'read' | 'write' | 'list' | 'delete';
+type FileType = 'list' | 'text' | 'binary';
 
 export class FileStorageTool implements Tool {
   name(): string {
@@ -27,7 +30,8 @@ export class FileStorageTool implements Tool {
 
   description(): string {
     return (
-      'Simple file storage on the device: read, write, list, and delete text files. ' +
+      'Simple file storage on the device: read, write, list, and delete files. ' +
+      'Supports three file types: "list" (for lists), "text" (plain text), and "binary" (base64 encoded). ' +
       'Used to persist lists (shopping list, to-do, etc.) locally.'
     );
   }
@@ -56,7 +60,16 @@ export class FileStorageTool implements Tool {
           type: 'string',
           description:
             'Full file content to store. ' +
-            'Only for action=write. For lists: one entry per line.',
+            'Only for action=write. For lists: one entry per line. ' +
+            'For binary type: content will be base64 encoded automatically.',
+        },
+        type: {
+          type: 'string',
+          enum: ['list', 'text', 'binary'],
+          description:
+            'File type: "list" for list files (one item per line), ' +
+            '"text" for plain text files, "binary" for binary data (base64 encoded). ' +
+            'Defaults to "text" if not specified.',
         },
       },
       required: ['action'],
@@ -65,13 +78,18 @@ export class FileStorageTool implements Tool {
 
   async execute(args: Record<string, unknown>): Promise<ToolResult> {
     const action = args.action as FileAction;
+    const fileType = (args.type as FileType | undefined) || 'text';
 
     try {
       switch (action) {
         case 'read':
-          return this.readFile(args.filename as string);
+          return this.readFile(args.filename as string, fileType);
         case 'write':
-          return this.writeFile(args.filename as string, args.content as string);
+          return this.writeFile(
+            args.filename as string,
+            args.content as string,
+            fileType,
+          );
         case 'list':
           return this.listFiles();
         case 'delete':
@@ -93,7 +111,25 @@ export class FileStorageTool implements Tool {
     return clean;
   }
 
-  private async readFile(filename: string | undefined): Promise<ToolResult> {
+  private async getFileType(name: string): Promise<FileType> {
+    const typeKey = `${TYPE_KEY_PREFIX}${name}${TYPE_KEY_SUFFIX}`;
+    const storedType = await AsyncStorage.getItem(typeKey);
+    if (storedType === 'list' || storedType === 'text' || storedType === 'binary') {
+      return storedType as FileType;
+    }
+    // Backward compatibility: if no type stored, default to "text"
+    return 'text';
+  }
+
+  private async setFileType(name: string, fileType: FileType): Promise<void> {
+    const typeKey = `${TYPE_KEY_PREFIX}${name}${TYPE_KEY_SUFFIX}`;
+    await AsyncStorage.setItem(typeKey, fileType);
+  }
+
+  private async readFile(
+    filename: string | undefined,
+    fileType: FileType,
+  ): Promise<ToolResult> {
     const name = this.sanitizeFilename(filename);
     if (!name) {
       return errorResult('Missing or invalid "filename" parameter.');
@@ -106,12 +142,27 @@ export class FileStorageTool implements Tool {
       return successResult(`File "${name}" does not exist or is empty.`);
     }
 
-    return successResult(`Content of "${name}":\n${value}`);
+    // Get the actual stored type (may differ from requested type)
+    const storedType = await this.getFileType(name);
+
+    let content = value;
+    if (storedType === 'binary') {
+      try {
+        content = atob(value);
+      } catch (err) {
+        return errorResult(
+          `Failed to decode binary file "${name}": ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    return successResult(`Content of "${name}":\n${content}`);
   }
 
   private async writeFile(
     filename: string | undefined,
     content: string | undefined,
+    fileType: FileType,
   ): Promise<ToolResult> {
     const name = this.sanitizeFilename(filename);
     if (!name) {
@@ -122,12 +173,30 @@ export class FileStorageTool implements Tool {
     }
 
     const key = `${FILE_KEY_PREFIX}${name}`;
-    await AsyncStorage.setItem(key, content);
+    let contentToStore = content;
 
-    const lineCount = content.split('\n').filter(l => l.trim().length > 0).length;
-    return successResult(
-      `File "${name}" saved (${lineCount} entries).`,
-    );
+    // Encode to base64 if binary type
+    if (fileType === 'binary') {
+      try {
+        contentToStore = btoa(content);
+      } catch (err) {
+        return errorResult(
+          `Failed to encode binary content: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    await AsyncStorage.setItem(key, contentToStore);
+    await this.setFileType(name, fileType);
+
+    if (fileType === 'list') {
+      const lineCount = content.split('\n').filter(l => l.trim().length > 0).length;
+      return successResult(
+        `File "${name}" saved (${lineCount} entries).`,
+      );
+    } else {
+      return successResult(`File "${name}" saved.`);
+    }
   }
 
   private async listFiles(): Promise<ToolResult> {
@@ -158,7 +227,10 @@ export class FileStorageTool implements Tool {
       return successResult(`File "${name}" does not exist (nothing to delete).`);
     }
 
+    // Delete both the file and its type metadata
     await AsyncStorage.removeItem(key);
+    const typeKey = `${TYPE_KEY_PREFIX}${name}${TYPE_KEY_SUFFIX}`;
+    await AsyncStorage.removeItem(typeKey);
     return successResult(`File "${name}" deleted.`);
   }
 }
