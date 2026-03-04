@@ -19,6 +19,7 @@ export interface IntentModuleType {
   ): Promise<string>;
   isAppInstalled(packageName: string): Promise<boolean>;
   searchInstalledApps(query: string): Promise<InstalledApp[]>;
+  getAllInstalledApps(): Promise<InstalledApp[]>;
 }
 
 export default IntentModule as IntentModuleType;

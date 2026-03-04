@@ -133,4 +133,43 @@ class IntentModule(reactContext: ReactApplicationContext) :
             promise.reject("APP_SEARCH_ERROR", e.message ?: "Unknown error", e)
         }
     }
+
+    /**
+     * Get all installed apps with launcher activity.
+     *
+     * Only returns apps that have a launcher activity (i.e. user-launchable apps).
+     * Returns all apps without filtering, up to a maximum limit.
+     *
+     * @param promise Resolves with an array of { name: String, package: String }
+     */
+    @ReactMethod
+    fun getAllInstalledApps(promise: Promise) {
+        try {
+            val pm = reactApplicationContext.packageManager
+            val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            val apps = pm.queryIntentActivities(launcherIntent, 0)
+
+            val results = WritableNativeArray()
+            var count = 0
+            val maxResults = 500
+
+            apps.forEach { resolveInfo ->
+                if (count >= maxResults) return@forEach
+
+                val label = resolveInfo.loadLabel(pm).toString()
+                val packageName = resolveInfo.activityInfo.packageName
+
+                val app = WritableNativeMap().apply {
+                    putString("name", label)
+                    putString("package", packageName)
+                }
+                results.pushMap(app)
+                count++
+            }
+
+            promise.resolve(results)
+        } catch (e: Exception) {
+            promise.reject("GET_ALL_APPS_ERROR", e.message ?: "Unknown error", e)
+        }
+    }
 }
