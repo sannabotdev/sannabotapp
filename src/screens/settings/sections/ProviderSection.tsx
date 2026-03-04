@@ -64,7 +64,7 @@ export function ProviderSection({
           selectedModel={selectedOpenAIModel}
           onModelChange={onOpenAIModelChange}
           fetchModels={fetchOpenAIModels}
-          defaultModel="gpt-4o"
+          defaultModel="gpt-5.2"
         />
       )}
     </>

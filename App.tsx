@@ -1253,9 +1253,17 @@ export default function App(): React.JSX.Element {
       const currentState = pipelineRef.current?.getState();
       
       // 1. Reset to idle if currently speaking (handles TTS started outside pipeline)
-      // This prevents race conditions with the pipeline's own state management
+      // CRITICAL: Double-check state right before setting idle to avoid race condition
+      // If user clicked mic between the check above and here, state might be 'listening' now
+      // In that case, we must NOT call setIdle() as it would stop the user's recording
       if (currentState === 'speaking' && pipelineRef.current) {
-        pipelineRef.current.setIdle();
+        // Re-check state immediately before setting idle to prevent race condition
+        // where user clicks mic right after TTS finishes but before this handler runs
+        const stateNow = pipelineRef.current.getState();
+        if (stateNow === 'speaking') {
+          pipelineRef.current.setIdle();
+        }
+        // If state is now 'listening', do nothing - user has already started recording
       }
       
       // 2. Auto-start listening in driving mode if question detected
@@ -1263,7 +1271,8 @@ export default function App(): React.JSX.Element {
         delayTimer = setTimeout(() => {
           // Only start if pipeline is idle (not already processing a new utterance)
           // Double-check state after delay to avoid race conditions
-          if (pipelineRef.current?.getState() === 'idle') {
+          const stateAfterDelay = pipelineRef.current?.getState();
+          if (stateAfterDelay === 'idle') {
             startAutoListening();
           }
         }, 300);
