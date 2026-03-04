@@ -65,6 +65,7 @@ If you encounter any issues during beta testing, see [Getting Help](#-getting-he
 | 📋 Lists | Manage local lists (shopping, to-do, packing) – fully offline |
 | 🌤️ Weather | Current weather & forecasts via wttr.in / Open-Meteo – no API key |
 | 🗞️ Headlines | Top news headlines from 40+ RSS feeds across 10 countries – no API key |
+| 🎙️ Podcasts | Search, subscribe, and listen to podcasts with automatic position tracking and episode management |
 | 🔍 Web Research | Web search, fact lookup, and information retrieval via Brave Search (API key) or Wikipedia/DuckDuckGo (free) |
 
 ## 💡 Usage Examples
@@ -180,6 +181,19 @@ Lists are stored locally on-device – no internet, no cloud, no account needed.
 | "Read me the German news" | Fetches Tagesschau, reads aloud |
 | "Tech news" | Fetches Heise Online, summarises top tech stories |
 | "Read me the news every morning at 7" | Creates a recurring daily news briefing |
+
+### 🎙️ Podcasts
+
+| You say | What happens |
+|---------|-------------|
+| "Search for podcasts about technology" | Searches iTunes/Apple Podcasts, lists matching podcasts |
+| "Subscribe to [podcast name]" | Subscribes to podcast, downloads RSS feed, stores episodes |
+| "Play the latest episode of [podcast]" | Plays the most recent episode with automatic position tracking |
+| "What podcasts am I subscribed to?" | Lists all subscribed podcasts with new episode counts |
+| "Play episode [number] of [podcast]" | Plays a specific episode by number |
+| "Seek forward 30 seconds" / "Seek back 10 seconds" | Seeks within the current episode |
+| "Pause" / "Resume" | Controls playback |
+| "Mark as listened" | Marks the current episode as listened |
 
 ### 🤖 UI Automation (Learning Accessibility)
 
