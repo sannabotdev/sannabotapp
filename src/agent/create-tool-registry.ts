@@ -14,7 +14,9 @@ import type { LLMProvider } from '../llm/types';
 import { IntentTool } from '../tools/intent-tool';
 import { TTSTool } from '../tools/tts-tool';
 import { HttpTool } from '../tools/http-tool';
-import { QueryTool } from '../tools/query-tool';
+import { QueryContactsTool } from '../tools/query-contacts-tool';
+import { QuerySmsTool } from '../tools/query-sms-tool';
+import { QueryCallLogTool } from '../tools/query-call-log-tool';
 import { DeviceTool } from '../tools/device-tool';
 import { SmsTool } from '../tools/sms-tool';
 import { SchedulerTool } from '../tools/scheduler-tool';
@@ -85,7 +87,9 @@ export async function createToolRegistry(opts: CreateToolRegistryOptions): Promi
     registry.register(new TTSTool());
   }
   registry.register(new HttpTool(opts.credentialManager));
-  registry.register(new QueryTool());
+  registry.register(new QueryContactsTool());
+  registry.register(new QuerySmsTool());
+  registry.register(new QueryCallLogTool());
   registry.register(new DeviceTool());
   registry.register(new DateTimeTool());
   registry.register(new SmsTool());
@@ -108,7 +112,7 @@ export async function createToolRegistry(opts: CreateToolRegistryOptions): Promi
     }
   }
   
-  registry.register(new AppSearchTool());
+  registry.register(new AppSearchTool(opts.provider));
   registry.register(new FileStorageTool());
   registry.register(new BeepTool());
   registry.register(new TimerTool());
