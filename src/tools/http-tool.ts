@@ -7,10 +7,13 @@
  *   - Google Calendar API
  *   - Weather APIs
  *   - Any REST endpoint
+ *   - HTML content simplification and markdown conversion
  */
 import type { Tool, ToolResult } from './types';
 import { errorResult, successResult } from './types';
 import type { CredentialManager } from '../permissions/credential-manager';
+import { DebugLogger } from '../agent/debug-logger';
+import { isHtmlContent, htmlToMarkdown, htmlToText } from './html-simplifier';
 
 export class HttpTool implements Tool {
   private credentialManager: CredentialManager;
@@ -70,6 +73,13 @@ export class HttpTool implements Tool {
           enum: ['json', 'text'],
           description: 'Expected response format (default: json)',
         },
+        simplify_html: {
+          type: 'string',
+          enum: ['text', 'markdown'],
+          description:
+            'Simplify HTML content: "text" extracts plain text (removes all HTML tags), ' +
+            '"markdown" converts HTML to simple markdown. Only used when response_format is "text".',
+        },
       },
       required: ['method', 'url'],
     };
@@ -86,6 +96,7 @@ export class HttpTool implements Tool {
     }
     const bodyRaw = args.body;
     const responseFormat = (args.response_format as string) ?? 'json';
+    const simplifyHtml = args.simplify_html as string | undefined;
 
     if (!url) {
       return errorResult('url parameter is required');
@@ -167,9 +178,24 @@ export class HttpTool implements Tool {
         responseText = rawText;
       }
 
+      // Apply HTML simplification if requested and content is HTML
+      if (simplifyHtml && responseFormat === 'text' && isHtmlContent(responseText)) {
+        try {
+          if (simplifyHtml === 'markdown') {
+            responseText = htmlToMarkdown(responseText);
+          } else if (simplifyHtml === 'text') {
+            responseText = htmlToText(responseText);
+          }
+        } catch (err) {
+          // If simplification fails, use original text
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          DebugLogger.add('info', 'HttpTool', `HTML simplification failed: ${errorMsg}, using original content`);
+        }
+      }
+
       // Truncate very long responses
-      const truncated = responseText.length > 5000
-        ? responseText.slice(0, 5000) + '\n... (truncated, response too long)'
+      const truncated = responseText.length > 100000
+        ? responseText.slice(0, 100000) + '\n... (truncated, response too long)'
         : responseText;
 
       // Build request summary for the debug panel (mask sensitive header values)
@@ -194,4 +220,5 @@ export class HttpTool implements Tool {
       return errorResult(`HTTP request failed: ${message}`);
     }
   }
+
 }

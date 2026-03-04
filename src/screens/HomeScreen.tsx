@@ -23,6 +23,7 @@ import { DebugPanel } from './DebugPanel';
 import { SannaAvatar } from '../components/SannaAvatar';
 import { AvatarMenu } from '../components/AvatarMenu';
 import { MarkdownText } from '../components/MarkdownText';
+import { MiniMediaPlayer } from '../components/MiniMediaPlayer';
 import KeepAwakeModule from '../native/KeepAwakeModule';
 import { t } from '../i18n';
 
@@ -210,7 +211,7 @@ export function HomeScreen({
       />
 
       {/* Header */}
-      <View className="flex-row justify-between items-center px-4 py-3 border-b border-surface-elevated">
+      <View className="flex-row items-center px-4 py-3 border-b border-surface-elevated">
         {/* Left: Avatar (opens menu) + name + status */}
         <View className="flex-row items-center gap-2">
           <TouchableOpacity onPress={() => setAvatarMenuVisible(true)} activeOpacity={0.7}>
@@ -221,6 +222,11 @@ export function HomeScreen({
           <Text className={`text-xs font-medium ${STATE_TEXT_COLORS[pipelineState]}`}>
             {stateLabel[pipelineState]}
           </Text>
+        </View>
+
+        {/* Center: Mini Media Player */}
+        <View className="flex-1 items-center justify-center">
+          <MiniMediaPlayer isDark={isDark} />
         </View>
 
         {/* Right: Driving mode toggle only */}
