@@ -29,6 +29,8 @@ import type { Tool, ToolResult } from '../tools/types';
 import { errorResult, successResult } from '../tools/types';
 import { DebugLogger } from './debug-logger';
 import { AccessibilityHintStore } from './accessibility-hint-store';
+import { AccessibilityTaskMemory } from './accessibility-task-memory';
+import { ActionHistoryTracker } from './accessibility-action-history';
 
 export interface AccessibilitySubAgentConfig {
   provider: LLMProvider;
@@ -70,14 +72,19 @@ export async function runAccessibilitySubAgent(
   // ── Load learned hints for this app ─────────────────────────────────────
   const existingHints = await AccessibilityHintStore.getHints(packageName);
 
+  // ── Initialize Task Memory and Action History ─────────────────────────
+  const taskMemory = new AccessibilityTaskMemory();
+  const actionHistory = new ActionHistoryTracker();
+
   // ── Termination state ────────────────────────────────────────────────────
   // Shared mutable ref used by FinishTaskTool to signal early loop exit.
   const termination: Termination = { done: false, message: '', status: 'success' };
 
   // ── Build tool registry ──────────────────────────────────────────────────
   const toolRegistry = new ToolRegistry();
-  toolRegistry.register(new AccessibilityActionTool());
+  toolRegistry.register(new AccessibilityActionTool(actionHistory));
   toolRegistry.register(new GetAccessibilityTreeTool());
+  toolRegistry.register(new RememberTaskInfoTool(taskMemory));
   toolRegistry.register(new FinishTaskTool(termination));
 
   // ── Learned hints section (only included if hints exist) ─────────────────
@@ -88,11 +95,15 @@ export async function runAccessibilitySubAgent(
     ? `## Personal Memory (Read-only)\n${personalMemory.trim()}\n\n`
     : '';
 
+  // ── Format Memory Sections (dynamically updated) ────────────────────────
+  const taskMemorySection = taskMemory.getFormattedMemory();
+  const actionHistorySection = actionHistory.getFormattedHistory();
+
   // ── System prompt (instructions ONLY – no UI state) ───────────────────────
   const systemPrompt = `You are an Accessibility Sub-Agent for the Sanna AI assistant.
 Your job is to control the Android UI of the app "${packageName}" to achieve a specific goal.
 
-${hintsSection}${memorySection}## Your Goal
+${hintsSection}${memorySection}${taskMemorySection ? taskMemorySection + '\n\n' : ''}${actionHistorySection ? actionHistorySection + '\n\n' : ''}## Your Goal
 ${goal}
 
 ## Initial Navigation
@@ -103,10 +114,12 @@ ${goal}
 ## Rules of Engagement (CRITICAL)
 1. **Understand State:** Analyze the Accessibility Tree provided in the user messages. Identify clickable, editable, or scrollable nodes necessary for your goal.
 2. **Take Action:** Use the \`accessibility_action\` tool to interact with the UI.
-3. **Refresh State:** After any action that changes the screen (typing, clicking a link, submitting), you MUST use \`get_accessibility_tree\` to see the new UI state.
-4. **Node ID Volatility:** Node IDs (e.g. "node_5") are EPHEMERAL. NEVER reuse a node ID from an older tree. Always use the IDs from the most recently fetched Accessibility Tree.
-5. **App Boundary:** Stay within "${packageName}". Only use the \`home\` action to navigate to the app's home screen when stuck or to reset state – do not use it for any other purpose.
-6. **Confirmation:** Buttons containing "Send", "Senden", "OK", or "Submit" are typically your final action triggers.
+3. **Remember Important Info:** Use \`remember_task_info\` to store UI element locations, successful patterns, or errors to avoid. This helps in future steps.
+4. **Refresh State:** After any action that changes the screen (typing, clicking a link, submitting), you MUST use \`get_accessibility_tree\` to see the new UI state.
+5. **Node ID Volatility:** Node IDs (e.g. "node_5") are EPHEMERAL. NEVER reuse a node ID from an older tree. Always use the IDs from the most recently fetched Accessibility Tree.
+6. **App Boundary:** Stay within "${packageName}". Only use the \`home\` action to navigate to the app's home screen when stuck or to reset state – do not use it for any other purpose.
+7. **Confirmation:** Buttons containing "Send", "Senden", "OK", or "Submit" are typically your final action triggers.
+8. **Error Recovery:** If you see recent action failures in the Action History, try a different approach. Don't repeat the same failed action.
 
 ## Termination & Failure (YOU MUST FOLLOW THIS)
 - **Success:** ONLY call \`finish_task\` AFTER you have:
@@ -114,7 +127,7 @@ ${goal}
   2. Refreshed the tree with \`get_accessibility_tree\` to verify the final state
   3. Confirmed that the goal is actually achieved based on the current UI state
   Then call \`finish_task\` with \`status: "success"\` and describe what was ACTUALLY completed (not what you plan to do). Do NOT take any further actions after that.
-- **Loading/Delay:** If the screen appears to be loading, use \`get_accessibility_tree\` to poll the state again.
+- **Loading/Delay:** If the screen appears to be loading, use \`wait\` action to pause, then use \`get_accessibility_tree\` to poll the state again.
 - **Dead End Recovery:** If you are stuck after 2 state refreshes without meaningful progress, use the \`home\` action to navigate back to the app's home screen, refresh the tree with \`get_accessibility_tree\`, and try a different approach from there.
 - **Failure/Stuck:** If after Dead End Recovery you still cannot make progress, you MUST call \`finish_task\` with \`status: "failed"\` and explain why. This is the correct way to give up – do NOT keep retrying blindly.`;
 
@@ -142,6 +155,46 @@ Please achieve the goal: ${goal}`;
   ];
 
   // ── Run the tool loop ────────────────────────────────────────────────────
+  // Note: We need to update the system prompt dynamically, but the tool loop
+  // doesn't support that. Instead, we'll update memory/history after each iteration
+  // and rebuild the prompt. For now, we'll use a simpler approach: update the
+  // system prompt once before the loop, and memory/history will be available
+  // in the conversation context via tool results.
+  
+  // Update system prompt with current memory/history state before starting
+  const updatedSystemPrompt = `You are an Accessibility Sub-Agent for the Sanna AI assistant.
+Your job is to control the Android UI of the app "${packageName}" to achieve a specific goal.
+
+${hintsSection}${memorySection}${taskMemorySection ? taskMemorySection + '\n\n' : ''}${actionHistorySection ? actionHistorySection + '\n\n' : ''}## Your Goal
+${goal}
+
+## Initial Navigation
+- After the app opens, check if you are on the app's main/home screen.
+- If you are not on the home screen, use the \`home\` action (no node_id needed) to navigate back to the home screen of the app, then call \`get_accessibility_tree\` to see the updated state.
+- Start your task from the app's home screen for consistency.
+
+## Rules of Engagement (CRITICAL)
+1. **Understand State:** Analyze the Accessibility Tree provided in the user messages. Identify clickable, editable, or scrollable nodes necessary for your goal.
+2. **Take Action:** Use the \`accessibility_action\` tool to interact with the UI.
+3. **Remember Important Info:** Use \`remember_task_info\` to store UI element locations, successful patterns, or errors to avoid. This helps in future steps.
+4. **Refresh State:** After any action that changes the screen (typing, clicking a link, submitting), you MUST use \`get_accessibility_tree\` to see the new UI state.
+5. **Node ID Volatility:** Node IDs (e.g. "node_5") are EPHEMERAL. NEVER reuse a node ID from an older tree. Always use the IDs from the most recently fetched Accessibility Tree.
+6. **App Boundary:** Stay within "${packageName}". Only use the \`home\` action to navigate to the app's home screen when stuck or to reset state – do not use it for any other purpose.
+7. **Confirmation:** Buttons containing "Send", "Senden", "OK", or "Submit" are typically your final action triggers.
+8. **Error Recovery:** If you see recent action failures in the Action History, try a different approach. Don't repeat the same failed action.
+
+## Termination & Failure (YOU MUST FOLLOW THIS)
+- **Success:** ONLY call \`finish_task\` AFTER you have:
+  1. Executed all necessary actions via \`accessibility_action\`
+  2. Refreshed the tree with \`get_accessibility_tree\` to verify the final state
+  3. Confirmed that the goal is actually achieved based on the current UI state
+  Then call \`finish_task\` with \`status: "success"\` and describe what was ACTUALLY completed (not what you plan to do). Do NOT take any further actions after that.
+- **Loading/Delay:** If the screen appears to be loading, use \`wait\` action to pause, then use \`get_accessibility_tree\` to poll the state again.
+- **Dead End Recovery:** If you are stuck after 2 state refreshes without meaningful progress, use the \`home\` action to navigate back to the app's home screen, refresh the tree with \`get_accessibility_tree\`, and try a different approach from there.
+- **Failure/Stuck:** If after Dead End Recovery you still cannot make progress, you MUST call \`finish_task\` with \`status: "failed"\` and explain why. This is the correct way to give up – do NOT keep retrying blindly.`;
+
+  messages[0] = { role: 'system', content: updatedSystemPrompt };
+
   const result = await runToolLoop(
     {
       provider,
@@ -149,6 +202,10 @@ Please achieve the goal: ${goal}`;
       maxIterations: maxIterations ?? 12,
       shouldExit: () => termination.done,
       earlyExitContent: () => termination.message,
+      onIterationComplete: () => {
+        taskMemory.incrementStep();
+        actionHistory.incrementStep();
+      },
     },
     messages,
   );
@@ -197,8 +254,15 @@ const NODE_REQUIRED_ACTIONS = [
  * Global actions (no node_id): home, back, recents, screenshot,
  *   clipboard_set, clipboard_get, paste.
  * Gesture actions (require coordinates): swipe.
+ * Timing action: wait (requires duration).
  */
 class AccessibilityActionTool implements Tool {
+  private actionHistory?: ActionHistoryTracker;
+
+  constructor(actionHistory?: ActionHistoryTracker) {
+    this.actionHistory = actionHistory;
+  }
+
   name(): string {
     return 'accessibility_action';
   }
@@ -209,6 +273,7 @@ class AccessibilityActionTool implements Tool {
       'Use node IDs from the accessibility tree for node-based actions (click, type, scroll, etc.). ' +
       'Use global actions (home, back, screenshot, clipboard_*) without a node_id. ' +
       'Use "swipe" with x1/y1/x2/y2 coordinates for swipe gestures. ' +
+      'Use "wait" with duration parameter to pause execution (useful for loading screens). ' +
       'Use "home" (no node_id) to navigate to the app\'s home screen when stuck.'
     );
   }
@@ -237,7 +302,9 @@ class AccessibilityActionTool implements Tool {
             '"clipboard_get" – read current clipboard content; ' +
             '"paste" – paste clipboard into the currently focused field. ' +
             'Gesture action: ' +
-            '"swipe" – swipe from (x1,y1) to (x2,y2), requires x1/y1/x2/y2 params.',
+            '"swipe" – swipe from (x1,y1) to (x2,y2), requires x1/y1/x2/y2 params. ' +
+            'Timing action: ' +
+            '"wait" – wait for a specified duration in milliseconds (requires duration param).',
           enum: [
             'click',
             'long_click',
@@ -253,6 +320,7 @@ class AccessibilityActionTool implements Tool {
             'clipboard_get',
             'paste',
             'swipe',
+            'wait',
           ],
         },
         node_id: {
@@ -286,7 +354,8 @@ class AccessibilityActionTool implements Tool {
         duration: {
           type: 'number',
           description:
-            'Swipe gesture duration in milliseconds. Optional for "swipe" (default: 300).',
+            'Swipe gesture duration in milliseconds. Optional for "swipe" (default: 300). ' +
+            'Wait duration in milliseconds. Required for "wait" (0-10000ms, default: 1000).',
         },
       },
       required: ['action'],
@@ -300,6 +369,23 @@ class AccessibilityActionTool implements Tool {
 
     if (!action) {
       return errorResult('action parameter is required');
+    }
+
+    // ── Wait: timing action ─────────────────────────────────────────────────
+    if (action === 'wait') {
+      const duration = (args.duration as number | undefined) ?? 1000;
+
+      if (duration < 0 || duration > 10000) {
+        return errorResult('"duration" must be between 0 and 10000 milliseconds');
+      }
+
+      try {
+        await new Promise<void>(resolve => setTimeout(() => resolve(), duration));
+        return successResult(`Waited ${duration}ms`);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        return errorResult(`Wait failed: ${errMsg}`);
+      }
     }
 
     // ── Swipe: coordinate-based gesture ──────────────────────────────────────
@@ -316,9 +402,17 @@ class AccessibilityActionTool implements Tool {
 
       try {
         const result = await AccessibilityModule.performSwipe(x1, y1, x2, y2, duration);
+        // Track successful swipe
+        if (this.actionHistory) {
+          this.actionHistory.record(action, null, true);
+        }
         return successResult(result);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
+        // Track failed swipe
+        if (this.actionHistory) {
+          this.actionHistory.record(action, null, false, errMsg);
+        }
         return errorResult(`Swipe gesture failed: ${errMsg}`);
       }
     }
@@ -341,9 +435,17 @@ class AccessibilityActionTool implements Tool {
     // ── Dispatch to native ────────────────────────────────────────────────────
     try {
       const result = await AccessibilityModule.performAction(action, nodeId, text);
+      // Track successful action
+      if (this.actionHistory) {
+        this.actionHistory.record(action, nodeId, true);
+      }
       return successResult(result);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
+      // Track failed action
+      if (this.actionHistory) {
+        this.actionHistory.record(action, nodeId, false, errMsg);
+      }
       return errorResult(`Accessibility action failed: ${errMsg}`);
     }
   }
@@ -419,6 +521,70 @@ class FinishTaskTool implements Tool {
 
     const prefix = status === 'success' ? '✅' : '❌';
     return successResult(`${prefix} finish_task called with status="${status}": ${message}`);
+  }
+}
+
+// ── RememberTaskInfoTool ────────────────────────────────────────────────────
+
+/**
+ * Tool zum Speichern von Task-spezifischen Informationen während der Automation.
+ *
+ * Verwendet für:
+ * - UI-Elemente die gefunden wurden (z.B. "Login button is typically at node_12 in home screen")
+ * - Erfolgreiche Aktionen (z.B. "At step 3, successfully navigated to settings via menu button")
+ * - Fehler die vermieden werden sollten (z.B. "At step 5, clicking node_8 did not work, use node_15 instead")
+ * - Wichtige UI-States (z.B. "App requires 2-factor authentication, code is sent via SMS")
+ */
+class RememberTaskInfoTool implements Tool {
+  private taskMemory: AccessibilityTaskMemory;
+
+  constructor(taskMemory: AccessibilityTaskMemory) {
+    this.taskMemory = taskMemory;
+  }
+
+  name(): string {
+    return 'remember_task_info';
+  }
+
+  description(): string {
+    return (
+      'Remember important information discovered during this task. ' +
+      'Use this to store UI element locations, successful action patterns, errors to avoid, ' +
+      'or important app states. This information will be available in future steps of the same task. ' +
+      'Examples: "Login button is at the top right", "Settings menu requires scrolling down first", ' +
+      '"At step 3, found the search field at node_12". ' +
+      'The step number is automatically added, so you can just describe what you learned.'
+    );
+  }
+
+  parameters(): Record<string, unknown> {
+    return {
+      type: 'object',
+      properties: {
+        information: {
+          type: 'string',
+          description:
+            'Information to remember. Should be concise and actionable. ' +
+            'Examples: "Search button is in the top bar", "Settings requires scrolling to bottom", ' +
+            '"Login form appears after clicking \'Sign In\' button".',
+          minLength: 5,
+          maxLength: 200,
+        },
+      },
+      required: ['information'],
+    };
+  }
+
+  async execute(args: Record<string, unknown>): Promise<ToolResult> {
+    const information = args.information as string | undefined;
+
+    if (!information || !information.trim()) {
+      return errorResult('"information" parameter is required and cannot be empty');
+    }
+
+    this.taskMemory.remember(information);
+
+    return successResult(`Remembered: ${information}`);
   }
 }
 

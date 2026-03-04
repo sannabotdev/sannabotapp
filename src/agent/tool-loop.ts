@@ -22,6 +22,8 @@ export interface ToolLoopConfig {
   shouldExit?: () => boolean;
   /** Content to return when shouldExit() fires. */
   earlyExitContent?: () => string;
+  /** Called after each iteration completes (after tool execution, before next iteration) */
+  onIterationComplete?: () => void;
 }
 
 export interface ToolLoopResult {
@@ -107,6 +109,11 @@ export async function runToolLoop(
       const exitContent = config.earlyExitContent?.() ?? finalContent;
       DebugLogger.logFinalResult(exitContent, i + 1);
       return { content: exitContent, iterations: i + 1, newMessages };
+    }
+
+    // Callback after iteration completes (before next iteration)
+    if (config.onIterationComplete) {
+      config.onIterationComplete();
     }
   }
 
