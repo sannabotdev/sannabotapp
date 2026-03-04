@@ -153,25 +153,17 @@ Examples: "Update podcasts" / "Check for new episodes" / "Refresh [podcast name]
 
 Examples: "Play [episode title]" / "Play latest episode of [podcast name]" / "Play episode [number] of [podcast]"
 
-**CRITICAL: You MUST use `play_audio` tool, NOT `intent` tool. Using `intent` will open the URL in a browser instead of playing audio.**
-
 1. `file_storage` → `read` filename: "podcasts", type: "text"
 2. Find podcast:
    - If podcast name specified: find by name (case-insensitive, partial match)
    - If episode title specified: search all podcasts for the episode
-3. **IMPORTANT: Before playing, always update the RSS feed for the podcast:**
-   - `http` → GET RSS feed URL with `response_format: "text"` to get latest feed
-   - Parse XML: extract new `<item>` episodes
-   - Compare with existing episodes (by `guid` or `url`)
-   - Update episode list with any new episodes
-   - `file_storage` → `write` filename: "podcasts", content: updated JSON, type: "text"
-4. Find episode in updated data:
+3. Find episode in updated data:
    - If episode title specified: search by title (case-insensitive, partial match)
    - If "latest" or "newest": find most recent episode (by `pub_date`)
    - If episode number: count episodes and select by index
    - If podcast name + episode: find podcast first, then episode
-5. Get episode URL from the episode data
-6. **Use `play_audio` tool with action `"play"` and the episode URL:**
+4. Get episode URL from the episode data
+5. **Use `play_audio` tool with action `"play"` and the episode URL:**
    ```json
    {
      "tool": "play_audio",
@@ -181,7 +173,7 @@ Examples: "Play [episode title]" / "Play latest episode of [podcast name]" / "Pl
      }
    }
    ```
-7. Confirm: "Playing '[Episode Title]' from '[Podcast Name]'."
+6. Confirm: "Playing '[Episode Title]' from '[Podcast Name]'."
 
 **Note:** The `play_audio` tool automatically restores the last saved position if the episode was previously played. Do NOT use `intent` tool for podcast episodes.
 

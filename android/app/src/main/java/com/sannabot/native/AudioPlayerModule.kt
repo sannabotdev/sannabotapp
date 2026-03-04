@@ -1,5 +1,10 @@
 package com.sannabot.native
 
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -31,6 +36,35 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
     private var exoPlayer: ExoPlayer? = null
     private var currentUrl: String? = null
     private var playerListener: Player.Listener? = null
+    
+    // Audio Focus
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private val audioManager: AudioManager
+        get() = reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        // ExoPlayer must be accessed on the main thread
+        CoroutineScope(Dispatchers.Main).launch {
+            when (focusChange) {
+                AudioManager.AUDIOFOCUS_GAIN -> {
+                    // Audio focus regained - resume playback
+                    Log.d(TAG, "Audio focus gained - resuming playback")
+                    exoPlayer?.play()
+                }
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                    // Temporary loss (e.g., notification, phone call, microphone) - pause
+                    Log.d(TAG, "Audio focus lost temporarily - pausing playback")
+                    exoPlayer?.pause()
+                }
+                AudioManager.AUDIOFOCUS_LOSS -> {
+                    // Permanent loss (e.g., another app took focus) - stop
+                    Log.d(TAG, "Audio focus lost permanently - stopping playback")
+                    stopCurrent()
+                }
+            }
+        }
+    }
 
     override fun getName(): String = "AudioPlayerModule"
 
@@ -51,6 +85,15 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
                 // Stop current playback if any
                 stopCurrent()
 
+                // Request audio focus before playing
+                val focusResult = requestAudioFocus()
+                if (focusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                    val errorMsg = "Could not gain audio focus"
+                    Log.e(TAG, errorMsg)
+                    promise.reject("AUDIO_ERROR", errorMsg)
+                    return@launch
+                }
+
                 currentUrl = url
                 Log.d(TAG, "Playing audio from URL: $url")
 
@@ -60,6 +103,7 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
                     Log.d(TAG, "URL scheme: ${testUrl.protocol}, host: ${testUrl.host}")
                 } catch (e: Exception) {
                     Log.e(TAG, "Invalid URL: $url", e)
+                    abandonAudioFocus()
                     promise.reject("AUDIO_ERROR", "Invalid URL: $url")
                     return@launch
                 }
@@ -142,6 +186,7 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
                     addListener(playerListener!!)
                 }
             } catch (e: Exception) {
+                abandonAudioFocus()
                 val errorMsg = "Failed to play audio: ${e.message}"
                 Log.e(TAG, errorMsg, e)
                 sendEvent("audio_error", Arguments.createMap().apply {
@@ -302,6 +347,7 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
 
     private fun stopCurrent() {
         try {
+            abandonAudioFocus()
             playerListener?.let { listener ->
                 exoPlayer?.removeListener(listener)
             }
@@ -321,6 +367,7 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
 
     private fun cleanup() {
         try {
+            abandonAudioFocus()
             playerListener?.let { listener ->
                 exoPlayer?.removeListener(listener)
             }
@@ -331,6 +378,55 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
         exoPlayer = null
         playerListener = null
         currentUrl = null
+    }
+
+    /**
+     * Request audio focus for playback.
+     * Returns AUDIOFOCUS_REQUEST_GRANTED if successful.
+     */
+    private fun requestAudioFocus(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Android 8.0+ (API 26+)
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(audioAttributes)
+                .setAcceptsDelayedFocusGain(true)
+                .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                .build()
+            
+            audioManager.requestAudioFocus(audioFocusRequest!!)
+        } else {
+            // Android 7.1 and below
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+        }
+    }
+
+    /**
+     * Abandon audio focus when playback stops.
+     */
+    private fun abandonAudioFocus() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let {
+                    audioManager.abandonAudioFocusRequest(it)
+                    audioFocusRequest = null
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.abandonAudioFocus(audioFocusChangeListener)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error abandoning audio focus", e)
+        }
     }
 
     private fun sendEvent(eventName: String, params: WritableMap?) {
