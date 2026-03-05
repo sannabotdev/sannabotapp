@@ -11,8 +11,7 @@
  *   4. Writes the message to the conversation
  */
 import { formulateResponse } from './system-prompt';
-import { ClaudeProvider } from '../llm/claude-provider';
-import { OpenAIProvider } from '../llm/openai-provider';
+import { createLLMProvider } from '../llm/llm-registry';
 import type { LLMProvider } from '../llm/types';
 import { DebugLogger } from './debug-logger';
 import { DebugFileLogger } from './debug-file-logger';
@@ -109,10 +108,11 @@ export default async function timerHeadlessTask(
     }
 
     // 3. Create LLM provider
-    provider =
-      config.provider === 'claude'
-        ? new ClaudeProvider(config.apiKey, config.model)
-        : new OpenAIProvider(config.apiKey, config.model);
+    provider = createLLMProvider({
+      provider: config.provider,
+      apiKey: config.apiKey,
+      model: config.model || '',
+    });
 
     DebugLogger.add('info', TAG, `Provider: ${config.provider} (${config.model || 'default'})`);
 

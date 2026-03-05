@@ -39,7 +39,7 @@ import RNFS from 'react-native-fs';
 import type { PipelineState } from './src/agent/conversation-pipeline';
 import { createToolRegistry } from './src/agent/create-tool-registry';
 import { runSkillTest } from './src/agent/skill-test';
-import { ClaudeProvider } from './src/llm/claude-provider';
+import { createLLMProvider } from './src/llm/llm-registry';
 import { OpenAIProvider } from './src/llm/openai-provider';
 import { TTSService } from './src/audio/tts-service';
 import { STTService } from './src/audio/stt-service';
@@ -758,12 +758,12 @@ export default function App(): React.JSX.Element {
           : selectedProvider === 'custom'
           ? secureKeys.customModelName
           : secureKeys.selectedOpenAIModel;
-      const provider =
-        selectedProvider === 'claude'
-          ? new ClaudeProvider(apiKey, selectedModel)
-          : selectedProvider === 'custom'
-          ? new OpenAIProvider(apiKey, selectedModel, secureKeys.customModelUrl)
-          : new OpenAIProvider(apiKey, selectedModel);
+      const provider = createLLMProvider({
+        provider: selectedProvider === 'claude' ? 'claude' : selectedProvider === 'custom' ? 'custom' : 'openai',
+        apiKey,
+        model: selectedModel,
+        customBaseUrl: selectedProvider === 'custom' ? secureKeys.customModelUrl : undefined,
+      });
     }
 
     // Sync notification rules → native allowlist (ensures native side is in sync
@@ -1159,12 +1159,12 @@ export default function App(): React.JSX.Element {
         ? settings.customModelName
         : settings.selectedOpenAIModel;
 
-    const provider =
-      selectedProvider === 'claude'
-        ? new ClaudeProvider(apiKey, selectedModel)
-        : selectedProvider === 'custom'
-        ? new OpenAIProvider(apiKey, selectedModel, customModelUrl)
-        : new OpenAIProvider(apiKey, selectedModel);
+    const provider = createLLMProvider({
+      provider: selectedProvider === 'claude' ? 'claude' : selectedProvider === 'custom' ? 'custom' : 'openai',
+      apiKey,
+      model: selectedModel,
+      customBaseUrl: selectedProvider === 'custom' ? customModelUrl : undefined,
+    });
 
     // Resolve 'system' → actual device locale before passing to pipeline.
     // The pipeline uses this for both TTS and the system-prompt language rule.
@@ -1836,12 +1836,12 @@ export default function App(): React.JSX.Element {
           ? settings.customModelName
           : settings.selectedOpenAIModel;
 
-      const provider =
-        selectedProvider === 'claude'
-          ? new ClaudeProvider(apiKey, selectedModel)
-          : selectedProvider === 'custom'
-          ? new OpenAIProvider(apiKey, selectedModel, settings.customModelUrl)
-          : new OpenAIProvider(apiKey, selectedModel);
+      const provider = createLLMProvider({
+        provider: selectedProvider === 'claude' ? 'claude' : selectedProvider === 'custom' ? 'custom' : 'openai',
+        apiKey,
+        model: selectedModel,
+        customBaseUrl: selectedProvider === 'custom' ? settings.customModelUrl : undefined,
+      });
 
       const toolRegistry = await createToolRegistry({
         credentialManager: credentialManager.current,
@@ -1872,11 +1872,12 @@ export default function App(): React.JSX.Element {
       return;
     }
 
-    const provider = new OpenAIProvider(
-      customApiKey,
-      customModelName,
-      customModelUrl,
-    );
+    const provider = createLLMProvider({
+      provider: 'custom',
+      apiKey: customApiKey,
+      model: customModelName,
+      customBaseUrl: customModelUrl,
+    });
     const result = await provider.testConnection();
 
     if (result.success) {

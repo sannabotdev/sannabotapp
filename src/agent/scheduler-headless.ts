@@ -17,8 +17,7 @@ import { createToolRegistry } from './create-tool-registry';
 import { runToolLoop } from './tool-loop';
 import { buildSystemPrompt, formulateError } from './system-prompt';
 import { SILENT_REPLY_TOKEN } from './tokens';
-import { ClaudeProvider } from '../llm/claude-provider';
-import { OpenAIProvider } from '../llm/openai-provider';
+import { createLLMProvider } from '../llm/llm-registry';
 import type { LLMProvider, Message } from '../llm/types';
 import { DebugLogger } from './debug-logger';
 import { DebugFileLogger } from './debug-file-logger';
@@ -143,9 +142,11 @@ export default async function schedulerHeadlessTask(
     }
 
     // 3. Create LLM provider
-    provider = config.provider === 'claude'
-      ? new ClaudeProvider(config.apiKey, config.model)
-      : new OpenAIProvider(config.apiKey, config.model);
+    provider = createLLMProvider({
+      provider: config.provider,
+      apiKey: config.apiKey,
+      model: config.model || '',
+    });
 
     model = provider.getCurrentModel();
     DebugLogger.add('info', TAG, `Provider: ${config.provider} (${model})`);
