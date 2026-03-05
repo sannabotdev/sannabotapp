@@ -7,6 +7,7 @@ interface ApiKeyInputProps {
   onChange: (v: string) => void;
   placeholder: string;
   visible: boolean;
+  secureTextEntry?: boolean;
 }
 
 export function ApiKeyInput({
@@ -15,21 +16,25 @@ export function ApiKeyInput({
   onChange,
   placeholder,
   visible,
+  secureTextEntry = true,
 }: ApiKeyInputProps): React.JSX.Element | null {
   if (!visible) return null;
   return (
     <View
       className="p-4 gap-2 border-t border-surface-tertiary"
-      style={{ borderTopWidth: StyleSheet.hairlineWidth }}>
+      style={{ borderTopWidth: StyleSheet.hairlineWidth }}
+    >
       <Text className="text-label-secondary text-xs font-medium">{label}</Text>
       <TextInput
         className="bg-surface-tertiary rounded-lg px-3 py-2.5 text-label-primary text-sm"
-        style={{ fontFamily: Platform.OS === 'android' ? 'monospace' : 'Menlo' }}
+        style={{
+          fontFamily: Platform.OS === 'android' ? 'monospace' : 'Menlo',
+        }}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor="#636366"
-        secureTextEntry={true}
+        secureTextEntry={secureTextEntry}
         autoCapitalize="none"
         autoCorrect={false}
       />

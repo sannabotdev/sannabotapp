@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SettingRow } from './SettingRow';
 import { t } from '../../../i18n';
 
@@ -8,8 +16,12 @@ interface ModelPickerProps {
   apiKey: string;
   selectedModel: string;
   onModelChange: (model: string) => void;
-  fetchModels: (apiKey: string) => Promise<string[]>;
+  fetchModels:
+    | ((apiKey: string) => Promise<string[]>)
+    | ((apiKey: string, baseUrl: string) => Promise<string[]>);
   defaultModel: string;
+  allowManualInput?: boolean;
+  baseUrl?: string;
 }
 
 export function ModelPicker({
@@ -19,10 +31,13 @@ export function ModelPicker({
   onModelChange,
   fetchModels,
   defaultModel,
+  allowManualInput = false,
+  baseUrl,
 }: ModelPickerProps): React.JSX.Element {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [models, setModels] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [manualInput, setManualInput] = useState('');
 
   useEffect(() => {
     if (!apiKey) {
@@ -30,39 +45,69 @@ export function ModelPicker({
       return;
     }
     setLoading(true);
-    fetchModels(apiKey)
-      .then(fetchedModels => {
+
+    const doFetch = async () => {
+      try {
+        let fetchedModels: string[];
+        if (baseUrl && fetchModels.length === 2) {
+          fetchedModels = await (
+            fetchModels as (
+              apiKey: string,
+              baseUrl: string,
+            ) => Promise<string[]>
+          )(apiKey, baseUrl);
+        } else {
+          fetchedModels = await (
+            fetchModels as (apiKey: string) => Promise<string[]>
+          )(apiKey);
+        }
         setModels(fetchedModels);
-      })
-      .catch(() => {
+      } catch {
         setModels([]);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
-  }, [apiKey, fetchModels]);
+      }
+    };
+
+    doFetch();
+  }, [apiKey, fetchModels, baseUrl]);
+
+  useEffect(() => {
+    setManualInput(selectedModel || defaultModel);
+  }, [selectedModel, defaultModel]);
 
   const displayModel = selectedModel || defaultModel;
+
+  const handleManualSubmit = () => {
+    if (manualInput.trim()) {
+      onModelChange(manualInput.trim());
+      setPickerVisible(false);
+    }
+  };
 
   return (
     <>
       <SettingRow label={label}>
-          <TouchableOpacity
-            onPress={() => setPickerVisible(true)}
+        <TouchableOpacity
+          onPress={() => setPickerVisible(true)}
           className="bg-surface-tertiary rounded-lg px-3 py-2 min-w-[140px]"
-          disabled={loading}>
+          disabled={loading}
+        >
           {loading ? (
             <ActivityIndicator size="small" color="#8E8E93" />
           ) : (
-            <Text className="text-label-primary text-sm text-right" numberOfLines={1}>
+            <Text
+              className="text-label-primary text-sm text-right"
+              numberOfLines={1}
+            >
               {displayModel}
             </Text>
           )}
-          </TouchableOpacity>
+        </TouchableOpacity>
       </SettingRow>
 
-          <Modal
-            visible={pickerVisible}
+      <Modal
+        visible={pickerVisible}
         transparent
             animationType="fade"
             onRequestClose={() => setPickerVisible(false)}>
@@ -88,26 +133,55 @@ export function ModelPicker({
                 </Text>
               </View>
             ) : (
-                <ScrollView className="max-h-[400px]">
-                {models.map(model => (
+              <>
+                {models.length > 0 && (
+                  <ScrollView className="max-h-[300px]">
+                    {models.map(model => (
+                      <TouchableOpacity
+                        key={model}
+                        className="p-4 border-b border-surface-tertiary"
+                        onPress={() => {
+                          onModelChange(model);
+                          setPickerVisible(false);
+                        }}
+                      >
+                        <Text
+                          className={`text-[15px] ${
+                            selectedModel === model
+                              ? 'text-accent font-semibold'
+                              : 'text-label-primary'
+                          }`}
+                        >
+                          {model}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+                {allowManualInput && (
+                  <View className="p-4 border-t border-surface-tertiary">
+                    <Text className="text-label-secondary text-sm mb-2">
+                      {t('settings.provider.manualModelInput')}
+                    </Text>
+                    <TextInput
+                      className="bg-surface-tertiary text-label-primary rounded-lg px-3 py-2 mb-2"
+                      value={manualInput}
+                      onChangeText={setManualInput}
+                      placeholder="model-name"
+                      placeholderTextColor="#8E8E93"
+                    />
                     <TouchableOpacity
-                      key={model}
-                      className="p-4 border-b border-surface-tertiary"
-                      onPress={() => {
-                        onModelChange(model);
-                        setPickerVisible(false);
-                      }}>
-                      <Text
-                        className={`text-[15px] ${
-                        selectedModel === model
-                          ? 'text-accent font-semibold'
-                          : 'text-label-primary'
-                      }`}>
-                        {model}
+                      className="bg-accent rounded-lg px-4 py-2"
+                      onPress={handleManualSubmit}
+                      disabled={!manualInput.trim()}
+                    >
+                      <Text className="text-label-primary text-sm font-medium text-center">
+                        OK
                       </Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                  </View>
+                )}
+              </>
             )}
               </TouchableOpacity>
             </TouchableOpacity>

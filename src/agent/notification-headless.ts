@@ -18,8 +18,7 @@
 import { SkillLoader, registerSkillContent } from './skill-loader';
 import { runNotificationSubAgent } from './notification-sub-agent';
 import type { NotificationPayload } from './notification-sub-agent';
-import { ClaudeProvider } from '../llm/claude-provider';
-import { OpenAIProvider } from '../llm/openai-provider';
+import { createLLMProvider } from '../llm/llm-registry';
 import type { LLMProvider } from '../llm/types';
 import { DebugLogger } from './debug-logger';
 import { DebugFileLogger } from './debug-file-logger';
@@ -165,9 +164,11 @@ export default async function notificationHeadlessTask(
   }
 
   // 3. Build LLM provider
-  const provider: LLMProvider = config.provider === 'claude'
-    ? new ClaudeProvider(config.apiKey, config.model)
-    : new OpenAIProvider(config.apiKey, config.model);
+  const provider: LLMProvider = createLLMProvider({
+    provider: config.provider,
+    apiKey: config.apiKey,
+    model: config.model || '',
+  });
 
   const model = provider.getCurrentModel();
   DebugLogger.add('info', TAG, `Provider: ${config.provider} (${model})`);

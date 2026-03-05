@@ -27,8 +27,7 @@
  *   11. Bring SannaBot back to foreground
  *   12. Append result to ConversationStore pending queue
  */
-import { ClaudeProvider } from '../llm/claude-provider';
-import { OpenAIProvider } from '../llm/openai-provider';
+import { createLLMProvider } from '../llm/llm-registry';
 import type { LLMProvider, Message } from '../llm/types';
 import IntentModule from '../native/IntentModule';
 import AccessibilityModule from '../native/AccessibilityModule';
@@ -422,9 +421,11 @@ export default async function accessibilityHeadlessTask(
   }
 
   // 3. Build LLM provider  (all error paths below this point use failFormatted)
-  const provider: LLMProvider = config.provider === 'claude'
-    ? new ClaudeProvider(config.apiKey, config.model)
-    : new OpenAIProvider(config.apiKey, config.model);
+  const provider: LLMProvider = createLLMProvider({
+    provider: config.provider,
+    apiKey: config.apiKey,
+    model: config.model || '',
+  });
 
   const drivingMode = config.drivingMode ?? false;
   const language = config.language ?? 'en-US';

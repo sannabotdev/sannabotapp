@@ -3,13 +3,25 @@
  * Main App entry point: wires all services together
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, BackHandler, LogBox, Platform, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  AppState,
+  BackHandler,
+  LogBox,
+  Platform,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { vars } from 'nativewind';
-
 
 // Suppress LogBox warning banner – it overlays the input row in dev mode
 LogBox.ignoreAllLogs(true);
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 // i18n
 import { t, setLocale } from './src/i18n';
@@ -27,7 +39,7 @@ import RNFS from 'react-native-fs';
 import type { PipelineState } from './src/agent/conversation-pipeline';
 import { createToolRegistry } from './src/agent/create-tool-registry';
 import { runSkillTest } from './src/agent/skill-test';
-import { ClaudeProvider } from './src/llm/claude-provider';
+import { createLLMProvider } from './src/llm/llm-registry';
 import { OpenAIProvider } from './src/llm/openai-provider';
 import { TTSService } from './src/audio/tts-service';
 import { STTService } from './src/audio/stt-service';
@@ -39,7 +51,9 @@ import { PermissionManager } from './src/permissions/permission-manager';
 import { SpotifyAuth } from './src/permissions/spotify-auth';
 import { GoogleAuth } from './src/permissions/google-auth';
 import { SlackAuth } from './src/permissions/slack-auth';
-import NotificationListenerModule, { createNotificationEventEmitter } from './src/native/NotificationListenerModule';
+import NotificationListenerModule, {
+  createNotificationEventEmitter,
+} from './src/native/NotificationListenerModule';
 
 // Scheduler config persistence
 import SchedulerModule from './src/native/SchedulerModule';
@@ -67,12 +81,15 @@ import { SannaAvatar } from './src/components/SannaAvatar';
 
 // Local dev config (gitignored – never shipped to production)
 // If the file is missing (e.g. in CI/Production), empty defaults are used.
-let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai'; openAIModel?: string; claudeModel?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string; braveSearchApiKey: string; debugLogEnabled?: boolean; debugFileEnabled?: boolean } = {
+let LOCAL_CONFIG: { openAIApiKey: string; claudeApiKey: string; selectedProvider: 'claude' | 'openai' | 'custom'; openAIModel?: string; claudeModel?: string; customApiKey?: string;customModelUrl?: string;customModelName?: string; spotifyClientId: string; googleWebClientId: string; picovoiceAccessKey: string; slackClientId: string; slackRedirectUrl: string; googleMapsApiKey: string; braveSearchApiKey: string; debugLogEnabled?: boolean; debugFileEnabled?: boolean } = {
   openAIApiKey: '',
   claudeApiKey: '',
   selectedProvider: 'openai',
   openAIModel: '',
   claudeModel: '',
+  customApiKey: '',
+  customModelUrl: '',
+  customModelName: '',
   spotifyClientId: '',
   googleWebClientId: '',
   picovoiceAccessKey: '',
@@ -126,7 +143,6 @@ const LIGHT_THEME = vars({
 // - Preferences (provider, skills, STT, etc.) → single JSON blob in Keychain
 // - Secure keys (API keys, wake-word key, models) → individual Keychain entries
 
-
 /** Resolve system locale to BCP-47 format (e.g. 'de-AT', 'en-US') */
 function getSystemLocale(): string {
   if (Platform.OS === 'android') {
@@ -154,7 +170,7 @@ function containsQuestion(text: string): boolean {
 
 /** App preferences (stored as JSON blob in Keychain) */
 interface AppPreferences {
-  selectedProvider: 'claude' | 'openai';
+  selectedProvider: 'claude' | 'openai' | 'custom';
   wakeWordEnabled: boolean;
   enabledSkillNames: string[];
   drivingMode: boolean;
@@ -186,6 +202,9 @@ interface AppSettings extends AppPreferences {
   wakeWordKey: string;
   selectedOpenAIModel: string;
   selectedClaudeModel: string;
+  customApiKey: string;
+  customModelUrl: string;
+  customModelName: string;
   googleWebClientId: string;
   spotifyClientId: string;
   slackClientId: string;
@@ -218,6 +237,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   wakeWordKey: '',
   selectedOpenAIModel: LOCAL_CONFIG.openAIModel || 'gpt-5.2',
   selectedClaudeModel: LOCAL_CONFIG.claudeModel || 'claude-sonnet-4-6',
+  customApiKey: LOCAL_CONFIG.customApiKey || '',
+  customModelUrl: LOCAL_CONFIG.customModelUrl || '',
+  customModelName: LOCAL_CONFIG.customModelName || '',
   googleWebClientId: '',
   spotifyClientId: '',
   slackClientId: '',
@@ -232,6 +254,9 @@ const SECURE_KEY_IDS = {
   wakeWordKey: 'wakeword_picovoice',
   openAIModel: 'llm_openai_model',
   claudeModel: 'llm_claude_model',
+  customApiKey: 'llm_custom',
+  customModelUrl: 'llm_custom_url',
+  customModelName: 'llm_custom_model',
   preferences: 'app_preferences',
   googleWebClientId: 'svc_google_web_client_id',
   spotifyClientId: 'svc_spotify_client_id',
@@ -244,14 +269,22 @@ const SECURE_KEY_IDS = {
 const DARK_MODE_STORAGE_KEY = 'sanna_dark_mode';
 
 /** Load preferences from Keychain. Returns isFirstRun=true when no saved prefs exist. */
-async function loadPreferences(store: TokenStore): Promise<{ prefs: AppPreferences; isFirstRun: boolean }> {
+async function loadPreferences(
+  store: TokenStore,
+): Promise<{ prefs: AppPreferences; isFirstRun: boolean }> {
   try {
     const json = await store.getApiKey(SECURE_KEY_IDS.preferences);
     if (json) {
       const saved = JSON.parse(json) as Partial<AppPreferences>;
       const merged: AppPreferences = { ...DEFAULT_PREFS, ...saved };
-      const llmContextMaxMessages = Math.min(200, Math.max(10, merged.llmContextMaxMessages ?? 20));
-      const conversationHistoryMaxMessages = Math.min(200, Math.max(50, merged.conversationHistoryMaxMessages ?? 50));
+      const llmContextMaxMessages = Math.min(
+        200,
+        Math.max(10, merged.llmContextMaxMessages ?? 20),
+      );
+      const conversationHistoryMaxMessages = Math.min(
+        200,
+        Math.max(50, merged.conversationHistoryMaxMessages ?? 50),
+      );
       return {
         prefs: {
           ...merged,
@@ -268,7 +301,10 @@ async function loadPreferences(store: TokenStore): Promise<{ prefs: AppPreferenc
 }
 
 /** Persist preferences to Keychain (survives app reinstallation) */
-async function savePreferences(store: TokenStore, s: AppPreferences): Promise<void> {
+async function savePreferences(
+  store: TokenStore,
+  s: AppPreferences,
+): Promise<void> {
   try {
     const toSave: AppPreferences = {
       selectedProvider: s.selectedProvider,
@@ -299,18 +335,24 @@ async function loadSecureKeys(store: TokenStore): Promise<{
   wakeWordKey: string;
   selectedOpenAIModel: string;
   selectedClaudeModel: string;
+  customApiKey: string;
+  customModelUrl: string;
+  customModelName: string;
   googleWebClientId: string;
   spotifyClientId: string;
   slackClientId: string;
   googleMapsApiKey: string;
   braveSearchApiKey: string;
 }> {
-  const [claude, openai, wakeWord, openAIModel, claudeModel, googleWebClientId, spotifyClientId, slackClientId, googleMapsApiKey, braveSearchApiKey] = await Promise.all([
+  const [claude, openai, wakeWord, openAIModel, claudeModel, customApiKey, customModelUrl, customModelName, googleWebClientId, spotifyClientId, slackClientId, googleMapsApiKey, braveSearchApiKey] = await Promise.all([
     store.getApiKey(SECURE_KEY_IDS.claudeApiKey).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.openAIApiKey).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.wakeWordKey).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.openAIModel).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.claudeModel).catch(() => null),
+    store.getApiKey(SECURE_KEY_IDS.customApiKey).catch(() => null),
+    store.getApiKey(SECURE_KEY_IDS.customModelUrl).catch(() => null),
+    store.getApiKey(SECURE_KEY_IDS.customModelName).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.googleWebClientId).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.spotifyClientId).catch(() => null),
     store.getApiKey(SECURE_KEY_IDS.slackClientId).catch(() => null),
@@ -322,7 +364,11 @@ async function loadSecureKeys(store: TokenStore): Promise<{
     openAIApiKey: openai ?? '',
     wakeWordKey: wakeWord ?? '',
     selectedOpenAIModel: openAIModel || LOCAL_CONFIG.openAIModel || 'gpt-4o',
-    selectedClaudeModel: claudeModel || LOCAL_CONFIG.claudeModel || 'claude-3-5-sonnet-20241022',
+    selectedClaudeModel:
+      claudeModel || LOCAL_CONFIG.claudeModel || 'claude-3-5-sonnet-20241022',
+    customApiKey: customApiKey ?? '',
+    customModelUrl: customModelUrl ?? '',
+    customModelName: customModelName ?? '',
     googleWebClientId: googleWebClientId ?? '',
     spotifyClientId: spotifyClientId ?? '',
     slackClientId: slackClientId ?? '',
@@ -344,64 +390,108 @@ async function saveSecureKey(
   }
 }
 
-
 /**
  * Seed keys from local.config.ts into Keychain on first run.
  * Only writes if the key slot is currently empty.
  */
 async function seedLocalConfigKeys(store: TokenStore): Promise<void> {
   if (LOCAL_CONFIG.claudeApiKey) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.claudeApiKey).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.claudeApiKey)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.claudeApiKey, LOCAL_CONFIG.claudeApiKey);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.claudeApiKey,
+        LOCAL_CONFIG.claudeApiKey,
+      );
     }
   }
   if (LOCAL_CONFIG.openAIApiKey) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.openAIApiKey).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.openAIApiKey)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.openAIApiKey, LOCAL_CONFIG.openAIApiKey);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.openAIApiKey,
+        LOCAL_CONFIG.openAIApiKey,
+      );
     }
   }
   if (LOCAL_CONFIG.picovoiceAccessKey) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.wakeWordKey).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.wakeWordKey)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.wakeWordKey, LOCAL_CONFIG.picovoiceAccessKey);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.wakeWordKey,
+        LOCAL_CONFIG.picovoiceAccessKey,
+      );
     }
   }
   if (LOCAL_CONFIG.openAIModel) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.openAIModel).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.openAIModel)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.openAIModel, LOCAL_CONFIG.openAIModel);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.openAIModel,
+        LOCAL_CONFIG.openAIModel,
+      );
     }
   }
   if (LOCAL_CONFIG.claudeModel) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.claudeModel).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.claudeModel)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.claudeModel, LOCAL_CONFIG.claudeModel);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.claudeModel,
+        LOCAL_CONFIG.claudeModel,
+      );
     }
   }
   if (LOCAL_CONFIG.googleWebClientId) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.googleWebClientId).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.googleWebClientId)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.googleWebClientId, LOCAL_CONFIG.googleWebClientId);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.googleWebClientId,
+        LOCAL_CONFIG.googleWebClientId,
+      );
     }
   }
   if (LOCAL_CONFIG.spotifyClientId) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.spotifyClientId).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.spotifyClientId)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.spotifyClientId, LOCAL_CONFIG.spotifyClientId);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.spotifyClientId,
+        LOCAL_CONFIG.spotifyClientId,
+      );
     }
   }
   if (LOCAL_CONFIG.slackClientId) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.slackClientId).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.slackClientId)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.slackClientId, LOCAL_CONFIG.slackClientId);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.slackClientId,
+        LOCAL_CONFIG.slackClientId,
+      );
     }
   }
   if (LOCAL_CONFIG.googleMapsApiKey) {
-    const existing = await store.getApiKey(SECURE_KEY_IDS.googleMapsApiKey).catch(() => null);
+    const existing = await store
+      .getApiKey(SECURE_KEY_IDS.googleMapsApiKey)
+      .catch(() => null);
     if (!existing) {
-      await store.saveApiKey(SECURE_KEY_IDS.googleMapsApiKey, LOCAL_CONFIG.googleMapsApiKey);
+      await store.saveApiKey(
+        SECURE_KEY_IDS.googleMapsApiKey,
+        LOCAL_CONFIG.googleMapsApiKey,
+      );
     }
   }
   if (LOCAL_CONFIG.braveSearchApiKey) {
@@ -431,7 +521,8 @@ function LockScreenInner({
   return (
     <View
       className="flex-1 bg-surface items-center justify-center px-8"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
       <View style={{ marginBottom: 16 }}>
         <SannaAvatar size={96} />
       </View>
@@ -449,8 +540,11 @@ function LockScreenInner({
       <TouchableOpacity
         className="bg-accent px-8 py-4 rounded-2xl"
         onPress={onUnlock}
-        activeOpacity={0.7}>
-        <Text className="text-white text-base font-semibold">{t('app.locked.button')}</Text>
+        activeOpacity={0.7}
+      >
+        <Text className="text-white text-base font-semibold">
+          {t('app.locked.button')}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -478,7 +572,8 @@ function LoadingScreenInner({ status }: { status: 'unlocking' | 'loadingSkills' 
   return (
     <View
       className="flex-1 bg-surface items-center justify-center"
-      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
       <SannaAvatar size={96} />
       <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 24 }} />
       <Text className="text-label-secondary text-sm mt-4">{loadingText}</Text>
@@ -495,7 +590,14 @@ export default function App(): React.JSX.Element {
   const [initializing, setInitializing] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState<'unlocking' | 'loadingSkills'>('unlocking');
 
-  const [screen, setScreen] = useState<'home' | 'settings' | 'lists' | 'schedules' | 'notificationListeners' | 'journal'>('home');
+  const [screen, setScreen] = useState<
+    | 'home'
+    | 'settings'
+    | 'lists'
+    | 'schedules'
+    | 'notificationListeners'
+    | 'journal'
+  >('home');
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pipelineState, setPipelineState] = useState<PipelineState>('idle');
@@ -518,9 +620,13 @@ export default function App(): React.JSX.Element {
 
   const skillLoader = useRef(new SkillLoader());
   const dynamicSkillStore = useRef(new DynamicSkillStore());
-  const [allSkills, setAllSkills] = useState(() => skillLoader.current.getAllSkills());
+  const [allSkills, setAllSkills] = useState(() =>
+    skillLoader.current.getAllSkills(),
+  );
   const [dynamicSkillNames, setDynamicSkillNames] = useState<string[]>([]);
-  const [skillAvailability, setSkillAvailability] = useState<Record<string, boolean>>({});
+  const [skillAvailability, setSkillAvailability] = useState<
+    Record<string, boolean>
+  >({});
 
   // ─── Driving-mode auto-listening state ───────────────────────────────────
   // Stores the last assistant response text so we can detect questions.
@@ -598,7 +704,12 @@ export default function App(): React.JSX.Element {
     await seedLocalConfigKeys(store);
 
     // Load preferences + secure keys in parallel (both from Keychain)
-    const [{ prefs, isFirstRun }, secureKeys, loadedSoul, loadedPersonalMemory] = await Promise.all([
+    const [
+      { prefs, isFirstRun },
+      secureKeys,
+      loadedSoul,
+      loadedPersonalMemory,
+    ] = await Promise.all([
       loadPreferences(store),
       loadSecureKeys(store),
       SoulStore.getSoul(),
@@ -607,7 +718,8 @@ export default function App(): React.JSX.Element {
 
     // On first start, auto-enable only skills that need no runtime permissions
     if (isFirstRun) {
-      prefs.enabledSkillNames = skillLoader.current.getPermissionFreeSkillNames();
+      prefs.enabledSkillNames =
+        skillLoader.current.getPermissionFreeSkillNames();
     }
 
     // Apply locale from loaded preferences immediately
@@ -620,7 +732,10 @@ export default function App(): React.JSX.Element {
     setInitializing(false);
 
     // Mirror dark mode to AsyncStorage so it's available before the next unlock
-    AsyncStorage.setItem(DARK_MODE_STORAGE_KEY, prefs.darkMode ? 'true' : 'false').catch(() => {});
+    AsyncStorage.setItem(
+      DARK_MODE_STORAGE_KEY,
+      prefs.darkMode ? 'true' : 'false',
+    ).catch(() => {});
 
     // Load user-uploaded dynamic skills from AsyncStorage
     await skillLoader.current.loadDynamicSkills(dynamicSkillStore.current);
@@ -630,15 +745,25 @@ export default function App(): React.JSX.Element {
 
     // Ensure all skill summaries are up-to-date during loading screen
     const selectedProvider = prefs.selectedProvider || 'openai';
-    const apiKey = selectedProvider === 'claude' ? secureKeys.claudeApiKey : secureKeys.openAIApiKey;
+    const apiKey =
+      selectedProvider === 'claude'
+        ? secureKeys.claudeApiKey
+        : selectedProvider === 'custom'
+        ? secureKeys.customApiKey
+        : secureKeys.openAIApiKey;
     if (apiKey) {
-      const selectedModel = selectedProvider === 'claude'
-        ? secureKeys.selectedClaudeModel
-        : secureKeys.selectedOpenAIModel;
-      const provider =
+      const selectedModel =
         selectedProvider === 'claude'
-          ? new ClaudeProvider(apiKey, selectedModel)
-          : new OpenAIProvider(apiKey, selectedModel);
+          ? secureKeys.selectedClaudeModel
+          : selectedProvider === 'custom'
+          ? secureKeys.customModelName
+          : secureKeys.selectedOpenAIModel;
+      const provider = createLLMProvider({
+        provider: selectedProvider === 'claude' ? 'claude' : selectedProvider === 'custom' ? 'custom' : 'openai',
+        apiKey,
+        model: selectedModel,
+        customBaseUrl: selectedProvider === 'custom' ? secureKeys.customModelUrl : undefined,
+      });
     }
 
     // Sync notification rules → native allowlist (ensures native side is in sync
@@ -651,63 +776,97 @@ export default function App(): React.JSX.Element {
     }
 
     // Restore persisted conversation history into the UI
-    const storedMessages = await ConversationStore.loadHistory(prefs.conversationHistoryMaxMessages ?? 50);
+    const storedMessages = await ConversationStore.loadHistory(
+      prefs.conversationHistoryMaxMessages ?? 50,
+    );
     if (storedMessages.length > 0) {
       setMessages(
-        storedMessages.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
+        storedMessages.map(m => ({
+          role: m.role,
+          text: m.text,
+          timestamp: new Date(m.timestamp),
+        })),
       );
     }
 
     // Drain any pending messages from background tasks (e.g. timer expiration)
-    ConversationStore.drainPending().then(pending => {
-      if (pending.length === 0) return;
-      setMessages(prev => {
-        const updated = [
-          ...prev,
-          ...pending.map(m => ({ role: m.role, text: m.text, timestamp: new Date(m.timestamp) })),
-        ];
-        ConversationStore.saveHistory(
-          updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
-          prefs.conversationHistoryMaxMessages ?? 50,
-        ).catch(() => {});
-        return updated;
-      });
-      if (pipelineRef.current) {
-        pipelineRef.current.appendToHistory(
-          pending.map(m => ({ role: m.role, content: m.text })),
-        );
-      }
-      // In driving mode, speak assistant messages aloud.
-      if (prefs.drivingMode) {
-        const lang = prefs.appLanguage === 'system' ? getSystemLocale() : prefs.appLanguage;
-        pending
-          .filter(m => m.role === 'assistant')
-          .forEach(m => {
-            const plain = m.text.replace(/[*_`#]/g, '').trim();
-            ttsService.current.speak(plain, lang).catch(() => {});
-          });
-      }
-    }).catch(() => {});
+    ConversationStore.drainPending()
+      .then(pending => {
+        if (pending.length === 0) return;
+        setMessages(prev => {
+          const updated = [
+            ...prev,
+            ...pending.map(m => ({
+              role: m.role,
+              text: m.text,
+              timestamp: new Date(m.timestamp),
+            })),
+          ];
+          ConversationStore.saveHistory(
+            updated.map(m => ({
+              role: m.role,
+              text: m.text,
+              timestamp: m.timestamp.toISOString(),
+            })),
+            prefs.conversationHistoryMaxMessages ?? 50,
+          ).catch(() => {});
+          return updated;
+        });
+        if (pipelineRef.current) {
+          pipelineRef.current.appendToHistory(
+            pending.map(m => ({ role: m.role, content: m.text })),
+          );
+        }
+        // In driving mode, speak assistant messages aloud.
+        if (prefs.drivingMode) {
+          const lang =
+            prefs.appLanguage === 'system'
+              ? getSystemLocale()
+              : prefs.appLanguage;
+          pending
+            .filter(m => m.role === 'assistant')
+            .forEach(m => {
+              const plain = m.text.replace(/[*_`#]/g, '').trim();
+              ttsService.current.speak(plain, lang).catch(() => {});
+            });
+        }
+      })
+      .catch(() => {});
 
     // On very first start, show onboarding message
     if (isFirstRun && storedMessages.length === 0) {
       const selectedProvider = prefs.selectedProvider || 'openai';
-      const apiKey = selectedProvider === 'claude' ? secureKeys.claudeApiKey : secureKeys.openAIApiKey;
+      const apiKey =
+        selectedProvider === 'claude'
+          ? secureKeys.claudeApiKey
+          : selectedProvider === 'custom'
+          ? secureKeys.customApiKey
+          : secureKeys.openAIApiKey;
       const hasApiKey = apiKey && apiKey.trim().length > 0;
-      
+
       let onboardingText: string;
       if (!hasApiKey) {
-        const providerName = selectedProvider === 'claude' ? 'Claude' : 'OpenAI';
-        onboardingText = t('app.onboarding.welcomeNoApiKey').replace('{provider}', providerName);
+        const providerName =
+          selectedProvider === 'claude'
+            ? 'Claude'
+            : selectedProvider === 'custom'
+            ? 'Custom'
+            : 'OpenAI';
+        onboardingText = t('app.onboarding.welcomeNoApiKey').replace(
+          '{provider}',
+          providerName,
+        );
       } else {
         onboardingText = t('app.onboarding.welcomeWithApiKey');
       }
-      
-      setMessages([{
-        role: 'assistant',
-        text: onboardingText,
-        timestamp: new Date(),
-      }]);
+
+      setMessages([
+        {
+          role: 'assistant',
+          text: onboardingText,
+          timestamp: new Date(),
+        },
+      ]);
     }
 
     setHistoryLoading(false);
@@ -716,11 +875,13 @@ export default function App(): React.JSX.Element {
   // Load dark mode from AsyncStorage immediately (before biometric unlock)
   // so the lock screen already uses the correct theme.
   useEffect(() => {
-    AsyncStorage.getItem(DARK_MODE_STORAGE_KEY).then(value => {
-      if (value !== null) {
-        setSettings(s => ({ ...s, darkMode: value === 'true' }));
-      }
-    }).catch(() => {});
+    AsyncStorage.getItem(DARK_MODE_STORAGE_KEY)
+      .then(value => {
+        if (value !== null) {
+          setSettings(s => ({ ...s, darkMode: value === 'true' }));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Auto-unlock on mount
@@ -730,15 +891,18 @@ export default function App(): React.JSX.Element {
 
   // Handle hardware back button
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // If we're on a screen other than home, navigate back to home
-      if (screen !== 'home') {
-        setScreen('home');
-        return true; // Prevent default behavior (exit app)
-      }
-      // On home screen, allow default behavior (exit app)
-      return false;
-    });
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        // If we're on a screen other than home, navigate back to home
+        if (screen !== 'home') {
+          setScreen('home');
+          return true; // Prevent default behavior (exit app)
+        }
+        // On home screen, allow default behavior (exit app)
+        return false;
+      },
+    );
 
     return () => backHandler.remove();
   }, [screen]);
@@ -751,7 +915,9 @@ export default function App(): React.JSX.Element {
     const sub = emitter.addListener(
       'notification_listener_log',
       (event: { level: string; tag: string; message: string }) => {
-        const level = (event.level === 'error' ? 'error' : 'info') as import('./src/agent/debug-logger').LogLevel;
+        const level = (
+          event.level === 'error' ? 'error' : 'info'
+        ) as import('./src/agent/debug-logger').LogLevel;
         DebugLogger.add(level, event.tag, event.message);
       },
     );
@@ -788,7 +954,11 @@ export default function App(): React.JSX.Element {
       }
     });
     return () => sub.remove();
-  }, [settings.drivingMode, settings.appLanguage, settings.conversationHistoryMaxMessages]);
+  }, [
+    settings.drivingMode,
+    settings.appLanguage,
+    settings.conversationHistoryMaxMessages,
+  ]);
 
   // Poll for pending messages from headless tasks (scheduler, notification, timer, accessibility).
   // DeviceEventEmitter doesn't reliably deliver events from HeadlessJS tasks to the
@@ -880,7 +1050,9 @@ export default function App(): React.JSX.Element {
       if (unavailable.size > 0) {
         setSettings(prev => ({
           ...prev,
-          enabledSkillNames: prev.enabledSkillNames.filter(n => !unavailable.has(n)),
+          enabledSkillNames: prev.enabledSkillNames.filter(
+            n => !unavailable.has(n),
+          ),
         }));
       }
     });
@@ -897,7 +1069,11 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     if (!settingsLoaded) return;
 
-    const { spotifyClientId: sClientId, googleWebClientId: gClientId, slackClientId: slClientId } = settings;
+    const {
+      spotifyClientId: sClientId,
+      googleWebClientId: gClientId,
+      slackClientId: slClientId,
+    } = settings;
 
     if (sClientId) {
       spotifyAuth.current.configure(sClientId);
@@ -912,33 +1088,57 @@ export default function App(): React.JSX.Element {
     // Re-evaluate skill availability based on whether client IDs are configured
     setSkillAvailability(prev => ({
       ...prev,
-      spotify: sClientId ? (prev['spotify'] ?? true) : false,
-      slack: slClientId ? (prev['slack'] ?? true) : false,
+      spotify: sClientId ? prev['spotify'] ?? true : false,
+      slack: slClientId ? prev['slack'] ?? true : false,
     }));
-  }, [settingsLoaded, settings.spotifyClientId, settings.googleWebClientId, settings.slackClientId]);
+  }, [
+    settingsLoaded,
+    settings.spotifyClientId,
+    settings.googleWebClientId,
+    settings.slackClientId,
+  ]);
 
   // Rebuild pipeline when settings change (only after unlock)
   useEffect(() => {
     if (!vaultUnlocked || !settingsLoaded) return;
 
-    const { claudeApiKey, openAIApiKey, selectedProvider, enabledSkillNames } = settings;
-    const apiKey = selectedProvider === 'claude' ? claudeApiKey : openAIApiKey;
+    const {
+      claudeApiKey,
+      openAIApiKey,
+      selectedProvider,
+      enabledSkillNames,
+      customApiKey,
+      customModelUrl,
+    } = settings;
+    const apiKey =
+      selectedProvider === 'claude'
+        ? claudeApiKey
+        : selectedProvider === 'custom'
+        ? customApiKey
+        : openAIApiKey;
 
     if (!apiKey) return;
 
-    const selectedModel = selectedProvider === 'claude'
-      ? settings.selectedClaudeModel
-      : settings.selectedOpenAIModel;
-
-    const provider =
+    const selectedModel =
       selectedProvider === 'claude'
-        ? new ClaudeProvider(apiKey, selectedModel)
-        : new OpenAIProvider(apiKey, selectedModel);
+        ? settings.selectedClaudeModel
+        : selectedProvider === 'custom'
+        ? settings.customModelName
+        : settings.selectedOpenAIModel;
+
+    const provider = createLLMProvider({
+      provider: selectedProvider === 'claude' ? 'claude' : selectedProvider === 'custom' ? 'custom' : 'openai',
+      apiKey,
+      model: selectedModel,
+      customBaseUrl: selectedProvider === 'custom' ? customModelUrl : undefined,
+    });
 
     // Resolve 'system' → actual device locale before passing to pipeline.
     // The pipeline uses this for both TTS and the system-prompt language rule.
     const resolvedLanguage =
-      settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
+      settings.appLanguage === 'system'
+        ? getSystemLocale()
+        : settings.appLanguage;
 
     (async () => {
       const toolRegistry = await createToolRegistry({
@@ -947,7 +1147,10 @@ export default function App(): React.JSX.Element {
         includePersonalMemoryTool: true,
         provider,
       });
-      toolRegistry.removeDisabledSkillTools(skillLoader.current, enabledSkillNames);
+      toolRegistry.removeDisabledSkillTools(
+        skillLoader.current,
+        enabledSkillNames,
+      );
 
       const pipeline = new ConversationPipeline({
         provider,
@@ -980,7 +1183,11 @@ export default function App(): React.JSX.Element {
             const updated = [...prev, { role, text, timestamp: new Date() }];
             // Fire-and-forget: persist conversation after each message
             ConversationStore.saveHistory(
-              updated.map(m => ({ role: m.role, text: m.text, timestamp: m.timestamp.toISOString() })),
+              updated.map(m => ({
+                role: m.role,
+                text: m.text,
+                timestamp: m.timestamp.toISOString(),
+              })),
               settings.conversationHistoryMaxMessages ?? 50,
             ).catch(() => {});
             return updated;
@@ -995,34 +1202,40 @@ export default function App(): React.JSX.Element {
       } else {
         // First pipeline creation: restore LLM history from AsyncStorage.
         // Inject only the last N messages configured for LLM context.
-        ConversationStore.loadHistory(settings.conversationHistoryMaxMessages ?? 50).then(stored => {
-          if (stored.length > 0) {
-            pipeline.importHistory(
-              stored
-                .slice(-(settings.llmContextMaxMessages ?? 20))
-                .map(m => ({ role: m.role, content: m.text })),
-            );
-          }
-        }).catch(() => {});
+        ConversationStore.loadHistory(
+          settings.conversationHistoryMaxMessages ?? 50,
+        )
+          .then(stored => {
+            if (stored.length > 0) {
+              pipeline.importHistory(
+                stored
+                  .slice(-(settings.llmContextMaxMessages ?? 20))
+                  .map(m => ({ role: m.role, content: m.text })),
+              );
+            }
+          })
+          .catch(() => {});
       }
 
       pipelineRef.current = pipeline;
 
       // Persist agent config so all headless sub-agents (scheduler, notifications, …) can use it
-    const agentConfig = {
-      apiKey: apiKey,
-      provider: selectedProvider,
-      model: selectedModel,
-      enabledSkillNames,
-      googleWebClientId: settings.googleWebClientId || '',
-      drivingMode: settings.drivingMode,
-      language: resolvedLanguage,
-      maxSubAgentIterations: settings.maxSubAgentIterations ?? 8,
-      maxAccessibilityIterations: settings.maxAccessibilityIterations ?? 12,
-    };
+      const agentConfig = {
+        apiKey: apiKey,
+        provider: selectedProvider,
+        model: selectedModel,
+        enabledSkillNames,
+        googleWebClientId: settings.googleWebClientId || '',
+        drivingMode: settings.drivingMode,
+        language: resolvedLanguage,
+        maxSubAgentIterations: settings.maxSubAgentIterations ?? 8,
+        maxAccessibilityIterations: settings.maxAccessibilityIterations ?? 12,
+      };
       const agentConfigJson = JSON.stringify(agentConfig);
       SchedulerModule.saveAgentConfig(agentConfigJson).catch(() => {});
-      NotificationListenerModule?.saveAgentConfig(agentConfigJson).catch(() => {});
+      NotificationListenerModule?.saveAgentConfig(agentConfigJson).catch(
+        () => {},
+      );
     })();
   }, [
     vaultUnlocked,
@@ -1051,8 +1264,12 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     if (!vaultUnlocked || screen !== 'settings') return;
-    PersonalMemoryStore.getMemory().then(setPersonalMemoryText).catch(() => {});
-    SoulStore.getSoul().then(setSoulText).catch(() => {});
+    PersonalMemoryStore.getMemory()
+      .then(setPersonalMemoryText)
+      .catch(() => {});
+    SoulStore.getSoul()
+      .then(setSoulText)
+      .catch(() => {});
   }, [vaultUnlocked, screen]);
 
   // ─── Handlers (defined early for use in useEffects) ────────────────────────
@@ -1064,7 +1281,7 @@ export default function App(): React.JSX.Element {
     }
     // Check current state from pipeline
     const currentState = pipelineRef.current.getState();
-    
+
     // If currently listening, stop it (allow user to cancel recording)
     if (currentState === 'listening') {
       // Cancel any auto-listening that might be active
@@ -1075,14 +1292,14 @@ export default function App(): React.JSX.Element {
       pipelineRef.current.stopListening();
       return;
     }
-    
+
     // If concurrent auto-listening is already active (driving-mode question flow),
     // cancel it first so we don't have two overlapping STT sessions.
     if (autoListeningStartedRef.current) {
       autoListeningStartedRef.current = false;
       await sttService.current.cancel().catch(() => {});
     }
-    
+
     // If TTS is currently speaking, stop it immediately and start listening
     if (currentState === 'speaking') {
       await pipelineRef.current.stopSpeaking();
@@ -1094,17 +1311,24 @@ export default function App(): React.JSX.Element {
       'android.permission.RECORD_AUDIO',
     ]);
     if (!permResult.allGranted) {
-      Alert.alert(t('alert.micPermission.title'), t('alert.micPermission.message'));
+      Alert.alert(
+        t('alert.micPermission.title'),
+        t('alert.micPermission.message'),
+      );
       return;
     }
 
     try {
       pipelineRef.current.startListening();
       // Resolve language: 'system' -> device locale, otherwise use setting
-      const language = settings.sttLanguage === 'system' 
-        ? getSystemLocale() 
-        : settings.sttLanguage;
-      const transcript = await sttService.current.listen(language, settings.sttMode);
+      const language =
+        settings.sttLanguage === 'system'
+          ? getSystemLocale()
+          : settings.sttLanguage;
+      const transcript = await sttService.current.listen(
+        language,
+        settings.sttMode,
+      );
       if (!transcript?.trim()) {
         pipelineRef.current.stopListening();
         return;
@@ -1153,8 +1377,12 @@ export default function App(): React.JSX.Element {
     return () => {
       wakeWordService.current.stop();
     };
-  }, [vaultUnlocked, settings.wakeWordEnabled, settings.wakeWordKey, handleWakeWordDetected]);
-
+  }, [
+    vaultUnlocked,
+    settings.wakeWordEnabled,
+    settings.wakeWordKey,
+    handleWakeWordDetected,
+  ]);
 
   // ─── Driving-mode: auto-listening after TTS ──────────────────────────────
 
@@ -1176,10 +1404,14 @@ export default function App(): React.JSX.Element {
     autoListeningStartedRef.current = true;
     pipelineRef.current?.startListening();
     try {
-      const language = settings.sttLanguage === 'system'
-        ? getSystemLocale()
-        : settings.sttLanguage;
-      const transcript = await sttService.current.listen(language, settings.sttMode);
+      const language =
+        settings.sttLanguage === 'system'
+          ? getSystemLocale()
+          : settings.sttLanguage;
+      const transcript = await sttService.current.listen(
+        language,
+        settings.sttMode,
+      );
       autoListeningStartedRef.current = false;
 
       if (!transcript?.trim()) {
@@ -1207,7 +1439,7 @@ export default function App(): React.JSX.Element {
    * Consolidated handler for TTS completion that:
    * 1. Resets pipeline state to 'idle' when TTS finishes (for TTS started outside pipeline)
    * 2. Starts auto-listening in driving mode if a question was detected
-   * 
+   *
    * We deliberately wait for tts_done (not tts_started) to avoid the echo
    * problem: if we open the microphone while the phone speaker is still playing,
    * the mic picks up the TTS audio and submits it as user input.
@@ -1218,7 +1450,7 @@ export default function App(): React.JSX.Element {
     let delayTimer: ReturnType<typeof setTimeout> | null = null;
     const sub = TTSEvents.addListener('tts_done', () => {
       const currentState = pipelineRef.current?.getState();
-      
+
       // 1. Reset to idle if currently speaking (handles TTS started outside pipeline)
       // CRITICAL: Double-check state right before setting idle to avoid race condition
       // If user clicked mic between the check above and here, state might be 'listening' now
@@ -1232,9 +1464,12 @@ export default function App(): React.JSX.Element {
         }
         // If state is now 'listening', do nothing - user has already started recording
       }
-      
+
       // 2. Auto-start listening in driving mode if question detected
-      if (settings.drivingMode && containsQuestion(currentResponseTextRef.current)) {
+      if (
+        settings.drivingMode &&
+        containsQuestion(currentResponseTextRef.current)
+      ) {
         delayTimer = setTimeout(() => {
           // Only start if pipeline is idle (not already processing a new utterance)
           // Double-check state after delay to avoid race conditions
@@ -1258,15 +1493,19 @@ export default function App(): React.JSX.Element {
     }
     // Check state from pipeline, not from React state
     const currentState = pipelineRef.current.getState();
-    
+
     // If TTS is currently speaking, stop it immediately
     if (currentState === 'speaking') {
       await pipelineRef.current.stopSpeaking();
     }
-    
+
     // Allow submission if idle, speaking (now stopped), or listening
     // processUtterance will handle the listening state transition
-    if (currentState !== 'idle' && currentState !== 'speaking' && currentState !== 'listening') {
+    if (
+      currentState !== 'idle' &&
+      currentState !== 'speaking' &&
+      currentState !== 'listening'
+    ) {
       return;
     }
 
@@ -1286,14 +1525,18 @@ export default function App(): React.JSX.Element {
       'android.permission.RECORD_AUDIO',
     ]);
     if (!permResult.allGranted) {
-      Alert.alert(t('alert.micPermission.title'), t('alert.micPermission.message'));
+      Alert.alert(
+        t('alert.micPermission.title'),
+        t('alert.micPermission.message'),
+      );
       return '';
     }
 
     try {
-      const language = settings.sttLanguage === 'system'
-        ? getSystemLocale()
-        : settings.sttLanguage;
+      const language =
+        settings.sttLanguage === 'system'
+          ? getSystemLocale()
+          : settings.sttLanguage;
       return await sttService.current.listen(language, settings.sttMode);
     } catch (err) {
       if (err instanceof Error && !err.message.includes('cancel')) {
@@ -1312,7 +1555,10 @@ export default function App(): React.JSX.Element {
       const next = !s.darkMode;
       // Persist immediately to AsyncStorage so it survives reinstall and loads
       // before the next biometric unlock (lock screen already uses the right theme).
-      AsyncStorage.setItem(DARK_MODE_STORAGE_KEY, next ? 'true' : 'false').catch(() => {});
+      AsyncStorage.setItem(
+        DARK_MODE_STORAGE_KEY,
+        next ? 'true' : 'false',
+      ).catch(() => {});
       return { ...s, darkMode: next };
     });
   }, []);
@@ -1328,11 +1574,20 @@ export default function App(): React.JSX.Element {
 
   /** Save a secure key to Keychain AND update local state */
   const updateSecureKey = useCallback(
-    async (field: 'claudeApiKey' | 'openAIApiKey' | 'wakeWordKey' | 'selectedOpenAIModel' | 'selectedClaudeModel' | 'googleWebClientId' | 'spotifyClientId' | 'slackClientId' | 'googleMapsApiKey' | 'braveSearchApiKey', value: string) => {
+    async (field: 'claudeApiKey' | 'openAIApiKey' | 'customApiKey' | 'customModelUrl' | 'customModelName'| 'wakeWordKey' | 'selectedOpenAIModel' | 'selectedClaudeModel' | 'googleWebClientId' | 'spotifyClientId' | 'slackClientId' | 'googleMapsApiKey' | 'braveSearchApiKey', value: string) => {
       setSettings(s => ({ ...s, [field]: value }));
-      const keychainId = field === 'selectedOpenAIModel' ? SECURE_KEY_IDS.openAIModel
-        : field === 'selectedClaudeModel' ? SECURE_KEY_IDS.claudeModel
-        : SECURE_KEY_IDS[field];
+      const keychainId =
+        field === 'selectedOpenAIModel'
+          ? SECURE_KEY_IDS.openAIModel
+          : field === 'selectedClaudeModel'
+          ? SECURE_KEY_IDS.claudeModel
+          : field === 'customApiKey'
+          ? SECURE_KEY_IDS.customApiKey
+          : field === 'customModelUrl'
+          ? SECURE_KEY_IDS.customModelUrl
+          : field === 'customModelName'
+          ? SECURE_KEY_IDS.customModelName
+          : SECURE_KEY_IDS[field];
       await saveSecureKey(tokenStore.current, keychainId, value);
     },
     [],
@@ -1384,7 +1639,9 @@ export default function App(): React.JSX.Element {
 
       // New value is empty (user cleared the field) – revoke token silently
       if (!newId.trim()) {
-        credentialManager.current.revokeCredential(oauthProvider).catch(() => {});
+        credentialManager.current
+          .revokeCredential(oauthProvider)
+          .catch(() => {});
         updateSecureKey(field, newId);
         return;
       }
@@ -1395,14 +1652,22 @@ export default function App(): React.JSX.Element {
           if (hasToken) {
             Alert.alert(
               t('alert.serviceClientIdChanged.title'),
-              t('alert.serviceClientIdChanged.message').replace('{provider}', oauthProvider),
+              t('alert.serviceClientIdChanged.message').replace(
+                '{provider}',
+                oauthProvider,
+              ),
               [
-                { text: t('alert.serviceClientIdChanged.cancel'), style: 'cancel' },
+                {
+                  text: t('alert.serviceClientIdChanged.cancel'),
+                  style: 'cancel',
+                },
                 {
                   text: t('alert.serviceClientIdChanged.confirm'),
                   style: 'destructive',
                   onPress: () => {
-                    credentialManager.current.revokeCredential(oauthProvider).catch(() => {});
+                    credentialManager.current
+                      .revokeCredential(oauthProvider)
+                      .catch(() => {});
                     updateSecureKey(field, newId);
                   },
                 },
@@ -1426,7 +1691,9 @@ export default function App(): React.JSX.Element {
       if (enabled) {
         const skill = skillLoader.current.getSkill(skillName);
         if (skill && skill.permissions.length > 0) {
-          const permResult = await permissionManager.current.ensurePermissions(skill.permissions);
+          const permResult = await permissionManager.current.ensurePermissions(
+            skill.permissions,
+          );
           if (!permResult.allGranted) {
             Alert.alert(
               t('alert.permissionMissing.title'),
@@ -1459,7 +1726,9 @@ export default function App(): React.JSX.Element {
       const skillName = extractSkillName(content);
 
       // Check for duplicate dynamic skills
-      const alreadyDynamic = await dynamicSkillStore.current.hasSkill(skillName);
+      const alreadyDynamic = await dynamicSkillStore.current.hasSkill(
+        skillName,
+      );
       if (alreadyDynamic) {
         return {
           success: false,
@@ -1501,8 +1770,14 @@ export default function App(): React.JSX.Element {
 
   const handleTestSkill = useCallback(
     async (skillName: string) => {
-      const { claudeApiKey, openAIApiKey, selectedProvider } = settings;
-      const apiKey = selectedProvider === 'claude' ? claudeApiKey : openAIApiKey;
+      const { claudeApiKey, openAIApiKey, selectedProvider, customApiKey } =
+        settings;
+      const apiKey =
+        selectedProvider === 'claude'
+          ? claudeApiKey
+          : selectedProvider === 'custom'
+          ? customApiKey
+          : openAIApiKey;
 
       if (!apiKey) {
         return {
@@ -1521,14 +1796,19 @@ export default function App(): React.JSX.Element {
         };
       }
 
-      const selectedModel = selectedProvider === 'claude'
-        ? settings.selectedClaudeModel
-        : settings.selectedOpenAIModel;
-
-      const provider =
+      const selectedModel =
         selectedProvider === 'claude'
-          ? new ClaudeProvider(apiKey, selectedModel)
-          : new OpenAIProvider(apiKey, selectedModel);
+          ? settings.selectedClaudeModel
+          : selectedProvider === 'custom'
+          ? settings.customModelName
+          : settings.selectedOpenAIModel;
+
+      const provider = createLLMProvider({
+        provider: selectedProvider === 'claude' ? 'claude' : selectedProvider === 'custom' ? 'custom' : 'openai',
+        apiKey,
+        model: selectedModel,
+        customBaseUrl: selectedProvider === 'custom' ? settings.customModelUrl : undefined,
+      });
 
       const toolRegistry = await createToolRegistry({
         credentialManager: credentialManager.current,
@@ -1547,6 +1827,41 @@ export default function App(): React.JSX.Element {
     },
     [settings],
   );
+
+  const handleTestCustomConnection = useCallback(async () => {
+    const { customApiKey, customModelUrl, customModelName } = settings;
+
+    if (!customApiKey || !customModelUrl || !customModelName) {
+      Alert.alert(
+        t('alert.error'),
+        'Please enter both API Key and Base URL before testing.',
+      );
+      return;
+    }
+
+    const provider = createLLMProvider({
+      provider: 'custom',
+      apiKey: customApiKey,
+      model: customModelName,
+      customBaseUrl: customModelUrl,
+    });
+    const result = await provider.testConnection();
+
+    if (result.success) {
+      Alert.alert(
+        t('settings.provider.connectionSuccess'),
+        `The endpoint responded successfully.\n\nResponse: "${result.response?.slice(
+          0,
+          100,
+        )}${result.response && result.response.length > 100 ? '...' : ''}"`,
+      );
+    } else {
+      Alert.alert(
+        t('settings.provider.connectionFailed'),
+        result.error || 'Unknown error occurred.',
+      );
+    }
+  }, [settings]);
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
@@ -1587,7 +1902,7 @@ export default function App(): React.JSX.Element {
     return (
       <View style={[{ flex: 1 }, themeVars]}>
         <SafeAreaProvider>
-          <SchedulesScreen 
+          <SchedulesScreen
             onBack={() => setScreen('home')}
             enabledSkillNames={settings.enabledSkillNames}
             isDark={isDark}
@@ -1601,7 +1916,7 @@ export default function App(): React.JSX.Element {
     return (
       <View style={[{ flex: 1 }, themeVars]}>
         <SafeAreaProvider>
-          <NotificationListenersScreen 
+          <NotificationListenersScreen
             onBack={() => setScreen('home')}
             enabledSkillNames={settings.enabledSkillNames}
             isDark={isDark}
@@ -1637,27 +1952,58 @@ export default function App(): React.JSX.Element {
             openAIApiKey={settings.openAIApiKey}
             onOpenAIApiKeyChange={key => updateSecureKey('openAIApiKey', key)}
             selectedProvider={settings.selectedProvider}
-            onProviderChange={p => setSettings(s => ({ ...s, selectedProvider: p }))}
+            onProviderChange={p =>
+              setSettings(s => ({ ...s, selectedProvider: p }))
+            }
             selectedOpenAIModel={settings.selectedOpenAIModel}
-            onOpenAIModelChange={model => updateSecureKey('selectedOpenAIModel', model)}
+            onOpenAIModelChange={model =>
+              updateSecureKey('selectedOpenAIModel', model)
+            }
             selectedClaudeModel={settings.selectedClaudeModel}
-            onClaudeModelChange={model => updateSecureKey('selectedClaudeModel', model)}
+            onClaudeModelChange={model =>
+              updateSecureKey('selectedClaudeModel', model)
+            }
+            customApiKey={settings.customApiKey}
+            onCustomApiKeyChange={key => updateSecureKey('customApiKey', key)}
+            customModelUrl={settings.customModelUrl}
+            onCustomModelUrlChange={url =>
+              updateSecureKey('customModelUrl', url)
+            }
+            customModelName={settings.customModelName}
+            onCustomModelNameChange={name =>
+              updateSecureKey('customModelName', name)
+            }
+            onTestCustomConnection={handleTestCustomConnection}
             wakeWordEnabled={settings.wakeWordEnabled}
-            onWakeWordToggle={v => setSettings(s => ({ ...s, wakeWordEnabled: v }))}
+            onWakeWordToggle={v =>
+              setSettings(s => ({ ...s, wakeWordEnabled: v }))
+            }
             wakeWordKey={settings.wakeWordKey}
             onWakeWordKeyChange={k => updateSecureKey('wakeWordKey', k)}
             sttLanguage={settings.sttLanguage}
-            onSttLanguageChange={lang => setSettings(s => ({ ...s, sttLanguage: lang }))}
+            onSttLanguageChange={lang =>
+              setSettings(s => ({ ...s, sttLanguage: lang }))
+            }
             sttMode={settings.sttMode}
-            onSttModeChange={mode => setSettings(s => ({ ...s, sttMode: mode }))}
+            onSttModeChange={mode =>
+              setSettings(s => ({ ...s, sttMode: mode }))
+            }
             appLanguage={settings.appLanguage}
-            onAppLanguageChange={lang => setSettings(s => ({ ...s, appLanguage: lang, sttLanguage: lang }))}
+            onAppLanguageChange={lang =>
+              setSettings(s => ({ ...s, appLanguage: lang, sttLanguage: lang }))
+            }
             googleWebClientId={settings.googleWebClientId}
-            onGoogleWebClientIdChange={id => changeServiceClientId('googleWebClientId', 'google', id)}
+            onGoogleWebClientIdChange={id =>
+              changeServiceClientId('googleWebClientId', 'google', id)
+            }
             spotifyClientId={settings.spotifyClientId}
-            onSpotifyClientIdChange={id => changeServiceClientId('spotifyClientId', 'spotify', id)}
+            onSpotifyClientIdChange={id =>
+              changeServiceClientId('spotifyClientId', 'spotify', id)
+            }
             slackClientId={settings.slackClientId}
-            onSlackClientIdChange={id => changeServiceClientId('slackClientId', 'slack', id)}
+            onSlackClientIdChange={id =>
+              changeServiceClientId('slackClientId', 'slack', id)
+            }
             googleMapsApiKey={settings.googleMapsApiKey}
             onGoogleMapsApiKeyChange={handleGoogleMapsApiKeyChange}
             braveSearchApiKey={settings.braveSearchApiKey}
@@ -1669,18 +2015,34 @@ export default function App(): React.JSX.Element {
             dynamicSkillNames={dynamicSkillNames}
             onClearHistory={handleClearHistory}
             maxIterations={settings.maxIterations ?? 10}
-            onMaxIterationsChange={v => setSettings(s => ({ ...s, maxIterations: v }))}
+            onMaxIterationsChange={v =>
+              setSettings(s => ({ ...s, maxIterations: v }))
+            }
             maxSubAgentIterations={settings.maxSubAgentIterations ?? 8}
-            onMaxSubAgentIterationsChange={v => setSettings(s => ({ ...s, maxSubAgentIterations: v }))}
-            maxAccessibilityIterations={settings.maxAccessibilityIterations ?? 12}
-            onMaxAccessibilityIterationsChange={v => setSettings(s => ({ ...s, maxAccessibilityIterations: v }))}
+            onMaxSubAgentIterationsChange={v =>
+              setSettings(s => ({ ...s, maxSubAgentIterations: v }))
+            }
+            maxAccessibilityIterations={
+              settings.maxAccessibilityIterations ?? 12
+            }
+            onMaxAccessibilityIterationsChange={v =>
+              setSettings(s => ({ ...s, maxAccessibilityIterations: v }))
+            }
             llmContextMaxMessages={settings.llmContextMaxMessages ?? 20}
             onLlmContextMaxMessagesChange={v =>
-              setSettings(s => ({ ...s, llmContextMaxMessages: Math.min(200, Math.max(10, v)) }))
+              setSettings(s => ({
+                ...s,
+                llmContextMaxMessages: Math.min(200, Math.max(10, v)),
+              }))
             }
-            conversationHistoryMaxMessages={settings.conversationHistoryMaxMessages ?? 50}
+            conversationHistoryMaxMessages={
+              settings.conversationHistoryMaxMessages ?? 50
+            }
             onConversationHistoryMaxMessagesChange={v =>
-              setSettings(s => ({ ...s, conversationHistoryMaxMessages: Math.min(200, Math.max(50, v)) }))
+              setSettings(s => ({
+                ...s,
+                conversationHistoryMaxMessages: Math.min(200, Math.max(50, v)),
+              }))
             }
             soulText={soulText}
             onSoulTextChange={setSoulText}
@@ -1707,7 +2069,9 @@ export default function App(): React.JSX.Element {
 
   // Resolve language: 'system' -> device locale, otherwise use setting
   const resolvedLanguage =
-    settings.appLanguage === 'system' ? getSystemLocale() : settings.appLanguage;
+    settings.appLanguage === 'system'
+      ? getSystemLocale()
+      : settings.appLanguage;
 
   return (
     <View style={[{ flex: 1 }, themeVars]}>
@@ -1721,7 +2085,9 @@ export default function App(): React.JSX.Element {
           onSettingsPress={() => setScreen('settings')}
           onListsPress={() => setScreen('lists')}
           onSchedulesPress={() => setScreen('schedules')}
-          onNotificationListenersPress={() => setScreen('notificationListeners')}
+          onNotificationListenersPress={() =>
+            setScreen('notificationListeners')
+          }
           onJournalPress={() => setScreen('journal')}
           messages={messages}
           isDark={isDark}
