@@ -10,7 +10,7 @@
     "start": "react-native start",
     "test": "jest",
     "logcat": "adb logcat -c && adb logcat -s ReactNativeJS:V *:S",
-    "logfile": "adb shell \"run-as com.sannabot cat files/sanna.txt\" > sanna.txt"
+    "logfile": "adb pull /storage/emulated/0/Download/sanna.txt sanna.txt 2>/dev/null || adb pull /sdcard/Download/sanna.txt sanna.txt 2>/dev/null || echo 'File not found. Make sure the app has written sanna.txt to Downloads.'"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",

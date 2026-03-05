@@ -1,12 +1,16 @@
 /**
- * DebugFileLogger – Writes debug logs to Documents/sanna.txt
+ * DebugFileLogger – Writes debug logs to Downloads/sanna.txt
  *
  * Appends all log entries to a persistent file for debugging purposes.
- * The file can be accessed via file manager in the Documents folder.
+ * The file can be accessed via file manager in the Downloads folder.
  */
 import RNFS from 'react-native-fs';
+import { Platform } from 'react-native';
 
-const LOG_FILE_PATH = `${RNFS.DocumentDirectoryPath}/sanna.txt`;
+// Use Downloads directory on Android, DocumentDirectoryPath on iOS
+const LOG_FILE_PATH = Platform.OS === 'android' 
+  ? `${RNFS.DownloadDirectoryPath}/sanna.txt`
+  : `${RNFS.DocumentDirectoryPath}/sanna.txt`;
 
 class DebugFileLoggerImpl {
   private _enabled = false;
@@ -69,7 +73,9 @@ class DebugFileLoggerImpl {
       const day = String(mtime.getDate()).padStart(2, '0');
       
       const dateStr = `${year}-${month}-${day}`;
-      const rotatedPath = `${RNFS.DocumentDirectoryPath}/sanna-${dateStr}.txt`;
+      const rotatedPath = Platform.OS === 'android'
+        ? `${RNFS.DownloadDirectoryPath}/sanna-${dateStr}.txt`
+        : `${RNFS.DocumentDirectoryPath}/sanna-${dateStr}.txt`;
       
       // Rename the file
       await RNFS.moveFile(LOG_FILE_PATH, rotatedPath);
