@@ -5,6 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
 import android.os.Build
+import android.os.PowerManager
+import android.util.Log
 import com.facebook.react.HeadlessJsTaskService
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.jstasks.HeadlessJsTaskConfig
@@ -25,16 +27,62 @@ import com.facebook.react.jstasks.HeadlessJsTaskConfig
 class AccessibilityHeadlessService : HeadlessJsTaskService() {
 
     companion object {
+        private const val TAG = "AccessibilityHeadlessService"
         private const val CHANNEL_ID      = "sanna_accessibility_bg"
         private const val NOTIFICATION_ID = 9003
         const val TASK_NAME               = "SannaAccessibilityTask"
     }
 
+    private var wakeLock: PowerManager.WakeLock? = null
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "[onStartCommand] Starting accessibility headless service")
+        
+        // Acquire WakeLock to keep JS event loop running when app is in background
+        acquireWakeLock()
+        
         // Promote to foreground service → prevents process kill
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
-        return super.onStartCommand(intent, flags, startId)
+        
+        val result = super.onStartCommand(intent, flags, startId)
+        Log.d(TAG, "[onStartCommand] Service started, result: $result")
+        return result
+    }
+
+    override fun onDestroy() {
+        Log.d(TAG, "[onDestroy] Service destroying, releasing WakeLock")
+        releaseWakeLock()
+        super.onDestroy()
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "SannaBot:AccessibilityHeadlessService"
+            ).apply {
+                acquire(300_000) // 5 minutes - matches task timeout
+                Log.d(TAG, "[acquireWakeLock] WakeLock acquired")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[acquireWakeLock] Failed to acquire WakeLock", e)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                    Log.d(TAG, "[releaseWakeLock] WakeLock released")
+                }
+            }
+            wakeLock = null
+        } catch (e: Exception) {
+            Log.e(TAG, "[releaseWakeLock] Failed to release WakeLock", e)
+        }
     }
 
     override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {

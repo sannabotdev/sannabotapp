@@ -18,7 +18,6 @@ export interface AccessibilityModuleType {
   /**
    * Captures the accessibility tree of the current foreground window.
    * Returns a human-readable text representation with node IDs.
-   * Automatically retries with increasing delays for apps that are slow to render.
    */
   getAccessibilityTree(): Promise<string>;
 
@@ -68,4 +67,6 @@ export interface AccessibilityModuleType {
   waitForApp(packageName: string, timeoutMs: number): Promise<boolean>;
 }
 
-export default AccessibilityModule as AccessibilityModuleType;
+const nativeModule = AccessibilityModule as AccessibilityModuleType;
+
+export default nativeModule;

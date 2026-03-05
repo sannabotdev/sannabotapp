@@ -12,14 +12,15 @@ import com.facebook.react.bridge.*
  * - openAccessibilitySettings()      – navigate to Android accessibility settings
  * - getAccessibilityTree()           – capture the current UI tree as text
  * - performAction(action, nodeId, text) – execute an action on a UI node
- *   Node actions: click, long_click, type, clear, focus, scroll_forward, scroll_backward
- *   Global actions (nodeId = null): back, home, recents, screenshot,
- *                                   clipboard_set, clipboard_get, paste
  * - performSwipe(x1, y1, x2, y2, durationMs) – swipe gesture between two coordinates
- * - waitForApp(packageName, timeoutMs) – wait until an app is in the foreground
+ * - waitForApp(packageName, timeoutMs)  – wait until an app is in the foreground
  */
 class AccessibilityModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
+
+    companion object {
+        private const val TAG = "AccessibilityModule"
+    }
 
     override fun getName(): String = "AccessibilityModule"
 
@@ -71,12 +72,15 @@ class AccessibilityModule(reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Perform an action on a UI element or a global action.
+     * Perform an action on a UI element or a global/context action.
      *
-     * @param action  Node actions: click | long_click | type | clear | focus |
-     *                scroll_forward | scroll_backward
-     *                Global actions (pass null for nodeId): back | home | recents |
-     *                screenshot | clipboard_set | clipboard_get | paste
+     * Node actions (require nodeId):
+     *   click, long_click, type, clear, focus, scroll_forward, scroll_backward
+     *
+     * Global actions (pass null for nodeId):
+     *   back, home, recents, screenshot, clipboard_set, clipboard_get, paste
+     *
+     * @param action  Action name (see above).
      * @param nodeId  Node ID from the tree (e.g. "node_5"). Null for global actions.
      * @param text    Text value for "type" or "clipboard_set" actions, null otherwise.
      */
@@ -137,15 +141,7 @@ class AccessibilityModule(reactContext: ReactApplicationContext) :
                     "SERVICE_NOT_RUNNING",
                     "Accessibility service is not enabled."
                 )
-            // Run on background thread to avoid blocking the bridge thread
-            Thread {
-                try {
-                    val result = service.waitForPackage(packageName, timeoutMs.toLong())
-                    promise.resolve(result)
-                } catch (e: Exception) {
-                    promise.reject("WAIT_ERROR", e.message ?: "Failed to wait for app", e)
-                }
-            }.start()
+            promise.resolve(service.waitForPackage(packageName, timeoutMs.toLong()))
         } catch (e: Exception) {
             promise.reject("WAIT_ERROR", e.message ?: "Failed to wait for app", e)
         }

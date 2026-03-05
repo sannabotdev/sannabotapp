@@ -144,8 +144,6 @@ ${accessibilityTree}
 
 Please achieve the goal: ${goal}`;
 
-  // Log the tree being sent to LLM for debugging
-  DebugLogger.add('info', 'AccessibilitySubAgent', `Sending accessibility tree to LLM (${accessibilityTree.length} chars)`, accessibilityTree);
 
   const initialUserMsg: Message = { role: 'user', content: firstUserMessage };
 
@@ -270,8 +268,10 @@ class AccessibilityActionTool implements Tool {
   description(): string {
     return (
       'Execute a UI action in the currently open app. ' +
-      'Use node IDs from the accessibility tree for node-based actions (click, type, scroll, etc.). ' +
-      'Use global actions (home, back, screenshot, clipboard_*) without a node_id. ' +
+      'Node actions (require node_id): click, long_click, type, clear, focus, scroll_forward, scroll_backward. ' +
+      'Global actions (no node_id required): back, home, recents, screenshot, clipboard_set, clipboard_get, paste. ' +
+      'For "type" action, provide the text in the "text" parameter. ' +
+      'For "clipboard_set" action, provide the text to set in the "text" parameter. ' +
       'Use "swipe" with x1/y1/x2/y2 coordinates for swipe gestures. ' +
       'Use "wait" with duration parameter to pause execution (useful for loading screens). ' +
       'Use "home" (no node_id) to navigate to the app\'s home screen when stuck.'
@@ -630,8 +630,6 @@ class GetAccessibilityTreeTool implements Tool {
       // Small delay so the app UI can settle after previous actions
       await new Promise<void>(resolve => setTimeout(() => resolve(), 800));
       const freshTree = await AccessibilityModule.getAccessibilityTree();
-      // Log the refreshed tree for debugging
-      DebugLogger.add('info', 'GetAccessibilityTree', `Refreshed tree (${freshTree.length} chars)`, freshTree);
       return successResult(freshTree);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);

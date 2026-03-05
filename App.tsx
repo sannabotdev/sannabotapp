@@ -777,74 +777,41 @@ export default function App(): React.JSX.Element {
         backgroundAtRef.current = null;
         DebugFileLogger.writeSystemLog('LIFECYCLE', `App returned to foreground after ${(elapsed / 1000).toFixed(1)}s`);
 
-        // Drain pending messages FIRST – if a background task (scheduler,
-        // notification, timer, accessibility) brought the app to foreground,
-        // we must NOT re-lock the vault (the user never left intentionally).
-        ConversationStore.drainPending().then(pending => {
-          const broughtByBackgroundTask = pending.length > 0;
-
-          // Only re-lock if the user left the app manually (no pending
-          // messages from a background task) and the grace period expired.
-          if (elapsed > LOCK_GRACE_MS && !settings.drivingMode && !broughtByBackgroundTask) {
-            tokenStore.current.lock();
-            setVaultUnlocked(false);
-          }
-
-          processPendingMessages(pending);
-        }).catch(() => {});
+        // Only re-lock if the user left the app manually and the grace period expired.
+        // Note: We don't check for pending messages here anymore - the polling interval
+        // handles that. If a background task brought the app to foreground, the polling
+        // will process those messages within 3 seconds.
+        if (elapsed > LOCK_GRACE_MS && !settings.drivingMode) {
+          tokenStore.current.lock();
+          setVaultUnlocked(false);
+        }
       }
     });
     return () => sub.remove();
   }, [settings.drivingMode, settings.appLanguage, settings.conversationHistoryMaxMessages]);
 
-  // Poll for pending messages from headless tasks (scheduler, notification, timer).
+  // Poll for pending messages from headless tasks (scheduler, notification, timer, accessibility).
   // DeviceEventEmitter doesn't reliably deliver events from HeadlessJS tasks to the
   // main React component (they may run on separate JS contexts), so we use a
   // lightweight polling interval that checks AsyncStorage every 3 seconds.
-  // The polling only runs when the app is active. When the app is in background,
-  // bringToForeground() will bring it to foreground, triggering the AppState listener
-  // which immediately drains pending messages.
+  // When the component is mounted (rendered), it's in the foreground, so we start polling.
+  // When the component is unmounted, we stop polling.
   useEffect(() => {
-    let intervalId: ReturnType<typeof setInterval> | null = null;
+    // Immediate check when component mounts
+    ConversationStore.drainPending()
+      .then(processPendingMessages)
+      .catch(() => {});
 
-    const startPolling = () => {
-      // Immediate check when starting
+    // Then poll every 3 seconds
+    const intervalId = setInterval(() => {
       ConversationStore.drainPending()
         .then(processPendingMessages)
         .catch(() => {});
+    }, 3000);
 
-      // Then poll every 3 seconds
-      intervalId = setInterval(() => {
-        ConversationStore.drainPending()
-          .then(processPendingMessages)
-          .catch(() => {});
-      }, 3000);
-    };
-
-    const stopPolling = () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-    };
-
-    // Start polling if app is currently active
-    if (AppState.currentState === 'active') {
-      startPolling();
-    }
-
-    // Listen for AppState changes to start/stop polling
-    const sub = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        startPolling();
-      } else {
-        stopPolling();
-      }
-    });
-
+    // Stop polling when component unmounts
     return () => {
-      sub.remove();
-      stopPolling();
+      clearInterval(intervalId);
     };
   }, [processPendingMessages]);
 

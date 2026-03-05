@@ -1,13 +1,18 @@
 /**
  * AccessibilityTool – LLM-driven UI automation for any Android app
  *
- * Starts a HeadlessJS task that runs in a separate JS context (not throttled
- * when SannaBot goes to background). The result is announced via voice when done.
+ * Starts an asynchronous background task that runs in a separate JS context (not throttled
+ * when SannaBot goes to background). The result is delivered to SannaBot later via appendPending.
+ *
+ * IMPORTANT: This tool does NOT wait for the result. It starts a background task and returns
+ * immediately. The result will be delivered asynchronously when the background task completes.
+ * This tool should typically be the LAST tool call in a tool loop, as any subsequent tool calls
+ * would execute before the accessibility automation finishes.
  *
  * Flow:
  *   1. Check Accessibility Service is enabled
- *   2. Start HeadlessJS task (runs in background)
- *   3. Return immediately – the result will be spoken via TTS when done
+ *   2. Start HeadlessJS background task (runs asynchronously)
+ *   3. Return immediately – the result will be delivered later via appendPending
  *
  * Skills reference this tool when they need to interact with an app's UI
  * directly (e.g. send a WhatsApp message by actually pressing the Send button).
@@ -18,7 +23,6 @@ import type { Tool, ToolResult } from './types';
 import { errorResult, successResult } from './types';
 import AccessibilityModule from '../native/AccessibilityModule';
 import AccessibilityJobModule from '../native/AccessibilityJobModule';
-import { SILENT_REPLY_TOKEN } from '../agent/tokens';
 
 export class AccessibilityTool implements Tool {
   name(): string {
@@ -29,13 +33,22 @@ export class AccessibilityTool implements Tool {
     return (
       'Open an Android app and let the LLM sub-agent perform UI actions to achieve a goal ' +
       '(e.g. send a WhatsApp message, fill a form). ' +
-      'Runs in the background – the result is announced via voice when done. ' +
+      'IMPORTANT: This tool starts a background task asynchronously – it does NOT wait for the result. ' +
+      'The result will be delivered to SannaBot later when the background task completes. ' +
+      'This tool should typically be the LAST tool call in a tool loop, as any subsequent tool calls ' +
+      'would execute before the accessibility automation finishes. ' +
       'Requires Accessibility Service to be enabled by the user.'
     );
   }
 
   systemHint(): string {
-    return 'Use when no direct API/skill exists for the target app. A sub-agent will tap, type, and swipe in the app UI. Always call skill_detail first to get the exact package name and goal format.';
+    return (
+      'Use when no direct API/skill exists for the target app. A sub-agent will tap, type, and swipe in the app UI. ' +
+      'Always call skill_detail first to get the exact package name and goal format. ' +
+      'CRITICAL: This tool starts an asynchronous background task – the result arrives later via appendPending. ' +
+      'Do NOT call any other tools after this one, as they would execute before the automation completes. ' +
+      'This should be the final tool call in your tool loop.'
+    );
   }
 
   parameters(): Record<string, unknown> {
@@ -119,11 +132,8 @@ export class AccessibilityTool implements Tool {
       return errorResult(`Failed to start background automation task: ${msg}`);
     }
 
-    // Return SILENT_REPLY_TOKEN to tell the agent not to generate a response yet.
-    // The actual result will come via appendPending when the background task completes.
-    // The tool loop will detect this token and stop without generating a user-facing response.
     return successResult(
-      `${SILENT_REPLY_TOKEN} Background UI automation task started for "${packageName}". The result will be delivered separately when the task completes.`,
+      `Background UI automation task started for "${packageName}". The result will be delivered separately when the task completes.`,
       undefined, // No forUser - don't speak this
     );
   }
