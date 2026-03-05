@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Clipboard from '@react-native-clipboard/clipboard';
+// import Clipboard from '@react-native-clipboard/clipboard'; // Remove clipboard import, it cause app to crash on Android when trying to load.
 import type { PipelineState } from '../agent/conversation-pipeline';
 import { DebugPanel } from './DebugPanel';
 import { SannaAvatar } from '../components/SannaAvatar';
@@ -673,7 +673,7 @@ const MessageBubble = React.memo(function MessageBubble({
   });
 
   const handleLongPress = () => {
-    Clipboard.setString(message.text);
+    // Clipboard.setString(message.text); 
     Alert.alert(t('home.bubble.copied'));
   };
 

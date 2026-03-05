@@ -22,7 +22,16 @@ import { SpeechSection } from './sections/SpeechSection';
 import { WakeWordSection } from './sections/WakeWordSection';
 import { t } from '../../i18n';
 
-type SectionId = 'provider' | 'wakeWord' | 'services' | 'speech' | 'soul' | 'skills' | 'agent' | 'history' | 'about';
+type SectionId =
+  | 'provider'
+  | 'wakeWord'
+  | 'services'
+  | 'speech'
+  | 'soul'
+  | 'skills'
+  | 'agent'
+  | 'history'
+  | 'about';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -35,12 +44,19 @@ interface SettingsScreenProps {
   onClaudeApiKeyChange: (key: string) => void;
   openAIApiKey: string;
   onOpenAIApiKeyChange: (key: string) => void;
-  selectedProvider: 'claude' | 'openai';
-  onProviderChange: (provider: 'claude' | 'openai') => void;
+  selectedProvider: 'claude' | 'openai' | 'custom';
+  onProviderChange: (provider: 'claude' | 'openai' | 'custom') => void;
   selectedOpenAIModel: string;
   onOpenAIModelChange: (model: string) => void;
   selectedClaudeModel: string;
   onClaudeModelChange: (model: string) => void;
+  customApiKey: string;
+  onCustomApiKeyChange: (key: string) => void;
+  customModelUrl: string;
+  onCustomModelUrlChange: (url: string) => void;
+  customModelName: string;
+  onCustomModelNameChange: (name: string) => void;
+  onTestCustomConnection?: () => void;
   wakeWordEnabled: boolean;
   onWakeWordToggle: (enabled: boolean) => void;
   wakeWordKey: string;
@@ -67,13 +83,19 @@ interface SettingsScreenProps {
     error?: string;
     evidence?: {
       toolCalls: Array<{ name: string; arguments: Record<string, unknown> }>;
-      toolResults: Array<{ toolName: string; result: string; isError: boolean }>;
+      toolResults: Array<{
+        toolName: string;
+        result: string;
+        isError: boolean;
+      }>;
       finalResponse?: string;
       iterations: number;
     };
   }>;
   ttsService?: TTSService;
-  onAddSkill?: (content: string) => Promise<{ success: boolean; error?: string }>;
+  onAddSkill?: (
+    content: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   onDeleteSkill?: (skillName: string) => Promise<void>;
   dynamicSkillNames?: string[];
   onClearHistory?: () => void;
@@ -115,6 +137,13 @@ export function SettingsScreen({
   onOpenAIModelChange,
   selectedClaudeModel,
   onClaudeModelChange,
+  customApiKey,
+  onCustomApiKeyChange,
+  customModelUrl,
+  onCustomModelUrlChange,
+  customModelName,
+  onCustomModelNameChange,
+  onTestCustomConnection,
   wakeWordEnabled,
   onWakeWordToggle,
   wakeWordKey,
@@ -186,21 +215,30 @@ export function SettingsScreen({
   };
 
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
+    <View
+      className="flex-1 bg-surface"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-surface-elevated gap-3">
         <TouchableOpacity onPress={onBack} className="p-1">
           <Text className="text-accent text-base">{t('settings.back')}</Text>
         </TouchableOpacity>
-        <Text className="text-label-primary text-lg font-bold">{t('settings.title')}</Text>
+        <Text className="text-label-primary text-lg font-bold">
+          {t('settings.title')}
+        </Text>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: 48 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: 48 }}
+      >
         {/* Language */}
         <CollapsibleSection
           title={t('settings.section.language')}
           expanded={openSection === 'speech'}
-          onToggle={() => handleSectionToggle('speech')}>
+          onToggle={() => handleSectionToggle('speech')}
+        >
           <SpeechSection
             sttLanguage={sttLanguage}
             onSttLanguageChange={onSttLanguageChange}
@@ -215,7 +253,8 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.wakeWord')}
           expanded={openSection === 'wakeWord'}
-          onToggle={() => handleSectionToggle('wakeWord')}>
+          onToggle={() => handleSectionToggle('wakeWord')}
+        >
           <WakeWordSection
             wakeWordEnabled={wakeWordEnabled}
             onWakeWordToggle={onWakeWordToggle}
@@ -228,7 +267,8 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.soul')}
           expanded={openSection === 'soul'}
-          onToggle={() => handleSectionToggle('soul')}>
+          onToggle={() => handleSectionToggle('soul')}
+        >
           <SoulSection
             soulText={soulText}
             onSoulTextChange={onSoulTextChange}
@@ -244,7 +284,8 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.skills')}
           expanded={openSection === 'skills'}
-          onToggle={() => handleSectionToggle('skills')}>
+          onToggle={() => handleSectionToggle('skills')}
+        >
           <SkillsSection
             allSkills={allSkills}
             enabledSkillNames={enabledSkillNames}
@@ -268,7 +309,8 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.services')}
           expanded={openSection === 'services'}
-          onToggle={() => handleSectionToggle('services')}>
+          onToggle={() => handleSectionToggle('services')}
+        >
           <ServicesSection
             googleWebClientId={googleWebClientId}
             onGoogleWebClientIdChange={onGoogleWebClientIdChange}
@@ -289,7 +331,8 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.provider')}
           expanded={openSection === 'provider'}
-          onToggle={() => handleSectionToggle('provider')}>
+          onToggle={() => handleSectionToggle('provider')}
+        >
           <ProviderSection
             selectedProvider={selectedProvider}
             onProviderChange={onProviderChange}
@@ -301,6 +344,13 @@ export function SettingsScreen({
             onOpenAIModelChange={onOpenAIModelChange}
             selectedClaudeModel={selectedClaudeModel}
             onClaudeModelChange={onClaudeModelChange}
+            customApiKey={customApiKey}
+            onCustomApiKeyChange={onCustomApiKeyChange}
+            customModelUrl={customModelUrl}
+            onCustomModelUrlChange={onCustomModelUrlChange}
+            customModelName={customModelName}
+            onCustomModelNameChange={onCustomModelNameChange}
+            onTestCustomConnection={onTestCustomConnection}
           />
         </CollapsibleSection>
 
@@ -308,14 +358,17 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.agent')}
           expanded={openSection === 'agent'}
-          onToggle={() => handleSectionToggle('agent')}>
+          onToggle={() => handleSectionToggle('agent')}
+        >
           <AgentSection
             maxIterations={maxIterations}
             onMaxIterationsChange={onMaxIterationsChange}
             maxSubAgentIterations={maxSubAgentIterations}
             onMaxSubAgentIterationsChange={onMaxSubAgentIterationsChange}
             maxAccessibilityIterations={maxAccessibilityIterations}
-            onMaxAccessibilityIterationsChange={onMaxAccessibilityIterationsChange}
+            onMaxAccessibilityIterationsChange={
+              onMaxAccessibilityIterationsChange
+            }
           />
         </CollapsibleSection>
 
@@ -323,12 +376,15 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.history')}
           expanded={openSection === 'history'}
-          onToggle={() => handleSectionToggle('history')}>
+          onToggle={() => handleSectionToggle('history')}
+        >
           <HistorySection
             llmContextMaxMessages={llmContextMaxMessages}
             onLlmContextMaxMessagesChange={onLlmContextMaxMessagesChange}
             conversationHistoryMaxMessages={conversationHistoryMaxMessages}
-            onConversationHistoryMaxMessagesChange={onConversationHistoryMaxMessagesChange}
+            onConversationHistoryMaxMessagesChange={
+              onConversationHistoryMaxMessagesChange
+            }
             onClearHistory={onClearHistory}
           />
         </CollapsibleSection>
@@ -337,7 +393,8 @@ export function SettingsScreen({
         <CollapsibleSection
           title={t('settings.section.about')}
           expanded={openSection === 'about'}
-          onToggle={() => handleSectionToggle('about')}>
+          onToggle={() => handleSectionToggle('about')}
+        >
           <AboutSection
             debugLogEnabled={debugLogEnabled}
             onDebugLogEnabledChange={onDebugLogEnabledChange}

@@ -13,14 +13,23 @@ const LOCAL_DEV_CONFIG = {
   /** Anthropic Claude API Key for local development */
   claudeApiKey: '',
 
-  /** Default provider: 'claude' | 'openai' */
-  selectedProvider: 'openai' as 'claude' | 'openai',
+  /** Default provider: 'claude' | 'openai' | 'custom' */
+  selectedProvider: 'openai' as 'claude' | 'openai' | 'custom',
 
   /** OpenAI model (optional, default: 'gpt-5.2') */
   openAIModel: 'gpt-5.2',
 
   /** Claude model (optional, default: 'claude-sonnet-4-6') */
   claudeModel: 'claude-sonnet-4-6',
+
+  /** Custom provider API key (for OpenAI-compatible endpoints) */
+  customApiKey: '',
+
+  /** Custom provider base URL (e.g., 'https://your-server.com/v1') */
+  customModelUrl: '',
+
+  /** Custom provider model name */
+  customModelName: '',
 
   /** Spotify Client ID for local development */
   spotifyClientId: '',

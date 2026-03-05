@@ -33,6 +33,72 @@ export class OpenAIProvider implements LLMProvider {
     return this.defaultModel;
   }
 
+  /** Test the connection by sending a minimal request */
+  async testConnection(): Promise<{
+    success: boolean;
+    error?: string;
+    response?: string;
+  }> {
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.defaultModel,
+          messages: [{ role: 'user', content: 'test' }],
+        }),
+      }); 
+
+      const rawText = await response.text();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${rawText.slice(0, 200)}`,
+        };
+      }
+
+      // Parse JSON and verify structure
+      let data: unknown;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        return {
+          success: false,
+          error: `Invalid JSON response: ${rawText.slice(0, 200)}`,
+        };
+      }
+
+      // Check for minimal valid structure
+      const typedData = data as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      if (
+        !typedData.choices ||
+        !typedData.choices[0] ||
+        !typedData.choices[0].message?.content
+      ) {
+        return {
+          success: false,
+          error: 'Invalid response structure: missing choices.message.content',
+        };
+      }
+
+      return {
+        success: true,
+        response: typedData.choices[0].message.content,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
   async chat(
     messages: Message[],
     tools: ToolDefinition[],
@@ -47,7 +113,11 @@ export class OpenAIProvider implements LLMProvider {
           tool_call_id: msg.toolCallId ?? '',
         };
       }
-      if (msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0) {
+      if (
+        msg.role === 'assistant' &&
+        msg.toolCalls &&
+        msg.toolCalls.length > 0
+      ) {
         return {
           role: 'assistant' as const,
           content: msg.content || null,
@@ -71,7 +141,9 @@ export class OpenAIProvider implements LLMProvider {
 
     // Newer OpenAI models (gpt-4.1+, gpt-5+, o-series) require
     // 'max_completion_tokens' instead of the legacy 'max_tokens' parameter.
-    const useNewTokenParam = /^(gpt-4\.[1-9]|gpt-[5-9]|o[1-9])/.test(this.defaultModel);
+    const useNewTokenParam = /^(gpt-4\.[1-9]|gpt-[5-9]|o[1-9])/.test(
+      this.defaultModel,
+    );
     const tokenLimit = options.maxTokens ?? DEFAULT_MAX_TOKENS;
 
     const body: Record<string, unknown> = {
@@ -116,7 +188,8 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error(`OpenAI API error ${response.status}: ${detail}`);
     }
 
-    const data = await response.json() as {
+    const rawText = await response.text();
+    let data: {
       choices: {
         message: {
           content: string | null;
@@ -128,23 +201,53 @@ export class OpenAIProvider implements LLMProvider {
         };
         finish_reason: string;
       }[];
-      usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+      usage: {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+      };
     };
+    try {
+      data = JSON.parse(rawText) as typeof data;
+    } catch (parseErr) {
+      const contentType = response.headers.get('content-type') ?? 'unknown';
+      throw new Error(
+        `Invalid JSON response from custom LLM endpoint\n` +
+          `URL: ${this.baseUrl}\n` +
+          `Status: ${response.status}\n` +
+          `Content-Type: ${contentType}\n` +
+          `Raw response (first 500 chars): ${rawText.slice(0, 500)}`,
+      );
+    }
 
     const choice = data.choices[0];
-    const toolCalls: ToolCall[] = (choice.message.tool_calls ?? []).map(tc => ({
-      id: tc.id,
-      type: 'function' as const,
-      name: tc.function.name,
-      arguments: JSON.parse(tc.function.arguments) as Record<string, unknown>,
-    }));
+    const toolCalls: ToolCall[] = (choice.message.tool_calls ?? []).map(tc => {
+      let argumentsObj: Record<string, unknown>;
+      try {
+        argumentsObj = JSON.parse(tc.function.arguments) as Record<
+          string,
+          unknown
+        >;
+      } catch (parseErr) {
+        throw new Error(
+          `Invalid JSON in tool call arguments for "${tc.function.name}"\n` +
+            `Raw arguments: ${tc.function.arguments}`,
+        );
+      }
+      return {
+        id: tc.id,
+        type: 'function' as const,
+        name: tc.function.name,
+        arguments: argumentsObj,
+      };
+    });
 
     const finishReason =
       choice.finish_reason === 'tool_calls'
         ? 'tool_calls'
         : choice.finish_reason === 'stop'
-          ? 'stop'
-          : 'stop';
+        ? 'stop'
+        : 'stop';
 
     return {
       content: choice.message.content ?? '',
