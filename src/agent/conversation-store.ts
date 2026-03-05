@@ -42,6 +42,12 @@ export interface StoredMessage {
 
 export class ConversationStore {
   /**
+   * Lock to prevent concurrent drainPending() calls (race condition protection).
+   * If drainPending() is already running, subsequent calls return empty array.
+   */
+  private static drainingLock = false;
+
+  /**
    * Save the full conversation history (called by main app after each turn).
    * Truncates to the last `maxMessages` entries.
    */
@@ -105,9 +111,20 @@ export class ConversationStore {
    * Read and delete all pending messages (called by main app on foreground).
    * Returns the messages so they can be merged into the conversation.
    * Returns an empty array if nothing is pending.
+   * 
+   * Thread-safe: Uses a lock to prevent concurrent execution. If drainPending()
+   * is already running, subsequent calls return an empty array to avoid duplicate
+   * processing of the same messages.
    */
   static async drainPending(): Promise<StoredMessage[]> {
+    // Prevent concurrent execution - if already draining, return empty
+    if (ConversationStore.drainingLock) {
+      return [];
+    }
+
     try {
+      ConversationStore.drainingLock = true;
+
       const json = await AsyncStorage.getItem(PENDING_KEY);
       if (!json) return [];
 
@@ -122,6 +139,8 @@ export class ConversationStore {
       );
     } catch {
       return [];
+    } finally {
+      ConversationStore.drainingLock = false;
     }
   }
 
