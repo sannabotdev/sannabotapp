@@ -44,7 +44,7 @@ import { OpenAIProvider } from './src/llm/openai-provider';
 import { TTSService } from './src/audio/tts-service';
 import { STTService } from './src/audio/stt-service';
 import { WakeWordService } from './src/audio/wake-word-service';
-import { TTSEvents } from './src/native/TTSModule';
+import TTSModule, { TTSEvents } from './src/native/TTSModule';
 import { TokenStore } from './src/permissions/token-store';
 import { CredentialManager } from './src/permissions/credential-manager';
 import { PermissionManager } from './src/permissions/permission-manager';
@@ -1462,6 +1462,38 @@ export default function App(): React.JSX.Element {
       sub.remove();
     };
   }, [settings.drivingMode, startAutoListening]);
+
+  // ─── Driving-mode: periodic beep during processing ────────────────────────
+  /**
+   * Plays a beep every few seconds while SannaBot is thinking in driving mode.
+   * Provides audio feedback that processing is ongoing.
+   */
+  useEffect(() => {
+    // Only play beeps if in driving mode and currently processing
+    if (!settings.drivingMode || pipelineState !== 'processing') {
+      return;
+    }
+
+    // Play initial beep immediately
+    TTSModule.playBeep(24, 200, 1).catch(() => {
+      // Ignore errors - beep is non-critical
+    });
+
+    // Set up interval to play beep every 2.5 seconds
+    const beepInterval = setInterval(() => {
+      // Double-check conditions before playing (state might have changed)
+      if (settings.drivingMode && pipelineState === 'processing') {
+        TTSModule.playBeep(24, 200, 1).catch(() => {
+          // Ignore errors - beep is non-critical
+        });
+      }
+    }, 2500);
+
+    // Cleanup interval when conditions change or component unmounts
+    return () => {
+      clearInterval(beepInterval);
+    };
+  }, [pipelineState, settings.drivingMode]);
 
   const handleTextSubmit = useCallback(async (text: string) => {
     if (!pipelineRef.current) {
