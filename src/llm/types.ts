@@ -49,4 +49,9 @@ export interface LLMProvider {
     options?: LLMOptions,
   ): Promise<LLMResponse>;
   getCurrentModel(): string;
+  testConnection(): Promise<{
+    success: boolean;
+    error?: string;
+    response?: string;
+  }>;
 }

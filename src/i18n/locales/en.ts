@@ -94,6 +94,10 @@ const en = {
   'settings.provider.testingConnection': 'Testing...',
   'settings.provider.connectionSuccess': 'Connection successful!',
   'settings.provider.connectionFailed': 'Connection failed',
+  'settings.provider.testError.noApiKey': 'Please enter an API Key before testing.',
+  'settings.provider.testError.missingFields': 'Please enter both API Key, Base URL, and Model Name before testing.',
+  'settings.provider.testSuccess.message': 'The endpoint responded successfully.\n\nResponse: "{response}"',
+  'settings.provider.testError.unknown': 'Unknown error occurred.',
 
 
   // Wake Word

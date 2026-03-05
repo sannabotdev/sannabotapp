@@ -743,29 +743,6 @@ export default function App(): React.JSX.Element {
     setDynamicSkillNames(dynamicNames);
     setAllSkills(skillLoader.current.getAllSkills());
 
-    // Ensure all skill summaries are up-to-date during loading screen
-    const selectedProvider = prefs.selectedProvider || 'openai';
-    const apiKey =
-      selectedProvider === 'claude'
-        ? secureKeys.claudeApiKey
-        : selectedProvider === 'custom'
-        ? secureKeys.customApiKey
-        : secureKeys.openAIApiKey;
-    if (apiKey) {
-      const selectedModel =
-        selectedProvider === 'claude'
-          ? secureKeys.selectedClaudeModel
-          : selectedProvider === 'custom'
-          ? secureKeys.customModelName
-          : secureKeys.selectedOpenAIModel;
-      const provider = createLLMProvider({
-        provider: selectedProvider === 'claude' ? 'claude' : selectedProvider === 'custom' ? 'custom' : 'openai',
-        apiKey,
-        model: selectedModel,
-        customBaseUrl: selectedProvider === 'custom' ? secureKeys.customModelUrl : undefined,
-      });
-    }
-
     // Sync notification rules → native allowlist (ensures native side is in sync
     // after backup restore, app update, or reinstall)
     syncNotificationRules().catch(() => {});
@@ -1828,37 +1805,64 @@ export default function App(): React.JSX.Element {
     [settings],
   );
 
-  const handleTestCustomConnection = useCallback(async () => {
-    const { customApiKey, customModelUrl, customModelName } = settings;
+  const handleTestConnection = useCallback(async () => {
+    const { claudeApiKey, openAIApiKey, selectedProvider, customApiKey, customModelUrl, customModelName, selectedClaudeModel, selectedOpenAIModel } = settings;
 
-    if (!customApiKey || !customModelUrl || !customModelName) {
+    const apiKey =
+      selectedProvider === 'claude'
+        ? claudeApiKey
+        : selectedProvider === 'custom'
+        ? customApiKey
+        : openAIApiKey;
+
+    if (!apiKey) {
       Alert.alert(
         t('alert.error'),
-        'Please enter both API Key and Base URL before testing.',
+        t('settings.provider.testError.noApiKey'),
       );
       return;
     }
 
+    // For custom provider, also check URL and model name
+    if (selectedProvider === 'custom') {
+      if (!customModelUrl || !customModelName) {
+        Alert.alert(
+          t('alert.error'),
+          t('settings.provider.testError.missingFields'),
+        );
+        return;
+      }
+    }
+
+    const selectedModel =
+      selectedProvider === 'claude'
+        ? selectedClaudeModel
+        : selectedProvider === 'custom'
+        ? customModelName
+        : selectedOpenAIModel;
+
     const provider = createLLMProvider({
-      provider: 'custom',
-      apiKey: customApiKey,
-      model: customModelName,
-      customBaseUrl: customModelUrl,
+      provider: selectedProvider,
+      apiKey,
+      model: selectedModel,
+      customBaseUrl: selectedProvider === 'custom' ? customModelUrl : undefined,
     });
+    
     const result = await provider.testConnection();
 
     if (result.success) {
+      const responseText = result.response
+        ? `${result.response.slice(0, 100)}${result.response.length > 100 ? '...' : ''}`
+        : '';
+      const message = t('settings.provider.testSuccess.message').replace('{response}', responseText);
       Alert.alert(
         t('settings.provider.connectionSuccess'),
-        `The endpoint responded successfully.\n\nResponse: "${result.response?.slice(
-          0,
-          100,
-        )}${result.response && result.response.length > 100 ? '...' : ''}"`,
+        message,
       );
     } else {
       Alert.alert(
         t('settings.provider.connectionFailed'),
-        result.error || 'Unknown error occurred.',
+        result.error || t('settings.provider.testError.unknown'),
       );
     }
   }, [settings]);
@@ -1973,7 +1977,7 @@ export default function App(): React.JSX.Element {
             onCustomModelNameChange={name =>
               updateSecureKey('customModelName', name)
             }
-            onTestCustomConnection={handleTestCustomConnection}
+            onTestConnection={handleTestConnection}
             wakeWordEnabled={settings.wakeWordEnabled}
             onWakeWordToggle={v =>
               setSettings(s => ({ ...s, wakeWordEnabled: v }))

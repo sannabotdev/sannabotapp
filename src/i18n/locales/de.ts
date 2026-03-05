@@ -94,6 +94,10 @@ const de = {
   'settings.provider.testingConnection': 'Teste...',
   'settings.provider.connectionSuccess': 'Verbindung erfolgreich!',
   'settings.provider.connectionFailed': 'Verbindung fehlgeschlagen',
+  'settings.provider.testError.noApiKey': 'Bitte gib einen API-Schlüssel ein, bevor du testest.',
+  'settings.provider.testError.missingFields': 'Bitte gib API-Schlüssel, Basis-URL und Modellname ein, bevor du testest.',
+  'settings.provider.testSuccess.message': 'Der Endpunkt hat erfolgreich geantwortet.\n\nAntwort: "{response}"',
+  'settings.provider.testError.unknown': 'Unbekannter Fehler aufgetreten.',
 
   // Wake Word
   'settings.wakeWord.label': "'Hey Sanna' aktivieren",

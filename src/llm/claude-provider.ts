@@ -46,6 +46,84 @@ export class ClaudeProvider implements LLMProvider {
     return this.defaultModel;
   }
 
+  /** Test the connection by sending a minimal request */
+  async testConnection(): Promise<{
+    success: boolean;
+    error?: string;
+    response?: string;
+  }> {
+    try {
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: this.defaultModel,
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'test' }],
+        }),
+      });
+
+      const rawText = await response.text();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${rawText.slice(0, 200)}`,
+        };
+      }
+
+      // Parse JSON and verify structure
+      let data: unknown;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        return {
+          success: false,
+          error: `Invalid JSON response: ${rawText.slice(0, 200)}`,
+        };
+      }
+
+      // Check for minimal valid structure
+      const typedData = data as {
+        content?: Array<{ type?: string; text?: string }>;
+      };
+      if (
+        !typedData.content ||
+        !Array.isArray(typedData.content) ||
+        typedData.content.length === 0
+      ) {
+        return {
+          success: false,
+          error: 'Invalid response structure: missing content array',
+        };
+      }
+
+      const textBlock = typedData.content.find(
+        block => block.type === 'text' && block.text,
+      );
+      if (!textBlock?.text) {
+        return {
+          success: false,
+          error: 'Invalid response structure: missing text content',
+        };
+      }
+
+      return {
+        success: true,
+        response: textBlock.text,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
   async chat(
     messages: Message[],
     tools: ToolDefinition[],

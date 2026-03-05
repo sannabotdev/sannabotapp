@@ -27,7 +27,7 @@ interface ProviderSectionProps {
   onCustomModelUrlChange: (url: string) => void;
   customModelName: string;
   onCustomModelNameChange: (name: string) => void;
-  onTestCustomConnection?: () => void;
+  onTestConnection?: () => void;
 }
 
 export function ProviderSection({
@@ -47,7 +47,7 @@ export function ProviderSection({
   onCustomModelUrlChange,
   customModelName,
   onCustomModelNameChange,
-  onTestCustomConnection,
+  onTestConnection,
 }: ProviderSectionProps): React.JSX.Element {
   return (
     <>
@@ -60,14 +60,23 @@ export function ProviderSection({
         visible={selectedProvider === 'claude'}
       />
       {selectedProvider === 'claude' && (
-        <ModelPicker
-          label={t('settings.provider.claudeModel')}
-          apiKey={claudeApiKey}
-          selectedModel={selectedClaudeModel}
-          onModelChange={onClaudeModelChange}
-          fetchModels={fetchClaudeModels}
-          defaultModel="claude-3-5-sonnet-20241022"
-        />
+        <>
+          <ModelPicker
+            label={t('settings.provider.claudeModel')}
+            apiKey={claudeApiKey}
+            selectedModel={selectedClaudeModel}
+            onModelChange={onClaudeModelChange}
+            fetchModels={fetchClaudeModels}
+            defaultModel="claude-3-5-sonnet-20241022"
+          />
+          <View className="mt-3 mx-4 mb-4">
+            <ConnectionTest
+              onTest={onTestConnection}
+              apiKey={claudeApiKey}
+              modelName={selectedClaudeModel}
+            />
+          </View>
+        </>
       )}
       <ApiKeyInput
         label="OpenAI API Key"
@@ -77,14 +86,23 @@ export function ProviderSection({
         visible={selectedProvider === 'openai'}
       />
       {selectedProvider === 'openai' && (
-        <ModelPicker
-          label={t('settings.provider.openaiModel')}
-          apiKey={openAIApiKey}
-          selectedModel={selectedOpenAIModel}
-          onModelChange={onOpenAIModelChange}
-          fetchModels={fetchOpenAIModels}
-          defaultModel="gpt-5.2"
-        />
+        <>
+          <ModelPicker
+            label={t('settings.provider.openaiModel')}
+            apiKey={openAIApiKey}
+            selectedModel={selectedOpenAIModel}
+            onModelChange={onOpenAIModelChange}
+            fetchModels={fetchOpenAIModels}
+            defaultModel="gpt-5.2"
+          />
+          <View className="mt-3 mx-4 mb-4">
+            <ConnectionTest
+              onTest={onTestConnection}
+              apiKey={openAIApiKey}
+              modelName={selectedOpenAIModel}
+            />
+          </View>
+        </>
       )}
       {selectedProvider === 'custom' && (
         <>
@@ -113,10 +131,11 @@ export function ProviderSection({
             allowManualInput
             baseUrl={customModelUrl}
           />
-          <View className="mt-2">
-            <CustomConnectionTest
-              onTest={onTestCustomConnection}
+          <View className="mt-3 mx-4 mb-4">
+            <ConnectionTest
+              onTest={onTestConnection}
               apiKey={customApiKey}
+              modelName={customModelName}
               url={customModelUrl}
             />
           </View>
@@ -126,21 +145,27 @@ export function ProviderSection({
   );
 }
 
-interface CustomConnectionTestProps {
+interface ConnectionTestProps {
   onTest?: () => void;
   apiKey: string;
-  url: string;
+  modelName: string;
+  url?: string;
 }
 
-function CustomConnectionTest({
+function ConnectionTest({
   onTest,
   apiKey,
+  modelName,
   url,
-}: CustomConnectionTestProps): React.JSX.Element | null {
+}: ConnectionTestProps): React.JSX.Element | null {
   const [testing, setTesting] = useState(false);
 
+  // For custom provider, require URL; for others, just API key and model
   const canTest =
-    apiKey.trim() !== '' && url.trim() !== '' && onTest !== undefined;
+    apiKey.trim() !== '' &&
+    modelName.trim() !== '' &&
+    (url === undefined || url.trim() !== '') &&
+    onTest !== undefined;
 
   const handleTest = async () => {
     if (!canTest || !onTest) return;
@@ -161,7 +186,7 @@ function CustomConnectionTest({
     <TouchableOpacity
       onPress={handleTest}
       disabled={!canTest || testing}
-      className={`rounded-lg px-4 py-3 mt-2 ${
+      className={`rounded-lg px-3 py-2 ${
         canTest && !testing ? 'bg-accent' : 'bg-surface-tertiary opacity-50'
       }`}
     >
@@ -173,9 +198,12 @@ function CustomConnectionTest({
           </Text>
         </View>
       ) : (
-        <Text className="text-label-primary text-sm font-medium text-center">
-          {t('settings.provider.testConnection')}
-        </Text>
+        <View className="flex-row items-center justify-center gap-2">
+          <Text className="text-label-primary text-base">✓</Text>
+          <Text className="text-label-primary text-sm font-medium">
+            {t('settings.provider.testConnection')}
+          </Text>
+        </View>
       )}
     </TouchableOpacity>
   );
