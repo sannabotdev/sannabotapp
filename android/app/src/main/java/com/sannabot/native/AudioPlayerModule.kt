@@ -37,6 +37,9 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
     private var currentUrl: String? = null
     private var playerListener: Player.Listener? = null
     
+    // Track if user manually paused (don't auto-resume on audio focus gain)
+    private var isManuallyPaused = false
+    
     // Audio Focus
     private var audioFocusRequest: AudioFocusRequest? = null
     private val audioManager: AudioManager
@@ -47,15 +50,25 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
         CoroutineScope(Dispatchers.Main).launch {
             when (focusChange) {
                 AudioManager.AUDIOFOCUS_GAIN -> {
-                    // Audio focus regained - resume playback
-                    Log.d(TAG, "Audio focus gained - resuming playback")
-                    exoPlayer?.play()
+                    // Audio focus regained - only resume if not manually paused
+                    Log.d(TAG, "Audio focus gained - isManuallyPaused=$isManuallyPaused")
+                    if (!isManuallyPaused) {
+                        Log.d(TAG, "Resuming playback after audio focus gain")
+                        exoPlayer?.play()
+                    } else {
+                        Log.d(TAG, "Not resuming - user manually paused")
+                    }
                 }
                 AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
                 AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                     // Temporary loss (e.g., notification, phone call, microphone) - pause
-                    Log.d(TAG, "Audio focus lost temporarily - pausing playback")
-                    exoPlayer?.pause()
+                    // Only pause if not already manually paused
+                    if (!isManuallyPaused) {
+                        Log.d(TAG, "Audio focus lost temporarily - pausing playback")
+                        exoPlayer?.pause()
+                    } else {
+                        Log.d(TAG, "Audio focus lost temporarily - already manually paused")
+                    }
                 }
                 AudioManager.AUDIOFOCUS_LOSS -> {
                     // Permanent loss (e.g., another app took focus) - stop
@@ -94,6 +107,8 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
                     return@launch
                 }
 
+                // Reset manual pause flag when starting new playback
+                isManuallyPaused = false
                 currentUrl = url
                 Log.d(TAG, "Playing audio from URL: $url")
 
@@ -210,7 +225,10 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
                 val url = currentUrl
                 if (player != null && player.isPlaying) {
                     val positionSeconds = (player.currentPosition / 1000).toInt()
+                    // Mark as manually paused - don't auto-resume on audio focus gain
+                    isManuallyPaused = true
                     player.pause()
+                    Log.d(TAG, "Manually paused playback")
                     sendEvent("audio_paused", Arguments.createMap().apply {
                         putString("url", url)
                         putInt("position", positionSeconds)
@@ -235,7 +253,10 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
                 val player = exoPlayer
                 val url = currentUrl
                 if (player != null && !player.isPlaying) {
+                    // Clear manual pause flag when user explicitly resumes
+                    isManuallyPaused = false
                     player.play()
+                    Log.d(TAG, "Manually resumed playback")
                     sendEvent("audio_started", Arguments.createMap().apply {
                         putString("url", url)
                     })
@@ -363,6 +384,7 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
         exoPlayer = null
         playerListener = null
         currentUrl = null
+        isManuallyPaused = false
     }
 
     private fun cleanup() {
@@ -378,6 +400,7 @@ class AudioPlayerModule(reactContext: ReactApplicationContext) :
         exoPlayer = null
         playerListener = null
         currentUrl = null
+        isManuallyPaused = false
     }
 
     /**
