@@ -36,7 +36,6 @@ local.config.js
 *.hprof
 .cxx/
 *.keystore
-!debug.keystore
 .kotlin/
 
 # node.js
