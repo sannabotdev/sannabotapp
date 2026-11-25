@@ -43,6 +43,47 @@ class SannaNotificationListenerService : NotificationListenerService() {
         private val processedKeys = LinkedHashSet<String>()
 
         /**
+         * Reply actions (the "Reply" button with a text field) of recent
+         * notifications, by notification key. Used for auto-reply: a reply can
+         * only ever go back through the notification it belongs to, so it
+         * reaches the chat that sent the message and nobody else.
+         */
+        private const val MAX_REPLY_ACTIONS = 100
+        private val replyActions = object : LinkedHashMap<String, android.app.Notification.Action>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, android.app.Notification.Action>?): Boolean =
+                size > MAX_REPLY_ACTIONS
+        }
+
+        private fun findReplyAction(n: android.app.Notification): android.app.Notification.Action? =
+            n.actions?.firstOrNull { a ->
+                a.actionIntent != null && a.remoteInputs?.any { it.allowFreeFormInput } == true
+            }
+
+        fun hasReplyAction(key: String): Boolean = synchronized(replyActions) { replyActions.containsKey(key) }
+
+        /**
+         * Send [text] through the Reply button of notification [key].
+         * Returns an error message, or null on success.
+         */
+        fun replyToNotification(context: Context, key: String, text: String): String? {
+            val action = synchronized(replyActions) { replyActions[key] }
+                ?: return "This notification has no Reply button (or it is too old)."
+            return try {
+                val inputs = action.remoteInputs ?: return "This notification has no reply field."
+                val results = android.os.Bundle()
+                for (ri in inputs) results.putCharSequence(ri.resultKey, text)
+                val fillIn = Intent()
+                android.app.RemoteInput.addResultsToIntent(inputs, fillIn, results)
+                action.actionIntent.send(context, 0, fillIn)
+                synchronized(replyActions) { replyActions.remove(key) } // one reply per message
+                null
+            } catch (e: Exception) {
+                Log.e(TAG, "Reply failed: ${e.message}", e)
+                "Reply failed: ${e.message}"
+            }
+        }
+
+        /**
          * Get the list of subscribed package names from SharedPreferences.
          */
         fun getSubscribedApps(context: Context): Set<String> {
@@ -174,6 +215,11 @@ class SannaNotificationListenerService : NotificationListenerService() {
                 timestamp = sbn.postTime,
                 key = sbn.key
             )
+
+            // Remember the Reply button (if any) for auto-reply rules
+            findReplyAction(notification)?.let { action ->
+                synchronized(replyActions) { replyActions[sbn.key] = action }
+            }
 
             // Save to buffer (for get_recent tool access)
             addToBuffer(this, notificationData)

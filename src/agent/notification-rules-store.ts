@@ -48,6 +48,12 @@ export interface NotificationRule {
    * Example: "The sender is my team lead" or "The message mentions 'urgent'"
    */
   condition: string;
+  /**
+   * Auto-reply: when true, the rule may answer the incoming message through
+   * the notification's own Reply button without asking each time.
+   * Off by default; turning it on always requires the user's confirmation.
+   */
+  autoReply?: boolean;
   /** When the rule was created */
   created_at: string;
 }
@@ -105,7 +111,7 @@ export async function addRule(
  */
 export async function updateRule(
   id: string,
-  updates: Partial<Pick<NotificationRule, 'instruction' | 'condition' | 'enabled'>>,
+  updates: Partial<Pick<NotificationRule, 'instruction' | 'condition' | 'enabled' | 'autoReply'>>,
 ): Promise<NotificationRule | null> {
   const rules = await loadRules();
   const idx = rules.findIndex(r => r.id === id);

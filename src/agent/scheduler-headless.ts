@@ -176,6 +176,8 @@ export default async function schedulerHeadlessTask(
       includePersonalMemoryTool: false,
     });
     toolRegistry.removeDisabledSkillTools(skillLoader, config.enabledSkillNames);
+    // No user present: sensitive actions are refused (deleting/disabling own schedule still works).
+    toolRegistry.setSafety('scheduled');
 
     const personalMemory = await PersonalMemoryStore.getMemory();
 

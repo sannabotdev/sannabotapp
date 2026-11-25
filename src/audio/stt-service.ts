@@ -84,10 +84,20 @@ export class STTService {
           // Codes that mean "no speech" – resolve empty instead of rejecting
           // 7  = ERROR_NO_MATCH
           // 6  = ERROR_SPEECH_TIMEOUT
-          // 11 = ERROR_SERVER_DISCONNECTED (emulator / flaky network)
-          if (event.code === 7 || event.code === 6 || event.code === 11) {
+          if (event.code === 7 || event.code === 6) {
             DebugLogger.add('info', 'STT', `No result (code=${event.code}: ${event.message})`);
             doResolve('');
+          } else if (event.code === 11) {
+            // ERROR_SERVER_DISCONNECTED: the speech service dropped the
+            // connection. The native side already retried the other
+            // recognizer, so tell the user instead of resetting silently.
+            DebugLogger.add('error', 'STT', `Error 11: ${event.message}`);
+            doReject(
+              new Error(
+                'The speech recognition service disconnected. Check your ' +
+                  'connection, or try Settings → Speech → Online or Offline.',
+              ),
+            );
           } else {
             DebugLogger.add('error', 'STT', `Error ${event.code}: ${event.message}`);
             doReject(new Error(`STT error ${event.code}: ${event.message}`));

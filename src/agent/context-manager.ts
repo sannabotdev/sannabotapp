@@ -21,7 +21,7 @@ const DEFAULT_CONFIG: ContextConfig = {
   maxMessages: 20,
   keepRecentCount: 6,
   summarizeProvider: null as unknown as LLMProvider, // Must be provided
-  summarizeModel: 'claude-3-haiku-20240307',
+  summarizeModel: 'claude-haiku-5-5',
 };
 
 export interface ContextStats {

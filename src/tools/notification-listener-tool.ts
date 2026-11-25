@@ -129,8 +129,18 @@ export class NotificationListenerTool implements Tool {
           description:
             'What the sub-agent should do when a matching notification arrives. ' +
             'Write as a natural-language instruction for an AI agent with all available tools. ' +
-            'Example: "Read the message aloud via TTS", "Reply via WhatsApp with OK". ' +
+            'Example: "Read the message aloud via TTS", "Reply that I am driving and will call back". ' +
+            'Calling, sending to other people and web requests are blocked for notification rules (safety). ' +
+            'Replying to the sender is only possible when auto_reply is true. ' +
             'Default: "Briefly announce this notification via TTS".',
+        },
+        auto_reply: {
+          type: 'boolean',
+          description:
+            'For subscribe/update_rule: allow this rule to reply to the incoming message automatically ' +
+            '(through the notification\'s Reply button, only to the chat that sent it). ' +
+            'Set true ONLY when the user explicitly asks for automatic replies. The user will be asked to confirm. ' +
+            'Set false to turn auto-reply off.',
         },
         condition: {
           type: 'string',
@@ -211,9 +221,13 @@ export class NotificationListenerTool implements Tool {
       enabled: true,
       instruction,
       condition,
+      // Reaching this line with auto_reply=true means the user confirmed it
+      // (the safety gate asks before this tool runs).
+      autoReply: args.auto_reply === true,
     });
 
-    const condStr = condition ? `\nCondition: ${condition}` : ' (catch-all – all notifications)';
+    const condStr = (condition ? `\nCondition: ${condition}` : ' (catch-all – all notifications)') +
+      (rule.autoReply ? '\nAuto-reply: ON (replies go only to the chat that sent the message)' : '');
 
     return successResult(
       `Rule created for ${appLabel}${condStr}.\n` +
@@ -257,10 +271,11 @@ export class NotificationListenerTool implements Tool {
       return errorResult('Missing rule_id parameter. Use list_subscriptions to get rule IDs.');
     }
 
-    const updates: Partial<Pick<NotificationRule, 'instruction' | 'condition' | 'enabled'>> = {};
+    const updates: Partial<Pick<NotificationRule, 'instruction' | 'condition' | 'enabled' | 'autoReply'>> = {};
     if (args.instruction !== undefined) { updates.instruction = args.instruction as string; }
     if (args.condition !== undefined) { updates.condition = args.condition as string; }
     if (args.enabled !== undefined) { updates.enabled = args.enabled as boolean; }
+    if (args.auto_reply !== undefined) { updates.autoReply = args.auto_reply === true; }
 
     const updated = await updateRule(ruleId, updates);
     if (!updated) {
@@ -270,7 +285,8 @@ export class NotificationListenerTool implements Tool {
     const statusText = updated.enabled ? 'enabled' : 'disabled';
     return successResult(
       `Rule ${ruleId} updated (${statusText}).\nInstruction: ${updated.instruction}` +
-      (updated.condition ? `\nCondition: ${updated.condition}` : ''),
+      (updated.condition ? `\nCondition: ${updated.condition}` : '') +
+      `\nAuto-reply: ${updated.autoReply ? 'ON' : 'off'}`,
       `Rule ${statusText}`,
     );
   }
@@ -306,7 +322,8 @@ export class NotificationListenerTool implements Tool {
     const lines = rules.map((r, i) => {
       const status = r.enabled ? '[active]' : '[paused]';
       const condStr = r.condition ? `\n   Condition: ${r.condition}` : ' (catch-all)';
-      return `${i + 1}. ${status} ${r.appLabel}${condStr}\n   Instruction: ${r.instruction}\n   ID: ${r.id}`;
+      const autoStr = r.autoReply ? '\n   Auto-reply: ON' : '';
+      return `${i + 1}. ${status} ${r.appLabel}${condStr}\n   Instruction: ${r.instruction}${autoStr}\n   ID: ${r.id}`;
     });
 
     return successResult(

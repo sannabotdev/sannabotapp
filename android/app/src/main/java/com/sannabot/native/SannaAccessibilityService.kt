@@ -42,7 +42,68 @@ class SannaAccessibilityService : AccessibilityService() {
         var instance: SannaAccessibilityService? = null
 
         fun isRunning(): Boolean = instance != null
+
+        // ── Off-limits apps (native enforcement) ─────────────────────────────
+        // Mirrors BLOCKED_PACKAGES in src/security/safety-policy.ts – keep in sync.
+        // Enforced here, below the LLM, so no prompt can get around it.
+        private val BLOCKED_PACKAGES = setOf(
+            "com.android.settings",
+            "com.google.android.packageinstaller",
+            "com.android.packageinstaller",
+            "com.android.vending",
+            "com.google.android.gms",
+            "com.samsung.android.lool",
+            "com.google.android.apps.authenticator2",
+            "com.azure.authenticator",
+            "com.authy.authy",
+            "com.x8bit.bitwarden",
+            "com.onepassword.android",
+            "com.lastpass.lpandroid",
+            "com.dashlane",
+            "keepass2android.keepass2android",
+            "com.kunzisoft.keepass.free",
+            "org.fedorahosted.freeotp",
+            "com.beemdevelopment.aegis",
+            "com.google.android.apps.walletnfcrel",
+            "com.google.android.apps.nbu.paisa.user",
+            "com.paypal.android.p2pmobile",
+            "com.venmo",
+            "com.squareup.cash",
+            "com.revolut.revolut",
+            "com.transferwise.android",
+            "com.coinbase.android",
+            "com.binance.dev",
+            "io.metamask",
+            "com.samsung.android.spay",
+        )
+        private val BLOCKED_PACKAGE_HINTS = listOf(
+            "bank", "banking", "wallet", "crypto", "authenticator",
+            "password", "passwd", "vault", "broker", "trading",
+        )
+
+        fun isBlockedPackage(pkg: String?): Boolean {
+            if (pkg.isNullOrBlank()) return false
+            val p = pkg.trim().lowercase()
+            if (p in BLOCKED_PACKAGES) return true
+            return BLOCKED_PACKAGE_HINTS.any { p.contains(it) }
+        }
+
+        private const val BLOCKED_MESSAGE =
+            "BLOCKED: the app in the foreground is off-limits for Sanna (banking, payment, " +
+            "password or system app). Do not interact with it. Stop the task and report failure."
     }
+
+    /** Package of the window the user currently sees (root node is more reliable than events). */
+    private fun activePackage(): String {
+        val root = rootInActiveWindow
+        return try {
+            root?.packageName?.toString()?.takeIf { it.isNotBlank() } ?: currentPackageName
+        } finally {
+            root?.recycle()
+        }
+    }
+
+    private fun foregroundIsBlocked(): Boolean = isBlockedPackage(activePackage())
 
     /** Node map: generated ID → AccessibilityNodeInfo copy (valid until next tree capture) */
     private val nodeMap = ConcurrentHashMap<String, AccessibilityNodeInfo>()
@@ -95,6 +156,11 @@ class SannaAccessibilityService : AccessibilityService() {
      * are slow to render their UI after a cold launch.
      */
     fun buildAccessibilityTree(): String {
+        // Never read the screen of an off-limits app.
+        if (foregroundIsBlocked()) {
+            clearNodeMap()
+            return BLOCKED_MESSAGE
+        }
         // Retry with increasing delays — some apps take 500ms+ to render after launch
         val retryDelays = longArrayOf(50, 100, 200, 300, 500)
 
@@ -149,7 +215,12 @@ class SannaAccessibilityService : AccessibilityService() {
 
         // Derive a short class name for readability
         val className = node.className?.toString()?.substringAfterLast('.') ?: "View"
-        val text = node.text?.toString()?.take(120) ?: ""
+        // Never expose password field contents to the LLM.
+        val text = if (node.isPassword) {
+            if (node.text.isNullOrEmpty()) "" else "••••••"
+        } else {
+            node.text?.toString()?.take(120) ?: ""
+        }
         val contentDesc = node.contentDescription?.toString()?.take(120) ?: ""
         val viewId = node.viewIdResourceName?.substringAfterLast('/') ?: ""
 
@@ -187,6 +258,10 @@ class SannaAccessibilityService : AccessibilityService() {
      * @param text    Text to set for "type" or "clipboard_set".
      */
     fun performNodeAction(action: String, nodeId: String?, text: String?): String {
+        // In an off-limits app only "back" and "home" (leaving it) are allowed.
+        if (action != "back" && action != "home" && foregroundIsBlocked()) {
+            return BLOCKED_MESSAGE
+        }
         // ── Global / no-node actions ──────────────────────────────────────────
         when (action) {
             "back" -> {
@@ -216,9 +291,9 @@ class SannaAccessibilityService : AccessibilityService() {
                 return "Clipboard set to: \"$text\""
             }
             "clipboard_get" -> {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val content = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-                return "Clipboard content: \"$content\""
+                // Disabled: the clipboard often holds passwords and one-time codes
+                // copied from other apps. Reading it would hand them to the LLM.
+                return "clipboard_get is disabled for safety. Read the text from the screen instead."
             }
             "paste" -> {
                 // Paste into the currently focused input node
@@ -375,6 +450,7 @@ class SannaAccessibilityService : AccessibilityService() {
      * @param durationMs  Gesture duration in milliseconds (min 1)
      */
     fun performSwipe(x1: Int, y1: Int, x2: Int, y2: Int, durationMs: Int): String {
+        if (foregroundIsBlocked()) return BLOCKED_MESSAGE
         return dispatchSwipeGestureSync(x1, y1, x2, y2, durationMs.toLong().coerceAtLeast(1))
     }
 

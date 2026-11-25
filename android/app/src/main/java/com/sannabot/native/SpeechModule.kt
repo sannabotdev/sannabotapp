@@ -75,6 +75,11 @@ class SpeechModule(reactContext: ReactApplicationContext) :
     private var triedOnDeviceNormalised = false
     private var triedOnDeviceBase = false
     private var triedCloud = false
+    // True once the active recognizer reported onReadyForSpeech. An error
+    // before that means the recognizer never started (e.g. the speech service
+    // refused the connection), so another strategy is worth trying.
+    private var readyForSpeech = false
+    private var reopenedOnDevice = false
 
     // Debug: tracks which strategy is currently active (for logging)
     private var activeStrategyType: String = ""   // "offline" or "online"
@@ -107,6 +112,7 @@ class SpeechModule(reactContext: ReactApplicationContext) :
         currentLanguage = language.replace("-", "_")
         currentMode = mode
         retriesLeft = 3
+        reopenedOnDevice = false
 
         // For explicit modes, pre-set flags and start immediately
         when (mode) {
@@ -267,6 +273,7 @@ class SpeechModule(reactContext: ReactApplicationContext) :
 
         try {
             destroyRecognizer()
+            readyForSpeech = false
 
             when {
                 // On-device with normalised language (de_AT → de_DE)
@@ -368,6 +375,7 @@ class SpeechModule(reactContext: ReactApplicationContext) :
     private fun createRetryingListener(): RecognitionListener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
             isListening = true
+            readyForSpeech = true
             Log.d(TAG, "Ready for speech")
         }
 
@@ -399,6 +407,36 @@ class SpeechModule(reactContext: ReactApplicationContext) :
                 Log.i(TAG, "Language not supported, trying next strategy...")
                 startWithNextStrategy()
                 return
+            }
+
+            // The recognizer failed before it ever started listening (seen on
+            // Samsung phones as error 11 "server disconnected"): try the other
+            // recognizer instead of giving up.
+            val startupFailure = !readyForSpeech && (
+                error == 11 ||
+                error == SpeechRecognizer.ERROR_CLIENT ||
+                error == SpeechRecognizer.ERROR_SERVER
+            )
+            if (startupFailure) {
+                // In auto mode a cloud-first attempt marks on-device as tried;
+                // reopen it once so a failing cloud service can fall back.
+                val hasOnDevice = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    SpeechRecognizer.isOnDeviceRecognitionAvailable(reactApplicationContext)
+                if (currentMode == "auto" && activeStrategyType == "online" &&
+                    hasOnDevice && !reopenedOnDevice) {
+                    reopenedOnDevice = true
+                    triedOnDeviceNormalised = false
+                    triedOnDeviceBase = false
+                }
+                val moreToTry = retriesLeft > 0 && (
+                    !triedCloud ||
+                    (hasOnDevice && (!triedOnDeviceNormalised || !triedOnDeviceBase))
+                )
+                if (moreToTry) {
+                    Log.i(TAG, "Recognizer failed to start ($error), trying next strategy...")
+                    startWithNextStrategy()
+                    return
+                }
             }
 
             // Forward all other errors to JS

@@ -11,7 +11,7 @@ import type {
 } from './types';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const DEFAULT_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const DEFAULT_MAX_TOKENS = 8192;
 
 interface AnthropicContent {
@@ -151,7 +151,8 @@ export class ClaudeProvider implements LLMProvider {
             });
           }
           anthropicMessages.push({ role: 'assistant', content });
-        } else {
+        } else if (msg.content && msg.content.trim() !== '') {
+          // The Anthropic API rejects empty text content, so skip blank turns.
           anthropicMessages.push({ role: 'assistant', content: msg.content });
         }
       } else if (msg.role === 'tool') {
@@ -170,9 +171,15 @@ export class ClaudeProvider implements LLMProvider {
         } else {
           anthropicMessages.push({ role: 'user', content: toolResults as unknown as AnthropicContent[] });
         }
-      } else if (msg.role === 'user') {
+      } else if (msg.role === 'user' && msg.content && msg.content.trim() !== '') {
         anthropicMessages.push({ role: 'user', content: msg.content });
       }
+    }
+
+    // The conversation must open with a user turn (e.g. after the app's own
+    // greeting or after older history was condensed away).
+    if (anthropicMessages.length > 0 && anthropicMessages[0].role === 'assistant') {
+      anthropicMessages.unshift({ role: 'user', content: '(conversation continues)' });
     }
 
     // Build Anthropic tools format

@@ -120,6 +120,7 @@ try {
 // Auto-register all SKILL.md files found under assets/skills/*/SKILL.md.
 // Adding a new skill folder is all that's needed – no changes here required.
 import './src/agent/skill-auto-register';
+import { createConfirmFn } from './src/security/confirm-action';
 
 
 // ─── Themes ───────────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   openAIApiKey: '',
   wakeWordKey: '',
   selectedOpenAIModel: LOCAL_CONFIG.openAIModel || 'gpt-5.2',
-  selectedClaudeModel: LOCAL_CONFIG.claudeModel || 'claude-sonnet-4-6',
+  selectedClaudeModel: LOCAL_CONFIG.claudeModel || 'claude-sonnet-5-5',
   customApiKey: LOCAL_CONFIG.customApiKey || '',
   customModelUrl: LOCAL_CONFIG.customModelUrl || '',
   customModelName: LOCAL_CONFIG.customModelName || '',
@@ -375,7 +376,7 @@ async function loadSecureKeys(store: TokenStore): Promise<{
     wakeWordKey: wakeWord ?? '',
     selectedOpenAIModel: openAIModel || LOCAL_CONFIG.openAIModel || 'gpt-4o',
     selectedClaudeModel:
-      claudeModel || LOCAL_CONFIG.claudeModel || 'claude-3-5-sonnet-20241022',
+      claudeModel || LOCAL_CONFIG.claudeModel || 'claude-sonnet-5-5',
     customApiKey: customApiKey ?? '',
     customModelUrl: customModelUrl ?? '',
     customModelName: customModelName ?? '',
@@ -1105,6 +1106,17 @@ export default function App(): React.JSX.Element {
       toolRegistry.removeDisabledSkillTools(
         skillLoader.current,
         enabledSkillNames,
+      );
+      // Foreground conversation: sensitive actions ask the user first.
+      const drivingMode = settings.drivingMode;
+      toolRegistry.setSafety(
+        'interactive',
+        createConfirmFn({
+          isDrivingMode: () => drivingMode,
+          getLanguage: () => resolvedLanguage,
+          tts: ttsService.current,
+          stt: sttService.current,
+        }),
       );
 
       const pipeline = new ConversationPipeline({
@@ -1944,6 +1956,8 @@ export default function App(): React.JSX.Element {
         includeTts: true,
         includePersonalMemoryTool: false,
       });
+      // Skill tests run unattended: sensitive actions are refused.
+      toolRegistry.setSafety('skill_test');
 
       return await runSkillTest(
         skill,

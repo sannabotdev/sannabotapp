@@ -30,6 +30,15 @@ export interface NotificationListenerModuleType {
   /** Clear the notification buffer */
   clearNotifications(): Promise<string>;
 
+  /** Whether the notification with this key has a usable Reply button */
+  hasReplyAction(key: string): Promise<boolean>;
+
+  /**
+   * Reply through the notification's own Reply button. The reply can only
+   * reach the chat that posted the notification. Rejects on failure.
+   */
+  replyToNotification(key: string, text: string): Promise<string>;
+
   /**
    * Save agent config so the headless notification sub-agent can create a pipeline.
    * Config JSON: { apiKey, provider, model, enabledSkillNames, drivingMode, language, ... }

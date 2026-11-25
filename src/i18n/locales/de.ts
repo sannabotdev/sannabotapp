@@ -360,6 +360,33 @@ const de = {
   'journal.pagination.previous': '← Zurück',
   'journal.pagination.next': 'Weiter →',
   'journal.pagination.page': 'Seite {current} von {total} ({count} Einträge)',
+
+  // ── Sicherheitsbestätigung ──────────────────────────────────────────────
+  'safety.confirm.title': 'Diese Aktion erlauben?',
+  'safety.confirm.allow': 'Erlauben',
+  'safety.confirm.deny': 'Abbrechen',
+  'safety.confirm.spoken': '{summary}. Soll ich das machen? Sag ja oder nein.',
+  'safety.confirm.spokenRetry': 'Entschuldigung, das habe ich nicht verstanden. Ja oder nein?',
+  'safety.action.sms': 'SMS an {to} senden: „{text}"',
+  'safety.action.email': 'E-Mail an {to} senden, Betreff „{subject}"',
+  'safety.action.call': '{to} anrufen',
+  'safety.action.share': '{app} öffnen, um zu senden oder teilen: {target}',
+  'safety.action.screen': '{app} steuern, um: {goal}',
+  'safety.action.web': 'Webanfrage ({method}) an {host} senden',
+  'safety.action.webWrite': '{method}-Anfrage an {host}: {url}',
+  'safety.action.rule': 'Regel für {app}-Benachrichtigungen erstellen: „{instruction}"',
+  'safety.action.ruleChange': 'Benachrichtigungsregel ändern: „{instruction}"',
+  'safety.action.autoReply': 'AUTO-ANTWORT für {app} einschalten. Sanna beantwortet diese Nachrichten selbst, ohne jedes Mal zu fragen. Regel: „{instruction}"',
+  'safety.action.schedule': 'Planen: „{instruction}"',
+  'safety.action.scheduleChange': 'Zeitplan ändern: „{instruction}"',
+
+  // ── Auto-Antwort für Benachrichtigungsregeln ────────────────────────────
+  'notifListeners.autoReply.label': 'Auto-Antwort',
+  'notifListeners.autoReply.hint': 'Passende Nachrichten ohne Nachfrage beantworten. Antworten gehen nur an den Chat zurück, der geschrieben hat, max. 3 pro Stunde.',
+  'notifListeners.autoReply.confirmTitle': 'Auto-Antwort einschalten?',
+  'notifListeners.autoReply.confirmMessage': 'Sanna beantwortet {app}-Nachrichten, die zu dieser Regel passen, selbst, ohne dich jedes Mal zu fragen. Antworten gehen nur an den Chat zurück, der dir geschrieben hat, höchstens 3 pro Chat und Stunde. Jeder, der dir schreibt, kann diese Antworten sehen.',
+  'notifListeners.autoReply.confirm': 'Einschalten',
+  'notifListeners.autoReply.cancel': 'Abbrechen',
 } as const;
 
 export default de;

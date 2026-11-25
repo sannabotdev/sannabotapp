@@ -7,11 +7,26 @@ apply plugin: "com.facebook.react"
 def repoRoot = rootProject.projectDir.parentFile.absoluteFile
 def osForHermes = System.getProperty("os.name").toLowerCase()
 def hermesBinDir = osForHermes.contains("mac") ? "osx-bin" : (osForHermes.contains("win") ? "win64-bin" : "linux64-bin")
-def hermescBinary = new File(repoRoot, "node_modules/hermes-compiler/hermesc/${hermesBinDir}/hermesc")
+def hermescName = osForHermes.contains("win") ? "hermesc.exe" : "hermesc"
+def hermescBinary = new File(repoRoot, "node_modules/hermes-compiler/hermesc/${hermesBinDir}/${hermescName}")
+// The hermes-compiler package ships no win64 binary. On Windows, fall back to
+// running the Linux binary through WSL (see android/scripts/hermesc-wsl.cmd).
+def linuxHermesc = new File(repoRoot, "node_modules/hermes-compiler/hermesc/linux64-bin/hermesc")
+def wslWrapper = new File(rootProject.projectDir, "scripts/hermesc-wsl.cmd")
+def hasWsl = osForHermes.contains("win") && new File(System.getenv("WINDIR") ?: "C:\\Windows", "System32\\wsl.exe").isFile()
+if (!hermescBinary.isFile() && hasWsl && linuxHermesc.isFile() && wslWrapper.isFile()) {
+    logger.lifecycle("Using Linux hermesc through WSL: ${wslWrapper.absolutePath}")
+    hermescBinary = wslWrapper
+}
+// hermesc is only needed to bundle JS for release builds. Debug builds load JS
+// from Metro, so don't block them.
+def wantsRelease = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
 if (!hermescBinary.isFile()) {
-    throw new GradleException(
-        "hermesc not found at ${hermescBinary.absolutePath}. Run pnpm install and add devDependency hermes-compiler (same version as react-native)."
-    )
+    def msg = "hermesc not found at ${hermescBinary.absolutePath}. Run pnpm install and add devDependency hermes-compiler (same version as react-native)."
+    if (wantsRelease) {
+        throw new GradleException(msg)
+    }
+    logger.warn("WARNING: ${msg} (ignored for debug build)")
 }
 
 /**

@@ -15,15 +15,13 @@ export function ProviderToggle({
     <View className="m-3">
       <View className="flex-row gap-2">
         {(['openai', 'claude', 'custom'] as const).map(p => {
-          const isDisabled = p === 'claude';
           return (
             <TouchableOpacity
               key={p}
               className={`flex-1 py-2.5 px-3 rounded-lg items-center ${
                 selected === p ? 'bg-accent' : 'bg-surface-tertiary'
-              } ${isDisabled ? 'opacity-50' : ''}`}
-              onPress={() => !isDisabled && onChange(p)}
-              disabled={isDisabled}
+              }`}
+              onPress={() => onChange(p)}
             >
               <Text
                 className={`text-sm font-medium ${
@@ -42,11 +40,11 @@ export function ProviderToggle({
           );
         })}
       </View>
-      <Text className="text-xs text-label-secondary text-center mt-1">
-        {selected === 'claude'
-          ? t('settings.provider.claudeComingSoon')
-          : t('settings.provider.customDescription')}
-      </Text>
+      {selected === 'custom' && (
+        <Text className="text-xs text-label-secondary text-center mt-1">
+          {t('settings.provider.customDescription')}
+        </Text>
+      )}
     </View>
   );
 }

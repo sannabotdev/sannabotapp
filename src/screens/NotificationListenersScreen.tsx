@@ -80,6 +80,29 @@ export function NotificationListenersScreen({
     await loadData();
   };
 
+  const handleToggleAutoReply = (rule: NotificationRule) => {
+    if (rule.autoReply) {
+      // Turning auto-reply OFF is always safe – no confirmation needed.
+      updateRule(rule.id, { autoReply: false }).then(loadData);
+      return;
+    }
+    Alert.alert(
+      t('notifListeners.autoReply.confirmTitle'),
+      t('notifListeners.autoReply.confirmMessage').replace('{app}', rule.appLabel),
+      [
+        { text: t('notifListeners.autoReply.cancel'), style: 'cancel' },
+        {
+          text: t('notifListeners.autoReply.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            await updateRule(rule.id, { autoReply: true });
+            await loadData();
+          },
+        },
+      ],
+    );
+  };
+
   const handleSaveField = async (
     rule: NotificationRule,
     field: 'instruction' | 'condition',
@@ -156,7 +179,7 @@ export function NotificationListenersScreen({
                       <Text
                         className="text-label-secondary text-xs"
                         numberOfLines={1}>
-                        {rule.instruction}
+                        {rule.autoReply ? '↩ ' : ''}{rule.instruction}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -196,6 +219,22 @@ export function NotificationListenersScreen({
                       label={t('notifListeners.detail.status')}
                       value={rule.enabled ? t('notifListeners.status.active') : t('notifListeners.status.disabled')}
                     />
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-1 pr-3">
+                        <Text className="text-label-primary text-sm">
+                          {t('notifListeners.autoReply.label')}
+                        </Text>
+                        <Text className="text-label-secondary text-xs">
+                          {t('notifListeners.autoReply.hint')}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={!!rule.autoReply}
+                        onValueChange={() => handleToggleAutoReply(rule)}
+                        trackColor={{ false: '#3A3A3C', true: '#FF9500' }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
                     <DetailRow label={t('notifListeners.detail.createdAt')} value={formatDate(rule.created_at)} />
                   </View>
                 )}

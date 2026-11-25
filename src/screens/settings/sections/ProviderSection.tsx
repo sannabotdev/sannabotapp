@@ -67,7 +67,7 @@ export function ProviderSection({
             selectedModel={selectedClaudeModel}
             onModelChange={onClaudeModelChange}
             fetchModels={fetchClaudeModels}
-            defaultModel="claude-3-5-sonnet-20241022"
+            defaultModel="claude-sonnet-5-5"
           />
           <View className="mt-3 mx-4 mb-4">
             <ConnectionTest

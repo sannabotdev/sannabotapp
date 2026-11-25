@@ -361,6 +361,34 @@ const en = {
   'journal.pagination.previous': '← Previous',
   'journal.pagination.next': 'Next →',
   'journal.pagination.page': 'Page {current} of {total} ({count} entries)',
+
+  // ── Safety confirmation ─────────────────────────────────────────────────
+  'safety.confirm.title': 'Allow this action?',
+  'safety.confirm.allow': 'Allow',
+  'safety.confirm.deny': 'Cancel',
+  'safety.confirm.spoken': '{summary}. Should I do it? Say yes or no.',
+  'safety.confirm.spokenRetry': 'Sorry, I did not catch that. Yes or no?',
+  // Action descriptions – keep in sync with ACTION_TEMPLATES in src/security/safety-policy.ts
+  'safety.action.sms': 'Send SMS to {to}: "{text}"',
+  'safety.action.email': 'Send email to {to}, subject "{subject}"',
+  'safety.action.call': 'Call {to}',
+  'safety.action.share': 'Open {app} to send or share: {target}',
+  'safety.action.screen': 'Control {app} to: {goal}',
+  'safety.action.web': 'Send a web request ({method}) to {host}',
+  'safety.action.webWrite': '{method} request to {host}: {url}',
+  'safety.action.rule': 'Create a rule for {app} notifications: "{instruction}"',
+  'safety.action.ruleChange': 'Change notification rule: "{instruction}"',
+  'safety.action.autoReply': 'Turn on AUTO-REPLY for {app}. Sanna will answer these messages by itself, without asking you each time. Rule: "{instruction}"',
+  'safety.action.schedule': 'Schedule: "{instruction}"',
+  'safety.action.scheduleChange': 'Change schedule: "{instruction}"',
+
+  // ── Notification rule auto-reply ────────────────────────────────────────
+  'notifListeners.autoReply.label': 'Auto-reply',
+  'notifListeners.autoReply.hint': 'Answer matching messages without asking. Replies only go back to the chat that wrote, max 3 per hour.',
+  'notifListeners.autoReply.confirmTitle': 'Turn on auto-reply?',
+  'notifListeners.autoReply.confirmMessage': 'Sanna will answer {app} messages that match this rule by itself, without asking you each time. Replies only go back to the chat that wrote to you, at most 3 per chat per hour. Anyone who messages you could see these replies.',
+  'notifListeners.autoReply.confirm': 'Turn on',
+  'notifListeners.autoReply.cancel': 'Cancel',
 } as const;
 
 export default en;

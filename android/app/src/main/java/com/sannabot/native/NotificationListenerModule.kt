@@ -159,6 +159,25 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    // ── Auto-reply ──────────────────────────────────────────────────────────
+
+    /** Whether notification [key] has a Reply button Sanna can use. */
+    @ReactMethod
+    fun hasReplyAction(key: String, promise: Promise) {
+        promise.resolve(SannaNotificationListenerService.hasReplyAction(key))
+    }
+
+    /**
+     * Reply to notification [key] through its own Reply button.
+     * There is deliberately no way to choose a recipient: the reply goes to
+     * the chat that posted the notification.
+     */
+    @ReactMethod
+    fun replyToNotification(key: String, text: String, promise: Promise) {
+        val error = SannaNotificationListenerService.replyToNotification(reactApplicationContext, key, text)
+        if (error == null) promise.resolve("ok") else promise.reject("REPLY_ERROR", error)
+    }
+
     // ── Agent Config (for HeadlessJS notification sub-agent) ─────────────────
 
     /**

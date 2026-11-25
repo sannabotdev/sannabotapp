@@ -123,7 +123,7 @@ export default async function notificationHeadlessTask(
     return;
   }
 
-  const { packageName, title, text, sender } = notifData;
+  const { packageName, title, text, sender, key } = notifData;
 
   // Detailed logging – mirrors what App.tsx previously logged on the foreground thread
   DebugLogger.add(
@@ -205,6 +205,7 @@ export default async function notificationHeadlessTask(
     subject: isEmail ? (text || '') : '',
     preview: isEmail ? '' : (text || ''),
     packageName,
+    key,
   };
 
   // 6. Set up credential manager (headless unlock – no biometric prompt)
